@@ -1,5 +1,10 @@
 # Findings
 
+## Android 9 source-selection crash — 2026-11-10
+- TV screenshot identifies 0.1.3 / Android9/API28 and `SearchRelevance$Query` initialization. The nested cause is not visible in the photo.
+- API28 ARM64 emulator reproduces that exact click-path failure and reports `PatternSyntaxException` for `\p{IsHan}`. The same failing expression and R8 ID exist in the downloaded public 0.1.3 APK, and its actual DEX fails to initialize on API28. The 0.1.4 source contains the same expression.
+- `\p{script=Han}` compiles on API28 and host JDK. One-line fix passes the existing matching tests, 8 Android9 integration cases, and API28 release-Dex initialization. User TV and ARMv7 runtime are not connected.
+
 ## Homepage recovery implementation — 2026-11-09
 - Cache-first uses a five-item, per-category snapshot with a seven-day age limit and HTTPS-only artwork; transient empty feeds preserve the visible hero instead of clearing it.
 - Auto rotation now waits for the successor image and swaps title/indicator/artwork atomically; only the next image is prefetched at view size. Manual switching remains immediate.

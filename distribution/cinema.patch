@@ -669,6 +669,19 @@ index 2630565a1e845bdde107a260794ab634740f771f..2f25e918abc5aaa79ebc32a8d0280bdd
          if (!host.getVodPlayId().isEmpty()) {
              SmartSourceSelector.FlagSelection selection = SmartSourceSelector.selectExplicitEpisode(item,
                      host.getVodPlayId(), state.getHistory().getVodFlag());
+diff --git a/app/src/main/java/com/fongmi/android/tv/source/SearchRelevance.java b/app/src/main/java/com/fongmi/android/tv/source/SearchRelevance.java
+index 61bef92339552c316cc783acbe9690c698c28db9..32276817fb67ccf2c0469dd7ee4f626b238c0133 100644
+--- a/app/src/main/java/com/fongmi/android/tv/source/SearchRelevance.java
++++ b/app/src/main/java/com/fongmi/android/tv/source/SearchRelevance.java
+@@ -17,7 +17,7 @@ public final class SearchRelevance {
+     private static final Pattern YEAR = Pattern.compile("(?<!\\d)(?:19|20)\\d{2}(?!\\d)");
+     private static final Pattern TITLE_YEAR = Pattern.compile("(?:[\\[(【]\\s*((?:19|20)\\d{2})\\s*[\\])】]|\\s+((?:19|20)\\d{2})\\s*$)");
+     private static final Pattern SEASON = Pattern.compile("(?i)(?:\\bseason\\s*|(?<![a-z])s\\s*)0*(\\d{1,2})(?!\\d)|第\\s*([零〇一二两三四五六七八九十百0-9]+)\\s*[季部]");
+-    private static final Pattern TRAILING_NUMBER = Pattern.compile("(?:(?<=[\\p{IsHan}])|(?<=\\s))([1-9][0-9]?)\\s*$");
++    private static final Pattern TRAILING_NUMBER = Pattern.compile("(?:(?<=[\\p{script=Han}])|(?<=\\s))([1-9][0-9]?)\\s*$");
+     private static final Pattern TRAILING_ROMAN = Pattern.compile("(?i)\\s+(VIII|VII|VI|IV|III|II|IX|X|V|I)\\s*$");
+     // English tags must be separate words: stripping 'IT', 'Dark' or the 'x' in Matrix corrupts titles.
+     private static final Pattern NOISE = Pattern.compile("(?i)(?<![a-z0-9])(?:4k|8k|16k|2160p|1080p|720p|480p|uhd|hdr10?\\+?|dolby|blu[ .-]?ray|web[ .-]?dl)(?![a-z0-9])|中文字幕|中字|国语|粤语|高清|超清|蓝光|完结|全集|全\\d+集|无删减|纯净版|修复版|导演剪辑版");
 diff --git a/app/src/main/java/com/fongmi/android/tv/update/UpdateDownloader.java b/app/src/main/java/com/fongmi/android/tv/update/UpdateDownloader.java
 index 71b6f8982a0caa5dc949bbddf62bc2599f93ba42..f165e959845078f341021e4725b948162f0e3001 100644
 --- a/app/src/main/java/com/fongmi/android/tv/update/UpdateDownloader.java

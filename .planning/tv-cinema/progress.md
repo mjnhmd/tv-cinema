@@ -1,5 +1,11 @@
 # Progress
 
+## Android 9 source crash — 2026-11-10
+- Reproduced user screenshot with isolated API28 ARM64 emulator. Actual 0.1.3 DEX and 0.1.4 detail button fail initialization because Android9 ICU rejects `\p{IsHan}`; preserved full log and probe output in `build/logs/`.
+- Changed the single production regex to `\p{script=Han}`, added an Android instrumentation regression and verified 57 JVM + 8 API28 integration cases; sourceprobe UI opens and shows candidates.
+- Built local ARMv7 0.1.5/217404967 (91,129,249B, same signer, 169 ARM native payloads); exact release DEX initializes on API28. The earlier 217500000 build was superseded by the CI clock formula to avoid blocking future updates. User TV, ABI runtime behavior and release/OTA remain untested. No Git commit/push performed.
+- Android9 image and isolated AVD were created under ignored build (approximately 3.6G combined); preserve until cleanup is explicitly authorized. Next obtain current commit/push approval and publish a version newer than 0.1.4's code, then ask user for television verification.
+
 ## Homepage recovery and 0.1.4 — 2026-11-09
 - Implemented a bounded per-category hero snapshot and cached-first rendering; transient empty feeds keep the last visible hero.
 - Auto rotation now waits for the successor image, swaps text/indicator/artwork together, retries after 12s and prefetches only the next image at view size. Manual D-pad switching remains immediate.

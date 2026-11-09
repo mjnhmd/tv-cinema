@@ -19,6 +19,9 @@ Ship a native TV redesign and a verified signed ARMv7 APK for an Android 9 telev
 13. [completed] Publish authorized ARMv7 and verify cloud.
 14. [completed] Inspect slow homepage hero and recommend recovery.
 15. [completed] Implement cached-first hero, ready-image rotation and publish 0.1.4.
+16. [completed] Reproduce Android9 source-selection initialization crash.
+17. [completed] Fix regex and test on API28.
+18. [in_progress] Hand off verified ARMv7 fix; await Git authorization.
 
 ## Verification rules
 - Validate before each commit; never exceed 100 changed lines without a targeted check.
@@ -41,6 +44,8 @@ Ship a native TV redesign and a verified signed ARMv7 APK for an Android 9 telev
 | Full Java compilation failed | Current custom Media3 API is absent from trial AARs; no stubs or feature removal. |
 
 ## Current handoff
+- Latest state 2026-11-10: `fongmi` HEAD `1e3e67fcb`, dirty production patch/overlay and task documentation. User TV reports 0.1.3/API28 crash; API28 ARM64 reproduced the exact failing `\p{IsHan}` initializer, including actual public 0.1.3 DEX. Fixed to `\p{script=Han}`; 57 JVM + 8 API28 integration cases pass, with live UI source search. Signed local ARMv7 `0.1.5`/`217404967` verifies and its exact DEX initializer passes API28. True ARMv7 TV/OTA remains untested. No current commit/push authorization.
+- Ignored Android9 system image/AVD consume about 3.6G under build; no cleanup authorized. Await explicit current commit and push approval before publishing the fix.
 - Latest superseding state: `fongmi` HEAD `5dcbb7137`, production source clean before this documentation-only inspection. Public `v0.1.3` and successful cloud run `42624579403` verified; downloaded cloud and published local APKs have the same signer, different version metadata/hashes. Prior delivery authorization consumed. TV/mainland OTA acceptance remains open.
 - Homepage slow-load consultation completed without code changes. Verified 7s rotation can clear in-flight artwork before its 20s timeout; feed and artwork are distinct paths, and published TMDB key is empty. Recommend bounded persistent cached-first feed, ready-image rotation, next-image-only preload and independent bounded fallback. Host curl results are not TV measurements. Details in feature context/verification.
 - Remaining handoff bullets below describe the pre-publication snapshot; publication/cloud status is superseded by the two bullets above.
