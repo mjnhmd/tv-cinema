@@ -26,3 +26,18 @@
 - Complete isolated 5.2.9 assembly failed with 14 custom media/nextlib errors after plugin inputs were supplied; retracted the earlier misleading partial "media 0 errors" interpretation.
 - No runtime engine change or silent baseline downgrade; matching dependencies or an explicit playback-base decision is still needed.
 - Restored display overrides and stopped task-owned emulator; temporary build/probe files remain for evidence.
+- User chose wobuhui666/TV reference. Pinned TV17abcd745/media342f659 pair and cloned only into ignored build/reference.
+- Corrected previous claims that the fork only removes mpv/ASS/danmaku: actual native modules and source integration preserve these capabilities through a different implementation.
+- Repaired incomplete official NDK r29 installation; paired ARMv7 Debug source build passed (498 tasks, 5m21s), manifest ABI and signature inspected.
+- Verified Media3 patch guard (9 tests), native bundle hashes and both bridges (23 JNI methods / 47 media imports each).
+- Added production lock, explicit overlay map and reviewed Cinema patch; changed project rules before switching build practice.
+- Cinema source preset/profile and imagery first increment compiled; reduced View motion / artwork size second increment compiled, Kotlin + Java passed (8s).
+- Started optimized signed ARMv7 release 0.1.0/code10000 using the existing private key. Root secrets were not printed or tracked.
+- Separate upstream published ARM64 release was installed only for visual reference in API36 emulator; it does not count as our APK acceptance.
+- Optimized Release first failed only on Pine HiddenApiBypass; supplied official Maven6.2 real dependency after bytecode/API check. No dontwarn workaround; R8/shrink stay on.
+- Production wrapper exported and verified ARMv7 Release (91,085,901bytes), minSdk24, package/version, only38ELF32ARM libraries, signaturev2.
+- Same-source ARM64 optimized Release passed and installed. Actual first-run disclosure/home/Settings screenshots captured; D-pad navigation and Back worked.
+- Controlled generated12s720p H264/AAC clip completed; 90s360p clip reached PLAYING, paused65064ms and resumed65088ms, no error. No preset plugin execution used for the smoke proof.
+- Focused five policy suites passed26tests; patch guard passed9tests; MPV bridge symbol checks passed bothABIs.
+- Hardened recipe exact-patch blob/path guards, fresh checkout handling, signature-config0600 and exact Gradlemetadata version/output selection; parser/idempotence/rejection checks passed.
+- Final ARMv7 wrapper with version-aware output selection passed11s; signing secrets and generated artifacts remain ignored.

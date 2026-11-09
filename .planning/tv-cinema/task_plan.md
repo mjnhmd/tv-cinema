@@ -4,11 +4,11 @@
 Ship a native TV redesign and a verified signed ARMv7 APK for an Android 9 television, preserving FongMi playback compatibility.
 
 ## Phases
-1. [in_progress] Establish repository, rules and build baseline.
-2. [pending] Verify cinema shell and shared focus system.
-3. [pending] Verify secondary surfaces and preset onboarding.
-4. [pending] Verify runtime, APK compatibility and performance evidence.
-5. [pending] Publish verified increments and document remaining device acceptance.
+1. [completed] Verify pinned wobuhui paired baseline.
+2. [completed] Build Cinema overlay and optimized release.
+3. [completed] Verify secondary surfaces and preset onboarding.
+4. [completed] Verify runtime and APK compatibility boundaries.
+5. [in_progress] Publish evidence and target-device handoff.
 
 ## Verification rules
 - Validate before each commit; never exceed 100 changed lines without a targeted check.
@@ -34,6 +34,11 @@ Ship a native TV redesign and a verified signed ARMv7 APK for an Android 9 telev
 - Resource and library build passed; UI is source WIP, not runtime-verified delivery.
 - Matching current media inputs or a user-approved baseline change are required before a complete APK.
 - Historical 5.2.9 candidate rejected after complete assemble exposed 14 remaining custom-media errors; no audited complete-build fallback exists.
+- User approved referencing wobuhui666/TV. Use an isolated TV/media pair and verify before integration, rather than broad upstream-AAR searching.
+- Complete paired ARMv7 baseline built, inspected and debug-signature verified. First and second Cinema overlay Kotlin/Java increments passed.
+- Production is a reproducible pinned-source recipe plus small patch/overlay under distribution/. Original app experiment remains preserved; no mass overwrite.
+- Both optimized signed release ABIs built. ARMv7 only38ELF32ARM libs / minSdk24 / version0.1.0 / v2signature verified.
+- 9 helper tests +26 focused JVM tests passed. Our ARM64 release ran D-pad settings/Back/local H264 playback/pause/resume; target television remains not_tested.
 
 ## Ownership
 - Main: rules/docs, all UI resources, HomeActivity, review, commits/push and ppm.

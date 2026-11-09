@@ -1,0 +1,235 @@
+diff --git a/app/build.gradle b/app/build.gradle
+index 19f91509e0c4753dbed3ba68e8504053fff624d3..c955321ed1784ea2afb4ad98b35c71b3690a1a0c 100644
+--- a/app/build.gradle
++++ b/app/build.gradle
+@@ -132,8 +132,8 @@ android {
+             matchingFallbacks = ['debug']
+         }
+         release {
+-            minifyEnabled = false
+-            shrinkResources = false
++            minifyEnabled = true
++            shrinkResources = true
+             signingConfig = signingConfigs.release
+             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro', 'proguard-rules-media.pro'
+         }
+@@ -180,6 +180,7 @@ androidComponents {
+ }
+ 
+ dependencies {
++    implementation 'org.lsposed.hiddenapibypass:hiddenapibypass:6.2'
+     implementation fileTree(dir: "libs", include: ["*.aar"], exclude: ["mpv-android-lib-*.aar"])
+     implementation project(":mpv")
+     implementation project(":media3-av3a")
+diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/HomeActivity.java b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/HomeActivity.java
+index bba7d139580d24c850b030bb1980b05e414c5079..8cbfd395fefc29bc48349e6110104e6d0d43ec4a 100644
+--- a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/HomeActivity.java
++++ b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/HomeActivity.java
+@@ -33,6 +33,7 @@ import com.fongmi.android.tv.Product;
+ import com.fongmi.android.tv.R;
+ import com.fongmi.android.tv.Updater;
+ import com.fongmi.android.tv.api.config.LiveConfig;
++import com.fongmi.android.tv.api.config.CinemaSources;
+ import com.fongmi.android.tv.api.config.VodConfig;
+ import com.fongmi.android.tv.api.config.WallConfig;
+ import com.fongmi.android.tv.bean.Cache;
+@@ -75,6 +76,7 @@ import com.fongmi.android.tv.ui.presenter.HistoryPresenter;
+ import com.fongmi.android.tv.ui.presenter.ProgressPresenter;
+ import com.fongmi.android.tv.ui.presenter.VodPresenter;
+ import com.fongmi.android.tv.utils.Clock;
++import com.fongmi.android.tv.utils.CinemaProfile;
+ import com.fongmi.android.tv.utils.FileChooser;
+ import com.fongmi.android.tv.utils.HistoryTaskQueue;
+ import com.fongmi.android.tv.utils.ImgUtil;
+@@ -154,6 +156,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
+ 
+     @Override
+     protected void onCreate(Bundle savedInstanceState) {
++        CinemaProfile.initialize();
+         SplashScreen.installSplashScreen(this);
+         super.onCreate(savedInstanceState);
+     }
+@@ -179,7 +182,6 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
+         mBinding.progressLayout.showProgress();
+         PermissionUtil.requestNotify(this);
+         DLNARendererService.start(this);
+-        Updater.create().start(this);
+         setRecyclerView();
+         setNavigationView();
+         setViewModel();
+@@ -328,6 +330,31 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
+     }
+ 
+     private void initConfig() {
++        if (isFinishing() || isDestroyed()) return;
++        if (CinemaSources.needsConsent()) {
++            new MaterialAlertDialogBuilder(this)
++                    .setTitle(R.string.cinema_sources_title)
++                    .setMessage(R.string.cinema_sources_notice)
++                    .setPositiveButton(R.string.cinema_sources_accept, (dialog, which) -> {
++                        CinemaSources.install();
++                        loadCinemaConfig();
++                    })
++                    .setNegativeButton(R.string.cinema_sources_skip, (dialog, which) -> {
++                        CinemaSources.skip();
++                        loadCinemaConfig();
++                    })
++                    .setOnCancelListener(dialog -> {
++                        CinemaSources.skip();
++                        loadCinemaConfig();
++                    })
++                    .show();
++            return;
++        }
++        CinemaSources.install();
++        loadCinemaConfig();
++    }
++
++    private void loadCinemaConfig() {
+         VodConfig.get().init().load(getCallback());
+         LiveConfig.get().init().load();
+         WallConfig.get().init();
+diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java
+index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..4add805cbecb8896bc967396811b086a8ee50947 100644
+--- a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java
++++ b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java
+@@ -1085,7 +1085,7 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
+     }
+ 
+     private void onVersion() {
+-        Updater.create().force().start(this);
++        Notify.show(R.string.cinema_update_notice);
+     }
+ 
+     private void initConfig() {
+diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamAnimator.kt b/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamAnimator.kt
+index 3f9a763641caa3a53f761767ce7f817a0d1b44ce..db68de13aa339e76761d494a9d3e1ec1f755a4e4 100644
+--- a/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamAnimator.kt
++++ b/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamAnimator.kt
+@@ -10,6 +10,7 @@ import android.view.View
+ import android.view.animation.AccelerateInterpolator
+ import android.view.animation.DecelerateInterpolator
+ import com.fongmi.android.tv.ui.theme.JetStreamPalette
++import com.fongmi.android.tv.utils.CinemaProfile
+ import java.util.WeakHashMap
+ 
+ object JetStreamAnimator {
+@@ -41,6 +42,12 @@ object JetStreamAnimator {
+     fun animateFocus(view: View, focused: Boolean, scale: Float = FOCUS_SCALE_CARD, elevationDp: Int = 12, duration: Long = FOCUS_DURATION) {
+         focusAnimations.remove(view)?.cancel()
+         view.isSelected = focused
++        if (CinemaProfile.isLightweight()) {
++            view.scaleX = 1f
++            view.scaleY = 1f
++            view.translationZ = 0f
++            return
++        }
+         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+             val shadowColor = if (focused) JetStreamPalette.shadowColor() else Color.TRANSPARENT
+             view.outlineAmbientShadowColor = shadowColor
+@@ -91,6 +98,13 @@ object JetStreamAnimator {
+         view.animate().setListener(null)
+         view.animate().withEndAction(null)
+         view.animate().cancel()
++        if (CinemaProfile.isLightweight()) {
++            view.visibility = View.VISIBLE
++            view.alpha = 1f
++            view.translationX = 0f
++            view.translationY = 0f
++            return
++        }
+         val alreadyVisible = view.visibility == View.VISIBLE
+         if (alreadyVisible && view.alpha >= 0.99f && view.translationX == 0f && view.translationY == 0f) return
+         if (!alreadyVisible) {
+@@ -119,6 +133,13 @@ object JetStreamAnimator {
+         view.animate().setListener(null)
+         view.animate().withEndAction(null)
+         view.animate().cancel()
++        if (CinemaProfile.isLightweight()) {
++            view.visibility = finalVisibility
++            view.alpha = 1f
++            view.translationX = 0f
++            view.translationY = 0f
++            return
++        }
+         view.animate()
+             .alpha(0f)
+             .translationX(dp(view, toXDp))
+@@ -140,6 +161,10 @@ object JetStreamAnimator {
+         view.animate().setListener(null)
+         view.animate().withEndAction(null)
+         view.animate().cancel()
++        if (CinemaProfile.isLightweight()) {
++            view.alpha = 1f
++            return
++        }
+         view.alpha = 0.65f
+         view.animate().alpha(1f).setDuration(EXIT_DURATION).setInterpolator(enterInterpolator).start()
+     }
+diff --git a/app/src/main/java/com/fongmi/android/tv/utils/ImgUtil.java b/app/src/main/java/com/fongmi/android/tv/utils/ImgUtil.java
+index b352552117016753d03e1715eadbed396e8e4ada..7d7d2a2f3e7dbaebb2b60d438da65aebd1e840a5 100644
+--- a/app/src/main/java/com/fongmi/android/tv/utils/ImgUtil.java
++++ b/app/src/main/java/com/fongmi/android/tv/utils/ImgUtil.java
+@@ -49,7 +49,7 @@ public class ImgUtil {
+             Glide.with(view)
+                     .load(logo)
+                     .circleCrop()
+-                    .override(Target.SIZE_ORIGINAL, Target.SIZE_ORIGINAL)
++                    .override(ResUtil.dp2px(48), ResUtil.dp2px(48))
+                     .error(Glide.with(view).load(R.drawable.ic_logo).fitCenter())
+                     .into(view);
+         } catch (Throwable e) {
+@@ -67,7 +67,7 @@ public class ImgUtil {
+ 
+     public static void load(Context context, String url, CustomTarget<Drawable> target) {
+         try {
+-            Glide.with(context).load(getUrl(url)).override(ResUtil.getScreenWidth(), ResUtil.getScreenHeight()).error(R.drawable.artwork).into(target);
++            Glide.with(context).load(getUrl(url)).override(Math.min(ResUtil.getScreenWidth(), 1280), Math.min(ResUtil.getScreenHeight(), 720)).error(R.drawable.artwork).into(target);
+         } catch (Throwable e) {
+             e.printStackTrace();
+         }
+@@ -117,8 +117,8 @@ public class ImgUtil {
+                 notifyLoad(callback, false);
+                 return;
+             }
+-            RequestBuilder<Drawable> builder = Glide.with(view).load(getUrl(url)).transition(DrawableTransitionOptions.withCrossFade(CROSS_FADE)).listener(getListener(text, url, view, vod, keepCurrentOnError, callback));
+-            if (artwork) builder.dontTransform().dontAnimate().into(view);
++            RequestBuilder<Drawable> builder = Glide.with(view).load(getUrl(url)).listener(getListener(text, url, view, vod, keepCurrentOnError, callback));
++            if (artwork) builder.override(1280, 720).dontTransform().dontAnimate().into(view);
+             else if (blurred) builder.transform(new CenterCrop(), new GaussianBlurTransformation()).into(view);
+             else if (vod) builder.centerCrop().into(view);
+             else builder.fitCenter().into(view);
+diff --git a/app/src/main/java/com/fongmi/android/tv/utils/OkGlideModule.java b/app/src/main/java/com/fongmi/android/tv/utils/OkGlideModule.java
+index b26b08324955c25c40f0bfdae9f8a02cf9f888f7..4321dd181e0c90e73f2bba3fd0a5ec123ccb6492 100644
+--- a/app/src/main/java/com/fongmi/android/tv/utils/OkGlideModule.java
++++ b/app/src/main/java/com/fongmi/android/tv/utils/OkGlideModule.java
+@@ -10,8 +10,12 @@ import com.bumptech.glide.GlideBuilder;
+ import com.bumptech.glide.Registry;
+ import com.bumptech.glide.annotation.GlideModule;
+ import com.bumptech.glide.integration.okhttp3.OkHttpUrlLoader;
++import com.bumptech.glide.load.engine.bitmap_recycle.LruBitmapPool;
++import com.bumptech.glide.load.engine.cache.LruResourceCache;
+ import com.bumptech.glide.load.model.GlideUrl;
+ import com.bumptech.glide.module.AppGlideModule;
++import com.bumptech.glide.request.RequestOptions;
++import com.fongmi.android.tv.BuildConfig;
+ 
+ import java.io.InputStream;
+ 
+@@ -21,10 +25,14 @@ public class OkGlideModule extends AppGlideModule {
+     @Override
+     public void applyOptions(@NonNull Context context, @NonNull GlideBuilder builder) {
+         builder.setLogLevel(Log.ERROR);
++        if (!BuildConfig.FLAVOR.contains("leanback")) return;
++        builder.setMemoryCache(new LruResourceCache(16L * 1024 * 1024));
++        builder.setBitmapPool(new LruBitmapPool(8L * 1024 * 1024));
++        builder.setDefaultRequestOptions(new RequestOptions().dontAnimate());
+     }
+ 
+     @Override
+     public void registerComponents(@NonNull Context context, @NonNull Glide glide, Registry registry) {
+         registry.replace(GlideUrl.class, InputStream.class, new OkHttpUrlLoader.Factory(TmdbNetwork::newCall));
+     }
+-}
+\ No newline at end of file
++}

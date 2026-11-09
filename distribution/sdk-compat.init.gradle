@@ -1,0 +1,9 @@
+gradle.beforeProject { currentProject ->
+    ['com.android.application', 'com.android.library'].each { pluginId ->
+        currentProject.pluginManager.withPlugin(pluginId) {
+            currentProject.extensions.getByName('androidComponents').finalizeDsl { androidDsl ->
+                if (androidDsl.compileSdk == 37) androidDsl.compileSdkMinor = 0
+            }
+        }
+    }
+}

@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name" translatable="false">TV Cinema</string>
+    <string name="cinema_sources_title">要添加预置订阅吗？</string>
+    <string name="cinema_sources_notice">已整理指定网站的 5 个点播订阅和 1 个直播订阅，各自独立保存。已有订阅不会覆盖。\n\n第三方订阅可能下载并运行插件，内容与代码未经本应用安全认证，线路也可能失效。你也可以稍后在设置中自行添加。</string>
+    <string name="cinema_sources_accept">使用预置订阅</string>
+    <string name="cinema_sources_skip">自行添加</string>
+    <string name="cinema_update_notice">TV Cinema 独立签名版，请从本项目 Releases 安装更新。</string>
+</resources>

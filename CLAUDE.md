@@ -16,12 +16,16 @@
 - `.planning/tv-cinema/`: task_plan.md, findings.md and progress.md for this task.
 - `scripts/`: reproducible build, artifact verification and existing runtime utilities.
 - `app/build/outputs/`: disposable build products; never source assets.
+- `build/reference/`: ignored, pinned third-party checkouts for isolated baseline verification; do not mix their source into the application without an integration decision and provenance.
+- `build/logs/`: ignored command output; durable outcomes and limitations belong in feature verification.md.
+- `distribution/`: production baseline lock, reviewed patch set and integration metadata. Build scripts materialize the pinned paired upstream in `build/reference/`, apply only the tracked patch and add the explicitly listed Cinema sources/assets.
+- The root `app/` is the preserved first UI experiment against FongMi's unmatched 5.8.7 interfaces. The shipping entry point is `scripts/cinema-build.sh`, not the legacy root Gradle application.
 - Use `cinema_` prefixes for new TV design resources. Reuse existing icon artwork.
 - Keep evidence inside the feature directory; logs and downloaded build inputs stay ignored.
 - Do not delete user data, caches or unrelated files without permission.
 
 ## Design and implementation
-- Native Android Views and Leanback, not a WebView, Electron, Flutter or Compose rewrite.
+- Use the paired native Android/Leanback implementation, including its existing Compose controls. Do not introduce a framework rewrite; reduce motion, background work and image memory for the target TV.
 - D-pad and Back must reach every action without touch, hover or a mouse.
 - Visible focus must not depend on color alone or change measured layout size.
 - Prefer quiet near-black surfaces, warm white typography and one restrained accent.

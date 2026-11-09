@@ -1,0 +1,28 @@
+{
+  "tv": {
+    "repository": "https://github.com/wobuhui666/TV.git",
+    "branch": "ui/apple-tv-redesign",
+    "commit": "17abcd7453a0ecbdbc9ed40a22f3fd3632158495",
+    "directory": "build/reference/wobuhui-tv"
+  },
+  "media": {
+    "repository": "https://github.com/wobuhui666/media.git",
+    "branch": "release-1.11.0-fongmi",
+    "commit": "342f6590e02ac390e0bd6b4488b8a1bff55747c1",
+    "directory": "build/reference/wobuhui-media"
+  },
+  "applicationId": "com.mjnhmd.tvcinema",
+  "cinemaPatchSha256": "8058e20a292e6ab6ab786bcbb41bcad7940d307808d751aeedbd8a5acec9bf47",
+  "nativeArchives": {
+    "third_party/mpv/mpv-android-ffmpeg9-native.zip": "d3f22c64ab90a1476b489c2b4f06de8296672497f2998161efb4d906f9a4a66c",
+    "third_party/mpv/mpv-android-ffmpeg9-bridge.zip": "29b1ef4c8d0b48475c1b5dba464d46157d7ec2e13ce913a67fcca93e4b2c20d6"
+  },
+  "copies": [
+    {"source": "app/src/leanback/java/com/fongmi/android/tv/api/config/CinemaSources.java", "target": "app/src/leanback/java/com/fongmi/android/tv/api/config/CinemaSources.java"},
+    {"source": "app/src/leanback/assets/cinema/sources.json", "target": "app/src/leanback/assets/cinema/sources.json"},
+    {"source": "distribution/overlay/CinemaProfile.java", "target": "app/src/leanback/java/com/fongmi/android/tv/utils/CinemaProfile.java"},
+    {"source": "distribution/overlay/cinema.xml", "target": "app/src/leanback/res/values/cinema.xml"},
+    {"source": "distribution/overlay/cinema.xml", "target": "app/src/leanback/res/values-zh-rCN/cinema.xml"},
+    {"source": "distribution/overlay/cinema.xml", "target": "app/src/leanback/res/values-zh-rTW/cinema.xml"}
+  ]
+}
