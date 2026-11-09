@@ -1,5 +1,10 @@
 # Findings
 
+## Navigation and playback preload — 2026-11-10
+- `HomeActivity.onNavClick` already handled `home_setting`; moving the entry required only a nav item plus removing the My-card bindings/layout. API28 UI confirms the new order and the absence of the My settings card.
+- `preload_next` defaults to true in the upstream player and shares a 64MB next-item preload buffer with foreground playback. CinemaProfile now writes false only when the key was never set, using a separate migration marker so existing 0.1.x installs receive it.
+- This mitigation is unmeasured on the user's TV; it can reduce network/CPU contention but cannot be called the confirmed stutter root cause.
+
 ## Android 9 source-selection crash — 2026-11-10
 - TV screenshot identifies 0.1.3 / Android9/API28 and `SearchRelevance$Query` initialization. The nested cause is not visible in the photo.
 - API28 ARM64 emulator reproduces that exact click-path failure and reports `PatternSyntaxException` for `\p{IsHan}`. The same failing expression and R8 ID exist in the downloaded public 0.1.3 APK, and its actual DEX fails to initialize on API28. The 0.1.4 source contains the same expression.

@@ -21,7 +21,9 @@ Ship a native TV redesign and a verified signed ARMv7 APK for an Android 9 telev
 15. [completed] Implement cached-first hero, ready-image rotation and publish 0.1.4.
 16. [completed] Reproduce Android9 source-selection initialization crash.
 17. [completed] Fix regex and test on API28.
-18. [in_progress] Hand off verified ARMv7 fix; await Git authorization.
+18. [completed] Hand off verified ARMv7 fix; await Git authorization.
+19. [completed] Publish 0.1.5 Android 9 crash fix.
+20. [in_progress] Move settings to home nav and add playback preload mitigation.
 
 ## Verification rules
 - Validate before each commit; never exceed 100 changed lines without a targeted check.
@@ -44,6 +46,7 @@ Ship a native TV redesign and a verified signed ARMv7 APK for an Android 9 telev
 | Full Java compilation failed | Current custom Media3 API is absent from trial AARs; no stubs or feature removal. |
 
 ## Current handoff
+- 2026-11-10 latest: published `0.1.5` crash fix as release `build-42663020367-1`; cloud APK signer/ABI/manifest and API28 initializer verified. Implemented 0.1.6 settings nav beside My, removed the My settings card, and disabled default next-episode preload with a migration marker for existing installs. 216 JVM tests, API28 UI screenshots, local ARMv7 `0.1.6`/`217408805` (sha `f1ea29b7...`) verified. 0.1.6 is uncommitted/unpublished; stutter root cause still unproven and awaits TV codec/source evidence.
 - Latest state 2026-11-10: `fongmi` HEAD `1e3e67fcb`, dirty production patch/overlay and task documentation. User TV reports 0.1.3/API28 crash; API28 ARM64 reproduced the exact failing `\p{IsHan}` initializer, including actual public 0.1.3 DEX. Fixed to `\p{script=Han}`; 57 JVM + 8 API28 integration cases pass, with live UI source search. Signed local ARMv7 `0.1.5`/`217404967` verifies and its exact DEX initializer passes API28. True ARMv7 TV/OTA remains untested. No current commit/push authorization.
 - Ignored Android9 system image/AVD consume about 3.6G under build; no cleanup authorized. Await explicit current commit and push approval before publishing the fix.
 - Latest superseding state: `fongmi` HEAD `5dcbb7137`, production source clean before this documentation-only inspection. Public `v0.1.3` and successful cloud run `42624579403` verified; downloaded cloud and published local APKs have the same signer, different version metadata/hashes. Prior delivery authorization consumed. TV/mainland OTA acceptance remains open.

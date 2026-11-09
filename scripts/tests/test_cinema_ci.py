@@ -22,7 +22,7 @@ class VersionTest(unittest.TestCase):
     def test_timestamp_versions_match_the_pinned_recipe(self):
         code, name = CI.release_version("2026-10-07T12:00:00Z")
         self.assertEqual(214_537_600, code)
-        self.assertEqual("0.1.5+20261007.120000", name)
+        self.assertEqual("0.1.6+20261007.120000", name)
 
     def test_timezone_offsets_represent_the_same_version(self):
         self.assertEqual(

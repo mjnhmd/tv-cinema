@@ -1,5 +1,10 @@
 # Progress
 
+## Navigation and playback preload — 2026-11-10
+- Moved `设置` beside `我的` in the home nav and removed the settings card from `我的`; verified on API28 with screenshots.
+- Disabled default next-episode preload for existing/new installs via one-time migration; verified persisted values in an isolated fresh install. Stutter cause remains unproven.
+- Published 0.1.5 crash fix; verified downloaded cloud APK signature/ABI/sha and API28 initializer. Built local ARMv7 0.1.6/217408805 (91,128,333B, sha f1ea29b7..., same signer) and verified exact DEX on API28. 216 focused JVM tests pass. 0.1.6 not committed or published.
+
 ## Android 9 source crash — 2026-11-10
 - Reproduced user screenshot with isolated API28 ARM64 emulator. Actual 0.1.3 DEX and 0.1.4 detail button fail initialization because Android9 ICU rejects `\p{IsHan}`; preserved full log and probe output in `build/logs/`.
 - Changed the single production regex to `\p{script=Han}`, added an Android instrumentation regression and verified 57 JVM + 8 API28 integration cases; sourceprobe UI opens and shows candidates.

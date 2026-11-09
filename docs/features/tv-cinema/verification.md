@@ -1,5 +1,16 @@
 # Verification record — 2026-11-09
 
+## Navigation and playback preload — 0.1.6
+- Focused JVM run covering `source.*`, `ui.home.*` and `model.*`: 18 suites / 216 tests / 0 failures (`cinema-016-compile.log`).
+- ARM64 debug build and API28 ARM64 sourceprobe on default Android9/API28 emulator: home nav renders `Home Library Live Search My TV Setting` in one row; tapping `My TV` shows `Keep`, `Watch history`, push, `Cast to this TV` and `Local files`, with no settings card. Screenshots `build/outputs/cinema-016-home-nav.png`, `cinema-016-my-page.png`.
+- Fresh isolated install persisted `preload_next=false`, `cinema_low_end_preload_v1=true` and `cinema_profile_initialized=true`; this proves the one-time default, not playback smoothness.
+- Local ARMv7 `TV_VERSION_CODE=217408805 TV_VERSION_NAME=0.1.6`: signed Release passes package/minSdk/ARMv7/169-native-payload and original-signer checks; 91,128,333 bytes, SHA256 `f1ea29b76f271771c69b1144834c0ce40b89c65a585e9bf52149d556ee67e953`; exact APK DEX `RELEASE INITIALIZER OK` on API28 (`cinema-api28-release016-initializer.log`).
+- Not tested: 32-bit television install/upgrade, actual stutter improvement, codec/bitrate-specific playback, long-session memory/frame pacing, and public OTA for 0.1.6.
+
+## Published Android 9 source crash fix — 0.1.5
+- Actions run `42663020367` build and publish succeeded; public latest release `build-42663020367-1` contains `0.1.5+20261109.172651` / code `217408411`, larger than `0.1.4`'s `217397053`.
+- Downloaded cloud APK is 91,126,917 bytes, SHA256 `4beac57b89934e3ed416756d2d1d9b92a1cde0f83ba281bd6f06e910f2289fcc`, matching its OTA manifest and release digest; `verify-apk` passes package/minSdk24/ARMv7/original signer, and the exact cloud DEX initializes `SearchRelevance` on API28 (`cinema-api28-cloud015-initializer.log`). User television update/selection/playback remains untested.
+
 ## Android 9 source selection crash — 2026-11-10
 - User photo: actual TV `MiTV-MFTP0`, Android9/API28, app `0.1.3`, top stack `ExceptionInInitializerError` in `SearchRelevance$Query.<init>` → `PosterSourcesController`; no nested cause visible in screenshot.
 - Fail-before: isolated default Android9/API28 ARM64 emulator; installed same-source local `0.1.4`/`10004`, enabled detail sources in that emulator's own data, navigated from home hero into detail and pressed D-pad center on `选择来源`. App entered `CrashActivity`; `build/logs/cinema-api28-source-before.log` records `Caused by: java.util.regex.PatternSyntaxException: U_ILLEGAL_ARGUMENT_ERROR` at `(?:(?<=[\p{IsHan}])|(?<=\s))...` in `SearchRelevance.<clinit>`. Exact released 0.1.3 APK DEX initialized through `app_process` on the same API28 runtime failed identically (`cinema-api28-release013-initializer.log`).

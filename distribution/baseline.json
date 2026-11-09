@@ -12,33 +12,99 @@
     "directory": "build/reference/wobuhui-media"
   },
   "applicationId": "com.mjnhmd.tvcinema",
-  "cinemaPatchSha256": "61c3e326cda690c0ae16d3a7d1248d830f3e2154497b262f86c35658dcda1522",
+  "cinemaPatchSha256": "ecea1dc4e48ddd3cfdc24b4ee28d5012b73c39bae6f5980438ef0efec4510e9a",
   "nativeArchives": {
     "third_party/mpv/mpv-android-ffmpeg9-native.zip": "d3f22c64ab90a1476b489c2b4f06de8296672497f2998161efb4d906f9a4a66c",
     "third_party/mpv/mpv-android-ffmpeg9-bridge.zip": "29b1ef4c8d0b48475c1b5dba464d46157d7ec2e13ce913a67fcca93e4b2c20d6"
   },
   "copies": [
-    {"source": "app/src/leanback/java/com/fongmi/android/tv/api/config/CinemaSources.java", "target": "app/src/leanback/java/com/fongmi/android/tv/api/config/CinemaSources.java"},
-    {"source": "app/src/leanback/assets/cinema/sources.json", "target": "app/src/leanback/assets/cinema/sources.json"},
-    {"source": "distribution/overlay/CinemaProfile.java", "target": "app/src/leanback/java/com/fongmi/android/tv/utils/CinemaProfile.java"},
-    {"source": "distribution/overlay/CinemaWallpaper.java", "target": "app/src/leanback/java/com/fongmi/android/tv/api/config/CinemaWallpaper.java"},
-    {"source": "distribution/overlay/CinemaWallpaperTest.java", "target": "app/src/test/java/com/fongmi/android/tv/api/config/CinemaWallpaperTest.java"},
-    {"source": "distribution/overlay/CinemaUpdateTest.java", "target": "app/src/test/java/com/fongmi/android/tv/update/CinemaUpdateTest.java"},
-    {"source": "distribution/overlay/CinemaDiscovery.java", "target": "app/src/leanback/java/com/fongmi/android/tv/api/config/CinemaDiscovery.java"},
-    {"source": "distribution/overlay/CinemaDiscoveryAndroidTest.java", "target": "app/src/androidTest/java/com/fongmi/android/tv/api/config/CinemaDiscoveryAndroidTest.java"},
-    {"source": "distribution/overlay/CinemaSourceMerger.java", "target": "app/src/leanback/java/com/fongmi/android/tv/api/config/CinemaSourceMerger.java"},
-    {"source": "distribution/overlay/CinemaSourceMergerTest.java", "target": "app/src/test/java/com/fongmi/android/tv/api/config/CinemaSourceMergerTest.java"},
-    {"source": "distribution/overlay/NavigationPlaylistGuard.java", "target": "app/src/main/java/com/fongmi/android/tv/source/NavigationPlaylistGuard.java"},
-    {"source": "distribution/overlay/NavigationPlaylistGuardTest.java", "target": "app/src/test/java/com/fongmi/android/tv/source/NavigationPlaylistGuardTest.java"},
-    {"source": "distribution/overlay/JetStreamEpisodeGrid.kt", "target": "app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamEpisodeGrid.kt"},
-    {"source": "distribution/overlay/JetStreamEpisodeGridPolicy.java", "target": "app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamEpisodeGridPolicy.java"},
-    {"source": "distribution/overlay/JetStreamEpisodeGridPolicyTest.java", "target": "app/src/test/java/com/fongmi/android/tv/ui/custom/JetStreamEpisodeGridPolicyTest.java"},
-    {"source": "distribution/overlay/JetStreamEpisodeGridAndroidTest.java", "target": "app/src/androidTest/java/com/fongmi/android/tv/ui/custom/JetStreamEpisodeGridAndroidTest.java"},
-    {"source": "distribution/overlay/cinema.xml", "target": "app/src/leanback/res/values/cinema.xml"},
-    {"source": "distribution/overlay/cinema.xml", "target": "app/src/leanback/res/values-zh-rCN/cinema.xml"},
-    {"source": "distribution/overlay/cinema.xml", "target": "app/src/leanback/res/values-zh-rTW/cinema.xml"},
-    {"source": "distribution/overlay/CinemaHeroSnapshot.java", "target": "app/src/leanback/java/com/fongmi/android/tv/ui/home/CinemaHeroSnapshot.java"},
-    {"source": "distribution/overlay/CinemaHeroSnapshotTest.java", "target": "app/src/test/java/com/fongmi/android/tv/ui/home/CinemaHeroSnapshotTest.java"},
-    {"source": "distribution/overlay/SearchRelevanceAndroidCompatTest.java", "target": "app/src/androidTest/java/com/fongmi/android/tv/source/SearchRelevanceAndroidCompatTest.java"}
+    {
+      "source": "app/src/leanback/java/com/fongmi/android/tv/api/config/CinemaSources.java",
+      "target": "app/src/leanback/java/com/fongmi/android/tv/api/config/CinemaSources.java"
+    },
+    {
+      "source": "app/src/leanback/assets/cinema/sources.json",
+      "target": "app/src/leanback/assets/cinema/sources.json"
+    },
+    {
+      "source": "distribution/overlay/CinemaProfile.java",
+      "target": "app/src/leanback/java/com/fongmi/android/tv/utils/CinemaProfile.java"
+    },
+    {
+      "source": "distribution/overlay/CinemaWallpaper.java",
+      "target": "app/src/leanback/java/com/fongmi/android/tv/api/config/CinemaWallpaper.java"
+    },
+    {
+      "source": "distribution/overlay/CinemaWallpaperTest.java",
+      "target": "app/src/test/java/com/fongmi/android/tv/api/config/CinemaWallpaperTest.java"
+    },
+    {
+      "source": "distribution/overlay/CinemaUpdateTest.java",
+      "target": "app/src/test/java/com/fongmi/android/tv/update/CinemaUpdateTest.java"
+    },
+    {
+      "source": "distribution/overlay/CinemaDiscovery.java",
+      "target": "app/src/leanback/java/com/fongmi/android/tv/api/config/CinemaDiscovery.java"
+    },
+    {
+      "source": "distribution/overlay/CinemaDiscoveryAndroidTest.java",
+      "target": "app/src/androidTest/java/com/fongmi/android/tv/api/config/CinemaDiscoveryAndroidTest.java"
+    },
+    {
+      "source": "distribution/overlay/CinemaSourceMerger.java",
+      "target": "app/src/leanback/java/com/fongmi/android/tv/api/config/CinemaSourceMerger.java"
+    },
+    {
+      "source": "distribution/overlay/CinemaSourceMergerTest.java",
+      "target": "app/src/test/java/com/fongmi/android/tv/api/config/CinemaSourceMergerTest.java"
+    },
+    {
+      "source": "distribution/overlay/NavigationPlaylistGuard.java",
+      "target": "app/src/main/java/com/fongmi/android/tv/source/NavigationPlaylistGuard.java"
+    },
+    {
+      "source": "distribution/overlay/NavigationPlaylistGuardTest.java",
+      "target": "app/src/test/java/com/fongmi/android/tv/source/NavigationPlaylistGuardTest.java"
+    },
+    {
+      "source": "distribution/overlay/JetStreamEpisodeGrid.kt",
+      "target": "app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamEpisodeGrid.kt"
+    },
+    {
+      "source": "distribution/overlay/JetStreamEpisodeGridPolicy.java",
+      "target": "app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamEpisodeGridPolicy.java"
+    },
+    {
+      "source": "distribution/overlay/JetStreamEpisodeGridPolicyTest.java",
+      "target": "app/src/test/java/com/fongmi/android/tv/ui/custom/JetStreamEpisodeGridPolicyTest.java"
+    },
+    {
+      "source": "distribution/overlay/JetStreamEpisodeGridAndroidTest.java",
+      "target": "app/src/androidTest/java/com/fongmi/android/tv/ui/custom/JetStreamEpisodeGridAndroidTest.java"
+    },
+    {
+      "source": "distribution/overlay/cinema.xml",
+      "target": "app/src/leanback/res/values/cinema.xml"
+    },
+    {
+      "source": "distribution/overlay/cinema.xml",
+      "target": "app/src/leanback/res/values-zh-rCN/cinema.xml"
+    },
+    {
+      "source": "distribution/overlay/cinema.xml",
+      "target": "app/src/leanback/res/values-zh-rTW/cinema.xml"
+    },
+    {
+      "source": "distribution/overlay/CinemaHeroSnapshot.java",
+      "target": "app/src/leanback/java/com/fongmi/android/tv/ui/home/CinemaHeroSnapshot.java"
+    },
+    {
+      "source": "distribution/overlay/CinemaHeroSnapshotTest.java",
+      "target": "app/src/test/java/com/fongmi/android/tv/ui/home/CinemaHeroSnapshotTest.java"
+    },
+    {
+      "source": "distribution/overlay/SearchRelevanceAndroidCompatTest.java",
+      "target": "app/src/androidTest/java/com/fongmi/android/tv/source/SearchRelevanceAndroidCompatTest.java"
+    }
   ]
 }

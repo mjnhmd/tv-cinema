@@ -22,7 +22,7 @@ index 19f91509e0c4753dbed3ba68e8504053fff624d3..c955321ed1784ea2afb4ad98b35c71b3
      implementation project(":mpv")
      implementation project(":media3-av3a")
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/HomeActivity.java b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/HomeActivity.java
-index bba7d139580d24c850b030bb1980b05e414c5079..bca084e941d5e77b2d150957601bdefe089da013 100644
+index bba7d139580d24c850b030bb1980b05e414c5079..e2938b77f2929ffa0b3e6ba7648751732a0b02dc 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/HomeActivity.java
 +++ b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/HomeActivity.java
 @@ -33,6 +33,7 @@ import com.fongmi.android.tv.Product;
@@ -70,6 +70,32 @@ index bba7d139580d24c850b030bb1980b05e414c5079..bca084e941d5e77b2d150957601bdefe
          VodConfig.get().init().load(getCallback());
          LiveConfig.get().init().load();
          WallConfig.get().init();
+@@ -727,6 +735,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
+         if (LiveConfig.hasUrl()) items.add(new JetStreamHomeNavView.NavItem(String.valueOf(R.string.home_live), getString(R.string.home_live), R.drawable.ic_home_live));
+         items.add(new JetStreamHomeNavView.NavItem(String.valueOf(R.string.home_search), getString(R.string.home_search), R.drawable.ic_home_search));
+         items.add(new JetStreamHomeNavView.NavItem(String.valueOf(R.string.home_tab_my), getString(R.string.home_tab_my), R.drawable.ic_home_setting));
++        items.add(new JetStreamHomeNavView.NavItem(String.valueOf(R.string.home_setting), getString(R.string.home_setting), R.drawable.msr_settings));
+         mBinding.nav.setItems(items);
+         mBinding.nav.setSelectedKey(String.valueOf(R.string.home_tab_home));
+     }
+diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/MyActivity.java b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/MyActivity.java
+index e2706e7aee0a13c3f1e90e884f2c7cf40f28b838..70825d9a7efa6b89e894f2ff352bb33d4470f6bd 100644
+--- a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/MyActivity.java
++++ b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/MyActivity.java
+@@ -42,13 +42,11 @@ public class MyActivity extends BaseActivity {
+         binding.push.setContent(R.drawable.msr_cloud_upload, getString(R.string.home_push), getString(R.string.my_push_description));
+         binding.cast.setContent(R.drawable.msr_live_tv, getString(R.string.my_cast), getString(R.string.my_cast_description));
+         binding.files.setContent(R.drawable.ic_folder, getString(R.string.my_files), getString(R.string.my_files_description));
+-        binding.settings.setContent(R.drawable.msr_settings, getString(R.string.home_setting), getString(R.string.my_settings_description));
+         binding.keep.setOnClickListener(v -> KeepActivity.start(this));
+         binding.history.setOnClickListener(v -> WatchHistoryActivity.start(this));
+         binding.push.setOnClickListener(v -> PushActivity.start(this));
+         binding.cast.setOnClickListener(v -> showCastInstructions());
+         binding.files.setOnClickListener(v -> filePicker.launch(new Intent(this, FileActivity.class)));
+-        binding.settings.setOnClickListener(v -> SettingActivity.start(this));
+         if (savedInstanceState == null) binding.keep.requestFocus();
+     }
+ 
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java
 index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..823c3e31cfaa00145af98b837aa25b70a51db511 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java
@@ -549,6 +575,20 @@ index c16e0d0d85841626d91ea0e2ef18b426ca16aa0b..0824c0b0904730831e6289be2c32339b
          }
  
          private void attach() {
+diff --git a/app/src/leanback/res/layout/activity_my.xml b/app/src/leanback/res/layout/activity_my.xml
+index d28e5a0bae5ded4d78fe81f4fda72dd286b3f814..784aa678ecac70bfb2399f321faf0c35a9d76029 100644
+--- a/app/src/leanback/res/layout/activity_my.xml
++++ b/app/src/leanback/res/layout/activity_my.xml
+@@ -12,8 +12,7 @@
+             <com.fongmi.android.tv.ui.custom.MyActionView android:id="@+id/cast" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_marginStart="12dp" />
+         </LinearLayout>
+         <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="16dp" android:orientation="horizontal" android:clipChildren="false" android:clipToPadding="false">
+-            <com.fongmi.android.tv.ui.custom.MyActionView android:id="@+id/files" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_marginEnd="12dp" />
+-            <com.fongmi.android.tv.ui.custom.MyActionView android:id="@+id/settings" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_marginStart="12dp" />
++            <com.fongmi.android.tv.ui.custom.MyActionView android:id="@+id/files" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" />
+         </LinearLayout>
+     </LinearLayout>
+ </com.fongmi.android.tv.ui.custom.JetStreamPageRootLayout>
 diff --git a/app/src/leanback/res/layout/activity_video.xml b/app/src/leanback/res/layout/activity_video.xml
 index 3f00c591512f821fb46279fd35c94dc891754408..8d615a92f56c740224c9f58574d980696a9a77e4 100644
 --- a/app/src/leanback/res/layout/activity_video.xml
