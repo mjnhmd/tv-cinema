@@ -1,5 +1,26 @@
 # Verification record — 2026-11-09
 
+## Homepage cache and ready-image rotation — 0.1.4
+- New JVM `CinemaHeroSnapshotTest`: round-trip fields, HTTPS-only artwork, duplicate-id removal, five-item bound, seven-day expiry and malformed JSON rejection. Focused run also included `PosterHomeCatalogTest`, `HomeSourceStateTest`, `RexHomeCatalogTest`, `RexFeedDateTest`, `BrowseExperienceSettingsTest`, `PreloadBudgetTest`, `MpvVideoOutputRecoveryTest`, `AssHistoryTest` and `HistoryRequestStateTest`; `BUILD SUCCESSFUL`.
+- Full `testLeanbackArmeabi_v7aDebugUnitTest`: 1042 tests, 3 failures in `LocalSubtitleScannerTest` (`Episode.srt` expected but `Episode.SRT` enumerated on the case-insensitive macOS test filesystem). This class is untouched by the Cinema patch; the failures are environmental and unrelated to the homepage change.
+- Local ARMv7 Release `0.1.4` / `10004`: 91,129,129 bytes, SHA256 `420d447f6e3cc632bc8ded969af40dbcf5f70d2daab2578b6fe40ae05850a953`; `cinema-ci.py verify-apk` passes package, minSdk24, ARMv7-only payload and signer `d405dcabe3e9507a7e33eb3fdf2d61de03e27b6e4bc80099b5b1d054f0d8bdc5`.
+- Emulator smoke (API36 ARM64, not the target TV): upgraded from installed `0.1.2`/`10002` to `0.1.4`/`10004` with the existing app data. Online launch showed a five-item hero (`build/outputs/cinema-0.1.4-hero-online.png`). After enabling airplane mode, force-stopping and relaunching, the hero and artwork still appeared from the persisted snapshot/Glide cache (`build/outputs/cinema-0.1.4-hero-offline.png`); no `AndroidRuntime` fatal entry was observed.
+- Runtime television acceptance for the 7s slow-image path and Android9 ARMv7 behavior still requires the connected TV. The emulator does not prove hardware decoding, memory pressure or remote-control behavior.
+
+## Homepage network inspection — investigation only
+- Reviewed the materialized production `RexFeedLoader`, `RexNowClient`, `RexTmdbClient`, `PosterHomeController`, `DiscoverHeroPresenter`, `DiscoverApi`, `TmdbNetwork` and `OkGlideModule`. No runtime/source change in this investigation.
+- Generated ARMv7 Release BuildConfig has an empty TMDB key; the TMDB list client skips requests without it. Feed identity/label and artwork host must not be conflated with the actual list transport.
+- Conditional slow-network hazard established from code: automatic rotation is 7,000ms; changing slides clears pending artwork, while the image transport's call timeout is 20s. This is not evidence that the user's television actually reaches either duration. Existing Glide caching is retained; feed caches are memory-only.
+- Host-only curl samples: RexNow trending HTTP200 /31,219B /~0.19s; direct Douban list HTTP200 /5,647B /~0.24s. An initial Douban poster request without Referer returned HTTP418; adding the same Referer/User-Agent used by the app returned HTTP200 /19,137B /~0.03s. Do not treat the headerless failure as app incompatibility.
+- Explicit no-HTTP-proxy sample (`curl -q --noproxy '*'`, 12s total/5s connect limit): `/kTp2i00tjARpsI6wTkU4Q8ArGaX.jpg` at w780 returned HTTP200, image/jpeg and JPEG magic from both routes; proxy 50,599B /TTFB1.713s /total1.763s; official host 50,599B /TTFB2.591s /total2.967s. Results: `build/logs/hero-probe-direct-images.json`. One host sample per route, no TV or mainland-ISP acceptance, no exclusion of system-level tunnelling.
+- Proposed but not implemented: persistent bounded feed snapshot/cached-first display; wait for ready artwork instead of timed cancellation; next-slide-only prefetch and bounded independent list/image recovery. Android9 ARMv7 behavior remains not_tested.
+
+## Authorized delivery follow-through — cloud and public release
+- GitHub readback: public, non-draft, non-prerelease `v0.1.3` contains `leanback-armeabi_v7a-coexist.apk` (91,125,389B; digest matches `1cf4e59cc01f90cf3f8ef19e01a681c4fe058ca156dbb70c06fa709c4f22153f`) and `leanback-coexist.json` (627B).
+- Read-only build-worker inspection: Actions run `42624579403`, head `5dcbb7137bb64e61ec467597089efcc0c3397a3f`, build success, publish skipped as configured. Actual artifact downloaded to `build/ci/cloud-run-42624579403/leanback-armeabi_v7a-coexist.apk`; 91,124,333B; SHA256 `688514095ae54cf3639a1548a2662e1be5ed602ff65a1d9d4b5453f935946041`.
+- Actual cloud APK `apksigner verify` and `cinema-ci.py verify-apk` pass: package `com.mjnhmd.tvcinema`, minSdk24, targetSdk37, non-debuggable, ARMv7-only native payload, v2 signature. Signer SHA256 `d405dcabe3e9507a7e33eb3fdf2d61de03e27b6e4bc80099b5b1d054f0d8bdc5` equals the published local APK. Same signer is not byte-for-byte reproducibility: cloud name/code `0.1.3+20261109.132052`/`217393652` differ from public local `0.1.3`/`10003`.
+- Target-TV installation/upgrade, playback/performance, and mainland download/in-app-update end-to-end are still not_tested. No new Git or remote mutation in this inspection.
+
 ## Current follow-up — 0.1.3
 
 - Production command: `TV_VERSION_CODE=10003 TV_VERSION_NAME=0.1.3 bash scripts/cinema-build.sh --abi armeabi-v7a`.

@@ -1,5 +1,16 @@
 # Findings
 
+## Homepage recovery implementation — 2026-11-09
+- Cache-first uses a five-item, per-category snapshot with a seven-day age limit and HTTPS-only artwork; transient empty feeds preserve the visible hero instead of clearing it.
+- Auto rotation now waits for the successor image and swaps title/indicator/artwork atomically; only the next image is prefetched at view size. Manual switching remains immediate.
+- Snapshot writing compares the item body before replacing it, so repeated renders do not rewrite unchanged JSON; freshness is a separate timestamp key.
+
+## Homepage inspection and delivery readback — 2026-11-09
+- Published BuildConfig has empty TMDB key; direct TMDB list requests are skipped. RexNow feed can still supply TMDB identity/artwork; editorial label is not list-origin evidence.
+- Feed caches are process-local; existing Glide caching remains enabled. No explicit next-slide preload; 7s auto-advance cancels pending artwork although its call timeout is 20s. This is a conditional weak-network risk, not a proven TV root cause.
+- Explicit curl no-HTTP-proxy same-image test: proxy HTTP200 JPEG50,599B/1.76s; official HTTP200 same size/2.97s. Host-only samples. Direct Douban poster succeeds with the app's existing Referer; headerless418 is not app evidence.
+- Public 0.1.3 and successful cloud run42624579403 verified. Downloaded cloud/local release signer is identical; version codes/hashes differ. No implementation or new remote write during this consultation; bounded cached-first/ready-image rotation is only a recommendation.
+
 ## Follow-up — 2026-11-09
 - Actual Android catalog dialog clips after four visible entries on the test TV-sized display; placing the new merged entry seventh made it appear missing. The latest candidate is now first while six presets remain unchanged below it. MockWebServer instrumentation proves no request before starting, no plugin/JAR execution during discovery, explicit activation only, failure preservation and active-candidate slot preservation.
 - Latest episode layout uses actual MiSans text metrics and max of normal/selected font widths plus padding, not a character-count threshold or fixed columns. Width measurement is remembered separately from row packing and focus, so only viewport changes repack rows. LazyColumn composes visible rows; only the actual focused overflow chip installs marquee. The shared TV button's focus-scale is disabled here to keep wide buttons and outlines inside the clipped viewport.

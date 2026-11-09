@@ -12,7 +12,7 @@
     "directory": "build/reference/wobuhui-media"
   },
   "applicationId": "com.mjnhmd.tvcinema",
-  "cinemaPatchSha256": "425a32dccfe20768e11953da75f42241867fe02123640c5c1fb4f844c49a4875",
+  "cinemaPatchSha256": "cf950af4235ac59af2834cb9efab8733e39c035e06dd156b0e93415cac41b985",
   "nativeArchives": {
     "third_party/mpv/mpv-android-ffmpeg9-native.zip": "d3f22c64ab90a1476b489c2b4f06de8296672497f2998161efb4d906f9a4a66c",
     "third_party/mpv/mpv-android-ffmpeg9-bridge.zip": "29b1ef4c8d0b48475c1b5dba464d46157d7ec2e13ce913a67fcca93e4b2c20d6"
@@ -36,6 +36,8 @@
     {"source": "distribution/overlay/JetStreamEpisodeGridAndroidTest.java", "target": "app/src/androidTest/java/com/fongmi/android/tv/ui/custom/JetStreamEpisodeGridAndroidTest.java"},
     {"source": "distribution/overlay/cinema.xml", "target": "app/src/leanback/res/values/cinema.xml"},
     {"source": "distribution/overlay/cinema.xml", "target": "app/src/leanback/res/values-zh-rCN/cinema.xml"},
-    {"source": "distribution/overlay/cinema.xml", "target": "app/src/leanback/res/values-zh-rTW/cinema.xml"}
+    {"source": "distribution/overlay/cinema.xml", "target": "app/src/leanback/res/values-zh-rTW/cinema.xml"},
+    {"source": "distribution/overlay/CinemaHeroSnapshot.java", "target": "app/src/leanback/java/com/fongmi/android/tv/ui/home/CinemaHeroSnapshot.java"},
+    {"source": "distribution/overlay/CinemaHeroSnapshotTest.java", "target": "app/src/test/java/com/fongmi/android/tv/ui/home/CinemaHeroSnapshotTest.java"}
   ]
 }

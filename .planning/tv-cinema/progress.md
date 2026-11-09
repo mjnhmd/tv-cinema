@@ -1,5 +1,18 @@
 # Progress
 
+## Homepage recovery and 0.1.4 — 2026-11-09
+- Implemented a bounded per-category hero snapshot and cached-first rendering; transient empty feeds keep the last visible hero.
+- Auto rotation now waits for the successor image, swaps text/indicator/artwork together, retries after 12s and prefetches only the next image at view size. Manual D-pad switching remains immediate.
+- Added `CinemaHeroSnapshotTest`; focused home/source/player-policy suites pass. Full unit run: 1042 tests, only 3 environmental `LocalSubtitleScannerTest` case-sensitivity failures on macOS, unrelated to this change.
+- Built and verified local ARMv7 `0.1.4`/`10004` (91,129,129 bytes, same release signer) and ARM64 release for the emulator. API36 ARM64 smoke upgraded existing data, showed the online hero, then retained the hero and artwork after airplane-mode restart.
+- Next: publish 0.1.4 through ARMv7 CI with `publish=true`, verify the public APK/manifest, then hand the update link to the TV.
+
+## Homepage consultation and cloud-signature closeout — 2026-11-09
+- Completed read-only hero path inspection and bounded host curl probes; no homepage code change, rebuild, commit or push. Found conditional 7s rotation/in-flight cancellation risk; documented list-versus-image transports, empty shipped TMDB key and cache limitations without claiming TV diagnosis.
+- Corrected earlier broad TMDB assumption: fallback RexNow identities and artwork do not establish direct TMDB list traffic. Existing Glide cache is not disabled; only feed persistence and next-slide preload are absent in the reviewed paths.
+- Read back public v0.1.3 release/assets and received worker's downloaded-cloud APK signature/ABI/package verification. Same signer as public local APK; different version codes/file hashes. Delivery completed, target TV and mainland end-to-end update still untested.
+- Updated feature context/verification and selected plan; pending decision is whether to implement the proposed homepage recovery, not further delivery authorization from the past turn.
+
 ## 2026-11-09
 - Authorization received: user confirmed the requested commit/push, Actions signing setup and public ARMv7 delivery. Verified owner/admin/public repository and remote HEAD matching d3c919693; installed all five signing secrets via stdin encryption with name-only readback. Added matching v0.1.3 manifest support and complete-draft publish gate; 20 tool tests and YAML parsing pass. Official SDK stable-package/paired-input preflight found no required toolchain blocker; all explicit copied sources must be included in the first commit. Preparing source push and real release/CI verification.
 - Final local handoff: corrected signed ARMv7 0.1.3/code10003 is staged, 91,125,389 bytes, SHA256 1cf4e59cc01f90cf3f8ef19e01a681c4fe058ca156dbb70c06fa709c4f22153f. Native audit covers 38 lib/ entries and 169 payloads including assets/Python archives, all ELF32/ARM. 98 JVM, 19 CI-helper, 10 episode UI and 3 source UI/HTTP cases pass; the Android9-compatible test guard/window case also reran successfully. No TV data cleared; task-owned emulator stopped. No commit/push/secrets/public Release; user has been asked for current explicit authorization. Cloud build/download/update and real Android9 ARMv7 playback/performance remain not_tested.

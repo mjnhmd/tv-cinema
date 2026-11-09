@@ -307,6 +307,248 @@ index ac39ff77cc54b8eb290ba1652389ad8cb4495129..76e5a872d3c694fd93f724d491bba5eb
          const val KEY_WALL = "wall"
          const val KEY_WALL_VISIBLE = "wall_visible"
          const val KEY_TMDB_CONNECTION = "tmdb_connection"
+diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/home/PosterHomeController.java b/app/src/leanback/java/com/fongmi/android/tv/ui/home/PosterHomeController.java
+index 75399bb4fc44ee4f6126476b41e94cacc546bc16..d27d8a73403e37637ea35efd8633e75dd5766c25 100644
+--- a/app/src/leanback/java/com/fongmi/android/tv/ui/home/PosterHomeController.java
++++ b/app/src/leanback/java/com/fongmi/android/tv/ui/home/PosterHomeController.java
+@@ -86,6 +86,7 @@ public final class PosterHomeController implements VodPresenter.OnClickListener
+     private int generation;
+     private int pending;
+     private boolean closed;
++    private boolean heroFromSnapshot;
+     private Runnable deadline;
+ 
+     public PosterHomeController(Activity activity, Listener listener) {
+@@ -106,6 +107,7 @@ public final class PosterHomeController implements VodPresenter.OnClickListener
+                 shelf.section = section;
+                 shelves.add(shelf);
+             }
++            heroFromSnapshot = loadSnapshot();
+             return;
+         }
+         shelves.add(new Shelf(R.string.home_wall_trending, DiscoverApi.Row.TMDB_DAY));
+@@ -115,6 +117,16 @@ public final class PosterHomeController implements VodPresenter.OnClickListener
+         shelves.add(new Shelf(R.string.home_wall_series_shelf, DiscoverApi.Row.TMDB_POPULAR_TV));
+         shelves.add(new Shelf(R.string.home_wall_top_movies, DiscoverApi.Row.TMDB_TOP_MOVIE));
+         shelves.add(new Shelf(R.string.home_wall_top_series, DiscoverApi.Row.TMDB_TOP_TV));
++        heroFromSnapshot = loadSnapshot();
++    }
++
++    /** Show the previous successful hero immediately; a later refresh replaces it. */
++    private boolean loadSnapshot() {
++        List<Vod> cached = CinemaHeroSnapshot.read(category);
++        if (cached.isEmpty()) return false;
++        hero.value.replace(cached);
++        notifyRow(hero);
++        return true;
+     }
+ 
+     public void register(CustomSelector selector) {
+@@ -263,6 +275,8 @@ public final class PosterHomeController implements VodPresenter.OnClickListener
+     private void selectCategory(int value) {
+         if (category == value) return;
+         category = value;
++        heroFromSnapshot = loadSnapshot();
++        if (!heroFromSnapshot) hero.value.replace(List.of());
+         notifyRow(categories);
+         render();
+     }
+@@ -273,10 +287,15 @@ public final class PosterHomeController implements VodPresenter.OnClickListener
+             return;
+         }
+         List<Vod> heroItems = PosterHomeCatalog.hero(content, category);
+-        if (!RexFeedResult.sameItems(hero.value.getItems(), heroItems)) {
++        if (heroItems.isEmpty() && !hero.value.getItems().isEmpty()) {
++            // Keep the last successful hero while a refresh has no replacement yet.
++        } else if (!RexFeedResult.sameItems(hero.value.getItems(), heroItems)) {
+             hero.value.replace(heroItems);
+             notifyRow(hero);
+         }
++        if (!heroItems.isEmpty()) {
++            CinemaHeroSnapshot.write(category, heroItems);
++        }
+         boolean any = false;
+         for (Shelf shelf : shelves) {
+             List<Vod> items = PosterHomeCatalog.visible(shelf.row, category)
+@@ -393,10 +412,15 @@ public final class PosterHomeController implements VodPresenter.OnClickListener
+     private void renderCompact() {
+         List<RexFeedResult> feeds = new ArrayList<>(compactFeeds.values());
+         List<Vod> heroItems = PosterHomeCatalog.compactHero(feeds, category);
+-        if (!RexFeedResult.sameItems(hero.value.getItems(), heroItems)) {
++        if (heroItems.isEmpty() && !hero.value.getItems().isEmpty()) {
++            // Keep the cached hero visible until a feed supplies real content.
++        } else if (!RexFeedResult.sameItems(hero.value.getItems(), heroItems)) {
+             hero.value.replace(heroItems);
+             notifyRow(hero);
+         }
++        if (!heroItems.isEmpty()) {
++            CinemaHeroSnapshot.write(category, heroItems);
++        }
+         List<String> keys = PosterHomeCatalog.compactKeys(category);
+         for (Shelf shelf : shelves) {
+             RexFeedResult feed = compactFeeds.get(shelf.key);
+diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/presenter/DiscoverHeroPresenter.java b/app/src/leanback/java/com/fongmi/android/tv/ui/presenter/DiscoverHeroPresenter.java
+index c16e0d0d85841626d91ea0e2ef18b426ca16aa0b..0824c0b0904730831e6289be2c32339b295f3b63 100644
+--- a/app/src/leanback/java/com/fongmi/android/tv/ui/presenter/DiscoverHeroPresenter.java
++++ b/app/src/leanback/java/com/fongmi/android/tv/ui/presenter/DiscoverHeroPresenter.java
+@@ -75,6 +75,8 @@ public final class DiscoverHeroPresenter extends Presenter {
+     private static final class Holder extends ViewHolder {
+ 
+         private static final long AUTO_DELAY = 7000;
++        private static final long RETRY_DELAY = 12000;
++        private static final long PREFETCH_DELAY = 1200;
+         private static final long IMAGE_FADE = 850;
+         private static final long TEXT_FADE = 220;
+         private final AdapterDiscoverHeroBinding binding;
+@@ -82,10 +84,13 @@ public final class DiscoverHeroPresenter extends Presenter {
+         private final Handler handler = new Handler(Looper.getMainLooper());
+         private final List<Vod> items = new ArrayList<>();
+         private final Runnable rotate;
++        private final Runnable prefetch;
+         private final ViewTreeObserver.OnWindowFocusChangeListener windowFocusListener;
+         private ShapeableImageView front;
+         private int index = -1;
+         private int artworkGeneration;
++        private int advanceGeneration;
++        private boolean advancing;
+         private String displayedArtwork;
+         private boolean attached;
+         private boolean windowFocusListenerRegistered;
+@@ -97,9 +102,9 @@ public final class DiscoverHeroPresenter extends Presenter {
+             this.front = binding.imageA;
+             binding.details.setVisibility(View.INVISIBLE);
+             this.rotate = () -> {
+-                if (canRotate()) show(index + 1, true);
+-                schedule();
++                if (canRotate()) advance();
+             };
++            this.prefetch = this::prefetchNext;
+             this.windowFocusListener = hasFocus -> {
+                 if (hasFocus) publishArtwork(displayedArtwork);
+                 schedule();
+@@ -168,6 +173,7 @@ public final class DiscoverHeroPresenter extends Presenter {
+             if (animate) binding.details.animate().alpha(1f).setDuration(TEXT_FADE).start();
+             updateIndicator();
+             showArtwork(item, animate);
++            prefetchSoon();
+         }
+ 
+         private void showArtwork(Vod item, boolean animate) {
+@@ -237,6 +243,8 @@ public final class DiscoverHeroPresenter extends Presenter {
+         }
+ 
+         private void cancelPendingArtwork() {
++            advanceGeneration++;
++            advancing = false;
+             artworkGeneration++;
+             binding.imageA.animate().withEndAction(null).cancel();
+             binding.imageB.animate().withEndAction(null).cancel();
+@@ -338,6 +346,97 @@ public final class DiscoverHeroPresenter extends Presenter {
+             if (canRotate()) handler.postDelayed(rotate, AUTO_DELAY);
+         }
+ 
++        private void prefetchSoon() {
++            handler.removeCallbacks(prefetch);
++            if (canRotate()) handler.postDelayed(prefetch, PREFETCH_DELAY);
++        }
++
++        /**
++         * Auto-rotation waits for the next image. The current slide stays visible and is never
++         * cleared just because the next download exceeded the rotation interval.
++         */
++        private void advance() {
++            if (!canRotate() || advancing || items.size() < 2) return;
++            final int from = index;
++            final int next = Math.floorMod(from + 1, items.size());
++            Vod item = items.get(next);
++            if (item == null) {
++                schedule();
++                return;
++            }
++            String artwork = item.getBackdrop();
++            if (TextUtils.isEmpty(artwork)) {
++                show(next, true);
++                schedule();
++                return;
++            }
++            if (TextUtils.equals(displayedArtwork, artwork)) {
++                switchText(next, item);
++                schedule();
++                prefetchSoon();
++                return;
++            }
++            if (!attached || !binding.getRoot().isAttachedToWindow()) return;
++            final ShapeableImageView nextView = front == binding.imageA ? binding.imageB : binding.imageA;
++            final int generation = ++advanceGeneration;
++            advancing = true;
++            try {
++                Glide.with(nextView).load(ImgUtil.getUrl(artwork)).centerCrop().listener(new RequestListener<>() {
++                    @Override
++                    public boolean onLoadFailed(@Nullable GlideException e, Object model, @NonNull Target<Drawable> target, boolean firstResource) {
++                        if (!isCurrentAdvance(generation, from)) return true;
++                        advancing = false;
++                        if (canRotate()) handler.postDelayed(rotate, RETRY_DELAY);
++                        return true;
++                    }
++
++                    @Override
++                    public boolean onResourceReady(Drawable resource, Object model, Target<Drawable> target, DataSource source, boolean firstResource) {
++                        if (!isCurrentAdvance(generation, from)) return true;
++                        advancing = false;
++                        nextView.setImageDrawable(resource);
++                        switchText(next, item);
++                        displayArtwork(artwork, nextView, front, true, artworkGeneration);
++                        schedule();
++                        prefetchSoon();
++                        return true;
++                    }
++                }).into(nextView);
++            } catch (RuntimeException e) {
++                advancing = false;
++                if (isCurrentAdvance(generation, from) && canRotate()) handler.postDelayed(rotate, RETRY_DELAY);
++            }
++        }
++
++        private boolean isCurrentAdvance(int generation, int from) {
++            return attached && binding.getRoot().isAttachedToWindow()
++                    && generation == advanceGeneration && index == from;
++        }
++
++        private void switchText(int position, Vod item) {
++            index = position;
++            binding.details.animate().cancel();
++            bindText(item);
++            binding.details.setAlpha(0.7f);
++            binding.details.animate().alpha(1f).setDuration(TEXT_FADE).start();
++            updateIndicator();
++        }
++
++        /** Only the immediate successor is prefetched, at the view's own pixel size. */
++        private void prefetchNext() {
++            if (!attached || items.size() < 2 || !binding.getRoot().isAttachedToWindow()) return;
++            Vod item = items.get(Math.floorMod(index + 1, items.size()));
++            String artwork = item.getBackdrop();
++            if (TextUtils.isEmpty(artwork) || TextUtils.equals(displayedArtwork, artwork)) return;
++            int width = binding.getRoot().getWidth();
++            int height = binding.getRoot().getHeight();
++            if (width <= 0 || height <= 0) return;
++            try {
++                Glide.with(binding.getRoot()).load(ImgUtil.getUrl(artwork)).centerCrop().preload(width, height);
++            } catch (RuntimeException ignored) {
++            }
++        }
++
+         private void restart() {
+             stop();
+             schedule();
+@@ -345,6 +444,7 @@ public final class DiscoverHeroPresenter extends Presenter {
+ 
+         private void stop() {
+             handler.removeCallbacks(rotate);
++            handler.removeCallbacks(prefetch);
+         }
+ 
+         private void attach() {
 diff --git a/app/src/leanback/res/layout/activity_video.xml b/app/src/leanback/res/layout/activity_video.xml
 index 3f00c591512f821fb46279fd35c94dc891754408..8d615a92f56c740224c9f58574d980696a9a77e4 100644
 --- a/app/src/leanback/res/layout/activity_video.xml
