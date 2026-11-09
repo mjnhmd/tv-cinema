@@ -4,7 +4,7 @@
 - User authorized implementing the homepage optimization and publishing a new version for television update.
 - `CinemaHeroSnapshot` stores at most five last-successful hero items per category (seven-day limit, HTTPS artwork only, 240-character synopsis cap) in shared preferences. `PosterHomeController` renders that snapshot before the network request and replaces it only when a feed supplies real hero items; a transient empty response no longer clears the visible hero.
 - `DiscoverHeroPresenter` auto-rotation now downloads the successor into the hidden view and commits text, indicator and artwork together only on success. The current slide stays visible during a slow download; failure retries after 12s. Only the immediate successor is prefetched at the hero view's pixel size. Manual D-pad switching keeps immediate text feedback and cancels a pending auto advance.
-- Version constant is `0.1.4`; local verification build uses `10004`. CI publish uses its timestamp version code so it is greater than installed `10003` and the earlier cloud `217393652` artifact. Release `v0.1.4` also uses the same release certificate.
+- Version constant is `0.1.4`; local verification build uses `10004`. CI published `0.1.4+20261109.141733` / code `217397053` as public latest release `build-42631667857-1`, greater than installed `10003` and the earlier cloud `217393652` artifact, with the same release certificate.
 
 ## Latest inspection — homepage and cloud artifact — 2026-11-09
 - User asks why the homepage editorial hero is slow and whether domestic interfaces are supported. This increment is investigation/advice only: no hero implementation, build, commit or push is authorized by that question.

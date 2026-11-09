@@ -5,7 +5,8 @@
 - Auto rotation now waits for the successor image, swaps text/indicator/artwork together, retries after 12s and prefetches only the next image at view size. Manual D-pad switching remains immediate.
 - Added `CinemaHeroSnapshotTest`; focused home/source/player-policy suites pass. Full unit run: 1042 tests, only 3 environmental `LocalSubtitleScannerTest` case-sensitivity failures on macOS, unrelated to this change.
 - Built and verified local ARMv7 `0.1.4`/`10004` (91,129,129 bytes, same release signer) and ARM64 release for the emulator. API36 ARM64 smoke upgraded existing data, showed the online hero, then retained the hero and artwork after airplane-mode restart.
-- Next: publish 0.1.4 through ARMv7 CI with `publish=true`, verify the public APK/manifest, then hand the update link to the TV.
+- Published `0.1.4+20261109.141733` / code `217397053` as latest release `build-42631667857-1`; manifest works through GitHub and gh-proxy, downloaded APK checksum/signature/ABI verified.
+- Next: user installs the update on the Android9 ARMv7 TV and confirms hero startup, slow-network switching and everyday performance.
 
 ## Homepage consultation and cloud-signature closeout — 2026-11-09
 - Completed read-only hero path inspection and bounded host curl probes; no homepage code change, rebuild, commit or push. Found conditional 7s rotation/in-flight cancellation risk; documented list-versus-image transports, empty shipped TMDB key and cache limitations without claiming TV diagnosis.

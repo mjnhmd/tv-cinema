@@ -18,7 +18,7 @@ Ship a native TV redesign and a verified signed ARMv7 APK for an Android 9 telev
 12. [completed] Add reproducible ARMv7 CI workflow.
 13. [completed] Publish authorized ARMv7 and verify cloud.
 14. [completed] Inspect slow homepage hero and recommend recovery.
-15. [in_progress] Implement cached-first hero, ready-image rotation and publish 0.1.4.
+15. [completed] Implement cached-first hero, ready-image rotation and publish 0.1.4.
 
 ## Verification rules
 - Validate before each commit; never exceed 100 changed lines without a targeted check.
