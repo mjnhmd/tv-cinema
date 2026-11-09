@@ -8,7 +8,7 @@ Ship a native TV redesign and a verified signed ARMv7 APK for an Android 9 telev
 2. [completed] Build Cinema overlay and optimized release.
 3. [completed] Verify secondary surfaces and preset onboarding.
 4. [completed] Verify runtime and APK compatibility boundaries.
-5. [in_progress] Publish evidence and target-device handoff.
+5. [completed] Publish evidence and target-device handoff.
 
 ## Verification rules
 - Validate before each commit; never exceed 100 changed lines without a targeted check.
