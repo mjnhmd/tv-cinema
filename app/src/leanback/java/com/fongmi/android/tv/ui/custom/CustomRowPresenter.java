@@ -11,6 +11,7 @@ import androidx.leanback.widget.RowPresenter;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.fongmi.android.tv.utils.ResUtil;
+import com.github.catvod.utils.Prefers;
 
 import java.util.ArrayList;
 
@@ -31,7 +32,7 @@ public class CustomRowPresenter extends ListRowPresenter {
     }
 
     public CustomRowPresenter(int spacing, int focusZoomFactor, int strategy) {
-        super(focusZoomFactor);
+        super(Prefers.getBoolean("cinema_lightweight", true) ? FocusHighlight.ZOOM_FACTOR_NONE : focusZoomFactor);
         this.spacing = spacing;
         this.strategy = strategy;
         setShadowEnabled(false);

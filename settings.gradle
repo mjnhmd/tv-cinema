@@ -22,8 +22,10 @@ dependencyResolutionManagement {
 
 include ':app'
 include ':catvod'
-include ':chaquo'
-include ':nodejs'
-include ':quickjs'
-include ':thunder'
+if (gradle.startParameter.projectProperties['cinemaHostOnly'] != 'true') {
+    include ':chaquo'
+    include ':nodejs'
+    include ':quickjs'
+    include ':thunder'
+}
 rootProject.name = "TV"

@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
+    android:minHeight="44dp"
     android:background="@drawable/selector_item"
     android:focusable="true"
     android:focusableInTouchMode="true"
@@ -14,7 +15,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:singleLine="true"
-        android:textColor="@color/white"
+        android:textColor="@color/cinema_text"
         android:textSize="16sp"
         tools:text="蜘蛛人" />
 
@@ -24,7 +25,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
         android:singleLine="true"
-        android:textColor="@color/green_a_400"
+        android:textColor="@color/cinema_muted"
         android:textSize="14sp"
         tools:text="泥巴"
         tools:visibility="visible" />
@@ -35,7 +36,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
         android:singleLine="true"
-        android:textColor="@color/yellow_500"
+        android:textColor="@color/cinema_accent"
         android:textSize="14sp"
         tools:text="1080p" />
 

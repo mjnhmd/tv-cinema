@@ -4,10 +4,11 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/cinema_background"
     android:clipChildren="false"
     android:clipToPadding="false"
     android:orientation="horizontal"
-    android:padding="24dp">
+    android:padding="32dp">
 
     <androidx.appcompat.widget.LinearLayoutCompat
         android:layout_width="wrap_content"
@@ -46,12 +47,18 @@
                 android:maxLength="255"
                 android:nextFocusDown="@id/keyboard"
                 android:singleLine="true"
-                android:textColor="@color/white"
-                android:textColorHint="@color/white"
+                android:textColor="@color/cinema_text"
+                android:textColorHint="@color/cinema_muted"
                 android:textCursorDrawable="@drawable/shape_cursor"
-                android:textSize="24sp" />
+                android:textSize="26sp" />
 
         </androidx.appcompat.widget.LinearLayoutCompat>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="16dp"
+            android:background="@color/cinema_divider" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/keyboard"
@@ -59,7 +66,7 @@
             android:layout_height="wrap_content"
             android:clipChildren="false"
             android:clipToPadding="false"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="24dp"
             android:overScrollMode="never"
             app:layoutManager="androidx.recyclerview.widget.GridLayoutManager"
             app:spanCount="7"
@@ -84,17 +91,16 @@
                 android:id="@+id/recordLayout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
+                android:layout_marginBottom="28dp"
                 android:orientation="vertical"
                 android:visibility="gone">
 
                 <com.google.android.material.textview.MaterialTextView
+                    style="@style/Cinema.SectionTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="14dp"
-                    android:text="@string/search_record"
-                    android:textColor="@color/white"
-                    android:textSize="24sp" />
+                    android:layout_marginBottom="12dp"
+                    android:text="@string/search_record" />
 
                 <androidx.recyclerview.widget.RecyclerView
                     android:id="@+id/recordRecycler"
@@ -111,12 +117,11 @@
 
             <com.google.android.material.textview.MaterialTextView
                 android:id="@+id/word"
+                style="@style/Cinema.SectionTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="14dp"
-                android:text="@string/search_hot"
-                android:textColor="@color/white"
-                android:textSize="24sp" />
+                android:layout_marginBottom="12dp"
+                android:text="@string/search_hot" />
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/wordRecycler"

@@ -4,6 +4,8 @@
     android:id="@+id/text"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:textColor="@color/white"
-    android:textSize="24sp"
+    android:fontFamily="sans-serif-medium"
+    android:layout_marginTop="4dp"
+    android:textColor="@color/cinema_text"
+    android:textSize="20sp"
     tools:text="@string/home_recommend" />

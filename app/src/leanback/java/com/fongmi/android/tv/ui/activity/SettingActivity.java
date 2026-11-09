@@ -9,7 +9,6 @@ import androidx.viewbinding.ViewBinding;
 
 import com.fongmi.android.tv.BuildConfig;
 import com.fongmi.android.tv.R;
-import com.fongmi.android.tv.Updater;
 import com.fongmi.android.tv.api.config.LiveConfig;
 import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.api.config.WallConfig;
@@ -39,6 +38,7 @@ import com.fongmi.android.tv.utils.PermissionUtil;
 import com.fongmi.android.tv.utils.ResUtil;
 import com.github.catvod.bean.Doh;
 import com.github.catvod.net.OkHttp;
+import com.github.catvod.utils.Prefers;
 
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
@@ -79,6 +79,9 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
         mBinding.versionText.setText(BuildConfig.VERSION_NAME);
         setCacheText();
         setOtherText();
+        boolean lightweight = Prefers.getBoolean("cinema_lightweight", true);
+        mBinding.lightweightText.setText(Setting.getSwitch(lightweight));
+        ((View) mBinding.wall.getParent()).setVisibility(lightweight ? View.GONE : View.VISIBLE);
     }
 
     private void setOtherText() {
@@ -121,6 +124,10 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
         mBinding.wallDefault.setOnClickListener(this::setWallDefault);
         mBinding.wallRefresh.setOnClickListener(this::setWallRefresh);
         mBinding.wallRefresh.setOnLongClickListener(this::onWallHistory);
+        mBinding.lightweight.setOnClickListener(view -> {
+            Prefers.put("cinema_lightweight", !Prefers.getBoolean("cinema_lightweight", true));
+            recreate();
+        });
     }
 
     @Override
@@ -227,7 +234,7 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
     }
 
     private void onVersion(View view) {
-        Updater.get().start(this, true);
+        Notify.show(R.string.cinema_update_notice);
     }
 
     private void setWallDefault(View view) {

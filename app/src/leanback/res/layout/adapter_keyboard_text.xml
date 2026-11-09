@@ -8,6 +8,6 @@
     android:focusable="true"
     android:focusableInTouchMode="true"
     android:gravity="center"
-    android:textColor="@color/white"
-    android:textSize="16sp"
+    android:textColor="@color/text"
+    android:textSize="17sp"
     tools:text="0" />

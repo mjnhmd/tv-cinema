@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/cinema_background"
     android:fillViewport="true"
     tools:ignore="NestedWeights">
 
@@ -11,15 +12,14 @@
         android:layout_height="match_parent"
         android:animateLayoutChanges="true"
         android:orientation="vertical"
-        android:padding="24dp">
+        android:padding="32dp">
 
         <com.google.android.material.textview.MaterialTextView
+            style="@style/Cinema.PageTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            android:text="@string/player_decode_setting"
-            android:textColor="@color/white"
-            android:textSize="20sp" />
+            android:layout_marginBottom="20dp"
+            android:text="@string/player_decode_setting" />
 
         <androidx.appcompat.widget.LinearLayoutCompat
             android:id="@+id/tunnel"
@@ -36,7 +36,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="16dp"
                 android:text="@string/player_tunnel"
-                android:textColor="@color/white"
+                android:textColor="@color/cinema_text"
                 android:textSize="18sp" />
 
             <com.google.android.material.textview.MaterialTextView
@@ -44,7 +44,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="end"
-                android:textColor="@color/white"
+                android:textColor="@color/cinema_muted"
                 android:textSize="18sp"
                 tools:text="Off" />
 
@@ -65,7 +65,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="16dp"
                 android:text="@string/player_audio_pass_through"
-                android:textColor="@color/white"
+                android:textColor="@color/cinema_text"
                 android:textSize="18sp" />
 
             <com.google.android.material.textview.MaterialTextView
@@ -73,7 +73,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="end"
-                android:textColor="@color/white"
+                android:textColor="@color/cinema_muted"
                 android:textSize="18sp"
                 tools:text="Off" />
 
@@ -94,7 +94,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="16dp"
                 android:text="@string/player_aac_track"
-                android:textColor="@color/white"
+                android:textColor="@color/cinema_text"
                 android:textSize="18sp" />
 
             <com.google.android.material.textview.MaterialTextView
@@ -102,7 +102,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="end"
-                android:textColor="@color/white"
+                android:textColor="@color/cinema_muted"
                 android:textSize="18sp"
                 tools:text="Off" />
 
@@ -123,7 +123,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="16dp"
                 android:text="@string/player_dolby_vision_output"
-                android:textColor="@color/white"
+                android:textColor="@color/cinema_text"
                 android:textSize="18sp" />
 
             <com.google.android.material.textview.MaterialTextView
@@ -131,7 +131,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="end"
-                android:textColor="@color/white"
+                android:textColor="@color/cinema_muted"
                 android:textSize="18sp"
                 tools:text="Auto" />
 

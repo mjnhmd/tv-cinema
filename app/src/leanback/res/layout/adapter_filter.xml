@@ -7,6 +7,7 @@
     android:background="@drawable/selector_item_round"
     android:focusable="true"
     android:focusableInTouchMode="true"
-    android:textColor="@color/text"
+    android:minHeight="44dp"
+    android:textColor="@color/cinema_text"
     android:textSize="16sp"
     tools:text="全部" />

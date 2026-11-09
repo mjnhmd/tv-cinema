@@ -4,6 +4,8 @@
 
     <corners android:radius="28dp" />
 
+    <solid android:color="@color/cinema_surface_raised" />
+
     <padding
         android:bottom="8dp"
         android:left="14dp"
@@ -11,7 +13,7 @@
         android:top="8dp" />
 
     <stroke
-        android:width="1.5dp"
-        android:color="@color/white" />
+        android:width="2dp"
+        android:color="@color/cinema_accent" />
 
 </shape>

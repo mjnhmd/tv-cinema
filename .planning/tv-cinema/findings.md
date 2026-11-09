@@ -18,3 +18,11 @@
 - Near-black canvas, warm white text, restrained amber accent, consistent quiet rounded surfaces.
 - Focus outline + luminance change, not layout-changing borders or constant scaling.
 - No animated wallpapers, autoplay hero, blur or framework migration.
+
+## Implemented, pending runtime verification
+- Native header/typographic introduction, compact six-action navigation, restrained cards and stable focus outlines.
+- Lightweight toggle preserves optional wallpaper without a hidden running video player by default.
+- Search/settings/detail/live/player controls use consistent tokens; original binding IDs and player surface order retained.
+- TV image memory cache/pool capped; logo no longer decodes original dimensions.
+- First-run subscription consent; six independent subscriptions, URL dedupe and no blind spider merge.
+- Fork version action no longer offers upstream APKs.

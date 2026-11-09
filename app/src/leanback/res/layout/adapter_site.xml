@@ -31,6 +31,6 @@
         android:enabled="false"
         android:focusable="false"
         android:focusableInTouchMode="false"
-        app:buttonTint="@color/white" />
+        app:buttonTint="@color/text" />
 
 </androidx.appcompat.widget.LinearLayoutCompat>

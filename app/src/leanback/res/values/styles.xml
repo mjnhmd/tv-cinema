@@ -9,7 +9,14 @@
     <integer name="mpv_script_item_spacing">16</integer>
 
     <style name="Theme.Base" parent="Theme.Material3.Dark.NoActionBar">
-        <item name="colorPrimary">@color/white</item>
+        <item name="colorPrimary">@color/cinema_accent</item>
+        <item name="colorSecondary">@color/cinema_accent</item>
+        <item name="colorSurface">@color/cinema_surface</item>
+        <item name="colorOnSurface">@color/cinema_text</item>
+        <item name="android:colorBackground">@color/cinema_background</item>
+        <item name="android:windowBackground">@color/cinema_background</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:colorAccent">@color/cinema_accent</item>
         <item name="android:windowFullscreen">true</item>
         <item name="android:windowTranslucentStatus">true</item>
         <item name="android:windowTranslucentNavigation">true</item>
@@ -18,7 +25,7 @@
 
     <style name="Theme.Splash" parent="Theme.SplashScreen">
         <item name="postSplashScreenTheme">@style/Theme.App</item>
-        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="windowSplashScreenBackground">@color/cinema_background</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
     </style>
 

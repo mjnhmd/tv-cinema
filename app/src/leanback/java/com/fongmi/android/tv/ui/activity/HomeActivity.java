@@ -24,7 +24,7 @@ import androidx.viewbinding.ViewBinding;
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.Product;
 import com.fongmi.android.tv.R;
-import com.fongmi.android.tv.Updater;
+import com.fongmi.android.tv.api.config.CinemaSources;
 import com.fongmi.android.tv.api.config.LiveConfig;
 import com.fongmi.android.tv.api.config.VodConfig;
 import com.fongmi.android.tv.api.config.WallConfig;
@@ -71,6 +71,7 @@ import com.fongmi.android.tv.utils.ResUtil;
 import com.fongmi.android.tv.utils.Util;
 import com.github.catvod.net.OkHttp;
 import com.google.common.collect.Lists;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
@@ -143,7 +144,6 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         mResult = Result.empty();
         mClock = Clock.create(mBinding.clock);
         mBinding.progressLayout.showProgress();
-        Updater.get().start(this, false);
         setRecyclerView();
         setViewModel();
         setAdapter();
@@ -156,7 +156,6 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         mBinding.recycler.addOnChildViewHolderSelectedListener(new OnChildViewHolderSelectedListener() {
             @Override
             public void onChildViewHolderSelected(@NonNull RecyclerView parent, @Nullable RecyclerView.ViewHolder child, int position, int subposition) {
-                mBinding.toolbar.setVisibility(position == 0 ? View.VISIBLE : View.GONE);
                 if (mPresenter.isDelete()) setHistoryDelete(false);
             }
         });
@@ -226,9 +225,37 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         List<String> items = Arrays.asList(getHome().getName(), getConfig().getName(), getString(R.string.app_name));
         Optional<String> optional = items.stream().filter(s -> !TextUtils.isEmpty(s)).findFirst();
         optional.ifPresent(s -> mBinding.title.setText(s));
+        boolean empty = getHome().isEmpty();
+        mBinding.headline.setText(empty ? R.string.cinema_setup_title : R.string.cinema_welcome);
+        mBinding.caption.setText(empty ? R.string.cinema_setup_caption : R.string.cinema_caption);
     }
 
     private void initConfig() {
+        if (isFinishing() || isDestroyed()) return;
+        if (CinemaSources.needsConsent()) {
+            new MaterialAlertDialogBuilder(this)
+                    .setTitle(R.string.cinema_sources_title)
+                    .setMessage(R.string.cinema_sources_notice)
+                    .setPositiveButton(R.string.cinema_sources_accept, (dialog, which) -> {
+                        CinemaSources.install();
+                        loadConfig();
+                    })
+                    .setNegativeButton(R.string.cinema_sources_skip, (dialog, which) -> {
+                        CinemaSources.skip();
+                        loadConfig();
+                    })
+                    .setOnCancelListener(dialog -> {
+                        CinemaSources.skip();
+                        loadConfig();
+                    })
+                    .show();
+            return;
+        }
+        CinemaSources.install();
+        loadConfig();
+    }
+
+    private void loadConfig() {
         VodConfig.get().init().load(getCallback());
         LiveConfig.get().init().load();
         WallConfig.get().init();
@@ -250,7 +277,9 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     }
 
     private void onConfigReady() {
+        if (isFinishing() || isDestroyed()) return;
         actionReady = true;
+        setTitle();
         showContent();
         consumeAction();
     }
@@ -496,7 +525,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         if (KeyUtil.isMenuKey(event)) showDialog();
-        if (KeyUtil.isActionDown(event) & KeyUtil.isDownKey(event) && getCurrentFocus() == mBinding.title) return mBinding.recycler.getChildAt(0).requestFocus();
+        if (KeyUtil.isActionDown(event) && KeyUtil.isDownKey(event) && getCurrentFocus() == mBinding.title) return mBinding.recycler.requestFocus();
         return super.dispatchKeyEvent(event);
     }
 

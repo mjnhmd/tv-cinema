@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "generatedFrom": "https://0.12yue.de5.net/config.json",
+  "sources": [
+    {
+      "name": "饭太硬",
+      "type": "vod",
+      "url": "https://0.12yue.de5.net/tvbox/%E9%A5%AD%E5%A4%AA%E7%A1%AC.json"
+    },
+    {
+      "name": "南风",
+      "type": "vod",
+      "url": "https://0.12yue.de5.net/tvbox/%E5%8D%97%E9%A3%8E.json"
+    },
+    {
+      "name": "心魔",
+      "type": "vod",
+      "url": "https://0.12yue.de5.net/tvbox/%E5%BF%83%E9%AD%94.json"
+    },
+    {
+      "name": "夏夏影视",
+      "type": "vod",
+      "url": "https://0.12yue.de5.net/tvbox/%E5%A4%8F%E5%A4%8F%E5%BD%B1%E8%A7%86.json"
+    },
+    {
+      "name": "健康家用",
+      "type": "vod",
+      "url": "https://0.12yue.de5.net/tvbox/%E5%81%A5%E5%BA%B7%E5%AE%B6%E7%94%A8.json"
+    },
+    {
+      "name": "海量直播聚合",
+      "type": "live",
+      "url": "https://0.12yue.de5.net/tvbox/%E6%B5%B7%E9%87%8F%E7%9B%B4%E6%92%AD%E8%81%9A%E5%90%88%E6%8E%A5%E5%8F%A3.json"
+    }
+  ]
+}

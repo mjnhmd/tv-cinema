@@ -2,6 +2,7 @@ package com.fongmi.android.tv.ui.base;
 
 import static android.view.ViewGroup.LayoutParams.MATCH_PARENT;
 
+import android.graphics.Color;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.os.Bundle;
@@ -15,8 +16,10 @@ import androidx.fragment.app.FragmentActivity;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewbinding.ViewBinding;
 
+import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.ui.custom.CustomWallView;
 import com.fongmi.android.tv.utils.Util;
+import com.github.catvod.utils.Prefers;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
@@ -25,6 +28,8 @@ import org.greenrobot.eventbus.ThreadMode;
 import me.jessyan.autosize.AutoSizeCompat;
 
 public abstract class BaseActivity extends AppCompatActivity {
+
+    private boolean lightweight;
 
     protected abstract ViewBinding getBinding();
 
@@ -42,8 +47,17 @@ public abstract class BaseActivity extends AppCompatActivity {
     @Override
     public void setContentView(View view) {
         super.setContentView(view);
+        lightweight = Prefers.getBoolean("cinema_lightweight", true);
         if (!customWall()) return;
+        view.setBackgroundColor(lightweight ? getColor(R.color.cinema_background) : Color.argb(200, 16, 18, 22));
+        if (lightweight) return;
         ((ViewGroup) findViewById(android.R.id.content)).addView(new CustomWallView(this, null), 0, new ViewGroup.LayoutParams(MATCH_PARENT, MATCH_PARENT));
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (lightweight != Prefers.getBoolean("cinema_lightweight", true)) recreate();
     }
 
     protected FragmentActivity getActivity() {

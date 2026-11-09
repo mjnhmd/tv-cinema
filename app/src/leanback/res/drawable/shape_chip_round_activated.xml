@@ -4,6 +4,10 @@
 
     <corners android:radius="28dp" />
 
+    <solid android:color="@color/cinema_selected" />
+
+    <stroke android:width="2dp" android:color="@color/transparent" />
+
     <padding
         android:bottom="8dp"
         android:left="14dp"

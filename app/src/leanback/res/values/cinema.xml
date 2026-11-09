@@ -1,0 +1,39 @@
+<resources>
+    <color name="cinema_background">#101216</color>
+    <color name="cinema_surface">#1C2027</color>
+    <color name="cinema_surface_raised">#2B313B</color>
+    <color name="cinema_text">#F3F0E9</color>
+    <color name="cinema_muted">#A5ABB5</color>
+    <color name="cinema_accent">#E8BD7A</color>
+    <color name="cinema_divider">#353B45</color>
+    <color name="cinema_selected">#3B3227</color>
+
+    <string name="cinema_brand" translatable="false">TV CINEMA</string>
+    <string name="cinema_app_name" translatable="false">TV Cinema</string>
+    <string name="cinema_eyebrow" translatable="false">YOUR EVENING. YOUR SCREEN.</string>
+    <string name="cinema_welcome">今晚，放松一下。</string>
+    <string name="cinema_caption">好内容，慢慢看。选择影片，或继续上次的故事。</string>
+    <string name="cinema_setup_title">把喜欢的内容，带到大屏。</string>
+    <string name="cinema_setup_caption">在「设置」添加内容订阅，也可以用「手机连接」推送地址。</string>
+    <string name="cinema_remote_hint">方向键 移动　·　确定 进入　·　菜单 切换站点</string>
+    <string name="cinema_source_hint">当前站点 · 确定切换</string>
+    <string name="cinema_device_label" translatable="false">DESIGNED FOR TV</string>
+    <string name="cinema_lightweight">轻量模式</string>
+    <string name="cinema_lightweight_hint">关闭动态壁纸与界面缩放，让旧电视专注播放</string>
+    <string name="cinema_sources_title">要添加预置订阅吗？</string>
+    <string name="cinema_sources_notice">已整理你指定网站的 5 个点播订阅和 1 个直播订阅。每份独立保存，不覆盖已有配置。\n\n第三方订阅可能下载并运行插件，内容与代码未经本应用安全认证，线路也可能失效。你可以使用预置，或稍后在设置中自行添加。</string>
+    <string name="cinema_sources_accept">使用预置订阅</string>
+    <string name="cinema_sources_skip">自行添加</string>
+    <string name="cinema_update_notice">这是 TV Cinema 独立签名版，请从项目 Releases 安装更新，不要安装 FongMi 原版覆盖。</string>
+
+    <style name="Cinema.PageTitle" parent="">
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textSize">28sp</item>
+        <item name="android:textColor">@color/cinema_text</item>
+    </style>
+    <style name="Cinema.SectionTitle" parent="">
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textSize">22sp</item>
+        <item name="android:textColor">@color/cinema_text</item>
+    </style>
+</resources>
