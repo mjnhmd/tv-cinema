@@ -57,7 +57,7 @@
 
 ## Next steps
 1. Resolve missing matching 5.8.7 Media3/native AAR inputs, or obtain a user decision before changing the playback/source baseline.
-2. A worker identified 5.2.9 / ccce4b5ded0613ea6b532796fd61c5f477c5c2cc / 2026-03-17 as a candidate whose media compilation matched trial public AARs. Its nonmedia plugin inputs still fail; this is not a buildable delivery or a decided migration.
+2. Historical 5.2.9 / ccce4b5ded0613ea6b532796fd61c5f477c5c2cc / 2026-03-17 also failed complete assembly after filling legacy plugin inputs. Earlier absence of media diagnostics was caused by other missing classes, not compatibility. The candidate is rejected: it still needs custom SubtitleView/MediaItem decode and matching nextlib APIs.
 3. Once an honest complete build is possible, run the UI, navigation and source onboarding, then inspect the signed ARMv7 APK and perform real-TV acceptance.
 
 ## Handoff status
@@ -66,6 +66,10 @@
 - Outstanding: complete app compilation, installable APK, runtime/visual acceptance, television performance and playback.
 - Blocker: matching custom Media3 Java and unified native dependencies for 5.8.7 not found in the inspected upstream sources/artifacts.
 - Current branch keeps upstream 5.8.7 behavior; no silent rollback or engine replacement was performed.
+- UI/source WIP commit `00a70e5266a5a3b5b5c788f4fe2d6ced7a21f35b` pushed and read back through GitHub API; working tree was clean after publication.
+- Actual fallback build `/tmp/tv-529-build`, command `assembleLeanbackArmeabi_v7aRelease`, failed with 14 errors; log `/tmp/tv-529-assemble-3.log` inspected by the main agent. No fallback APK exists.
+- No currently audited baseline has completed a full build. Continuing with existing playback capabilities needs matching dependencies; replacing/adapting the playback base is a separate behavior/maintenance decision that must be made explicitly.
+- The temporary API36 emulator's display overrides were reset and the task-owned emulator stopped.
 
 ## Not yet verified
 - Android 9 installation and hardware decoding on the user's ARMv7 television.

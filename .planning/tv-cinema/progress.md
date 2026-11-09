@@ -21,3 +21,8 @@
 - Inspected all relevant FongMi sibling repositories and historical official libass Actions artifact. It contains only part of the needed old API and is not a matching current dependency.
 - Added a fail-fast AAR class-entry verifier and host-only build script; verifier correctly exits 2 for current incompatible inputs.
 - Saved exact commands/results/untested boundaries in docs/features/tv-cinema/verification.md.
+- Pushed source WIP commit 00a70e526; GitHub API SHA matched. ppm verification records separately mark resources passed, complete APK failed and target TV acceptance not_tested.
+- User asked current status; explained the concrete custom-media blocker and missing APK.
+- Complete isolated 5.2.9 assembly failed with 14 custom media/nextlib errors after plugin inputs were supplied; retracted the earlier misleading partial "media 0 errors" interpretation.
+- No runtime engine change or silent baseline downgrade; matching dependencies or an explicit playback-base decision is still needed.
+- Restored display overrides and stopped task-owned emulator; temporary build/probe files remain for evidence.

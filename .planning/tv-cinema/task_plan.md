@@ -33,7 +33,7 @@ Ship a native TV redesign and a verified signed ARMv7 APK for an Android 9 telev
 ## Current handoff
 - Resource and library build passed; UI is source WIP, not runtime-verified delivery.
 - Matching current media inputs or a user-approved baseline change are required before a complete APK.
-- A historical 5.2.9 candidate has media-layer evidence only and still lacks legacy nonmedia AARs; no migration decision made.
+- Historical 5.2.9 candidate rejected after complete assemble exposed 14 remaining custom-media errors; no audited complete-build fallback exists.
 
 ## Ownership
 - Main: rules/docs, all UI resources, HomeActivity, review, commits/push and ppm.

@@ -74,6 +74,16 @@ as expected for the currently supplied legacy AARs. It prevents presenting them 
 - Legacy AARs used for diagnosis came from a public fork and remain ignored; they are not approved final dependencies.
 - No upstream APK was re-signed or presented as this redesign, no fake player interfaces were introduced, and no playback features were removed to force compilation.
 
+### Historical baseline cross-check
+
+- Isolated 5.2.9 checkout: ccce4b5ded0613ea6b532796fd61c5f477c5c2cc, `/tmp/tv-529-build`.
+- After supplying legacy plugin inputs, `assembleLeanbackArmeabi_v7aRelease` failed with 14 Java errors.
+- Remaining missing APIs include `SubtitleView` text-size/position helpers, `MediaItem.Builder.setDecode(int)` and `NextRenderersFactory.setAudioPrefer(boolean)`.
+- Log `/tmp/tv-529-assemble-3.log` was inspected; no APK was generated.
+- The earlier "no media diagnostics" partial probe is retracted. Incomplete diagnostics masked additional media incompatibility.
+- Official media repository history was also searched for the affected SubtitleView/MediaItem helpers, with no matching implementation found in the fetched public refs.
+- A separate 5.5.6 probe also failed on media APIs. Neither older version is an approved or verified fallback.
+
 ## Not tested
 - Full redesigned application launch and actual appearance.
 - D-pad / OK / Back behavior, playback, source plugins, live channels, database lifecycle in an installed app.
