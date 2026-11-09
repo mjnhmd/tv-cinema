@@ -22,7 +22,7 @@ index 19f91509e0c4753dbed3ba68e8504053fff624d3..c955321ed1784ea2afb4ad98b35c71b3
      implementation project(":mpv")
      implementation project(":media3-av3a")
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/HomeActivity.java b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/HomeActivity.java
-index bba7d139580d24c850b030bb1980b05e414c5079..8cbfd395fefc29bc48349e6110104e6d0d43ec4a 100644
+index bba7d139580d24c850b030bb1980b05e414c5079..bca084e941d5e77b2d150957601bdefe089da013 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/HomeActivity.java
 +++ b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/HomeActivity.java
 @@ -33,6 +33,7 @@ import com.fongmi.android.tv.Product;
@@ -57,30 +57,11 @@ index bba7d139580d24c850b030bb1980b05e414c5079..8cbfd395fefc29bc48349e6110104e6d
          setRecyclerView();
          setNavigationView();
          setViewModel();
-@@ -328,6 +330,31 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
+@@ -328,6 +330,12 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
      }
  
      private void initConfig() {
 +        if (isFinishing() || isDestroyed()) return;
-+        if (CinemaSources.needsConsent()) {
-+            new MaterialAlertDialogBuilder(this)
-+                    .setTitle(R.string.cinema_sources_title)
-+                    .setMessage(R.string.cinema_sources_notice)
-+                    .setPositiveButton(R.string.cinema_sources_accept, (dialog, which) -> {
-+                        CinemaSources.install();
-+                        loadCinemaConfig();
-+                    })
-+                    .setNegativeButton(R.string.cinema_sources_skip, (dialog, which) -> {
-+                        CinemaSources.skip();
-+                        loadCinemaConfig();
-+                    })
-+                    .setOnCancelListener(dialog -> {
-+                        CinemaSources.skip();
-+                        loadCinemaConfig();
-+                    })
-+                    .show();
-+            return;
-+        }
 +        CinemaSources.install();
 +        loadCinemaConfig();
 +    }
@@ -90,18 +71,147 @@ index bba7d139580d24c850b030bb1980b05e414c5079..8cbfd395fefc29bc48349e6110104e6d
          LiveConfig.get().init().load();
          WallConfig.get().init();
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java
-index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..4add805cbecb8896bc967396811b086a8ee50947 100644
+index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..823c3e31cfaa00145af98b837aa25b70a51db511 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java
 +++ b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java
-@@ -1085,7 +1085,7 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
+@@ -3,6 +3,8 @@ package com.fongmi.android.tv.ui.activity;
+ import android.app.Activity;
+ import android.content.Intent;
+ import android.os.Bundle;
++import android.os.Build;
++import android.net.Uri;
+ import android.provider.Settings;
+ import android.text.InputType;
+ import android.text.TextUtils;
+@@ -16,6 +18,10 @@ import com.fongmi.android.tv.App;
+ import com.fongmi.android.tv.R;
+ import com.fongmi.android.tv.Updater;
+ import com.fongmi.android.tv.api.DiscoverApi;
++import com.fongmi.android.tv.api.config.CinemaSources;
++import com.fongmi.android.tv.api.config.CinemaDiscovery;
++import com.fongmi.android.tv.api.config.CinemaSourceMerger;
++import com.fongmi.android.tv.api.config.CinemaWallpaper;
+ import com.fongmi.android.tv.api.config.LiveConfig;
+ import com.fongmi.android.tv.api.config.VodConfig;
+ import com.fongmi.android.tv.api.config.WallConfig;
+@@ -153,6 +159,9 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
+     private void refreshSourceRows() {
+         setRowValue(JetStreamSettingView.KEY_VOD, VodConfig.getDesc());
+         setRowValue(JetStreamSettingView.KEY_LIVE, LiveConfig.getDesc());
++        setRowValue(JetStreamSettingView.KEY_BUILTIN_SOURCES, CinemaSources.catalogEntries().size() + " 个可选");
++        setRowValue(JetStreamSettingView.KEY_DISCOVER_SOURCES, getString(CinemaDiscovery.hasCandidate()
++                ? R.string.cinema_discover_available : R.string.cinema_discover_not_run));
+         setRowValue(JetStreamSettingView.KEY_WALL, WallConfig.getDesc());
+         setRowValue(JetStreamSettingView.KEY_WALL_VISIBLE, Setting.getSwitch(JetStreamWallpaper.isVisible()));
+         int[] connectionModes = {R.string.setting_tmdb_default_proxy, R.string.setting_tmdb_direct, R.string.setting_tmdb_custom_proxy};
+@@ -363,6 +372,8 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
+             case JetStreamSettingView.KEY_THEME_LIGHT -> RexTheme.setLight(true);
+             case JetStreamSettingView.KEY_THEME_SYSTEM -> RexTheme.setMode(ThemeMode.SYSTEM);
+             case JetStreamSettingView.KEY_VOD -> onVod();
++            case JetStreamSettingView.KEY_BUILTIN_SOURCES -> onBuiltinSources();
++            case JetStreamSettingView.KEY_DISCOVER_SOURCES -> onDiscoverSources();
+             case JetStreamSettingView.KEY_LIVE -> onLive();
+             case JetStreamSettingView.KEY_WALL -> onWall();
+             case JetStreamSettingView.KEY_WALL_VISIBLE -> setWallVisible(!JetStreamWallpaper.isVisible());
+@@ -526,6 +537,64 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
+         ConfigDialog.create().vod().show(this);
+     }
+ 
++    private void onBuiltinSources() {
++        List<CinemaSources.Entry> entries = CinemaSources.catalogEntries();
++        String[] items = new String[entries.size()];
++        for (int i = 0; i < entries.size(); i++) {
++            CinemaSources.Entry entry = entries.get(i);
++            String state = CinemaSources.isActive(entry) ? " · 当前" : CinemaSources.isAdded(entry) ? " · 已添加" : "";
++            items[i] = entry.name() + (entry.isVod() ? " · 点播" : " · 直播") + state;
++        }
++        new MaterialAlertDialogBuilder(this)
++                .setTitle(R.string.cinema_sources_catalog)
++                .setItems(items, (dialog, which) -> {
++                    Config config = CinemaSources.activate(entries.get(which));
++                    dialog.dismiss();
++                    setConfig(config);
++                })
++                .setNegativeButton(R.string.dialog_negative, null)
++                .show();
++    }
++
++    private void onDiscoverSources() {
++        MaterialAlertDialogBuilder dialog = new MaterialAlertDialogBuilder(this)
++                .setTitle(R.string.cinema_discover_sources)
++                .setMessage(R.string.cinema_discover_notice)
++                .setPositiveButton(R.string.cinema_discover_start, (ignored, which) -> startSourceDiscovery())
++                .setNegativeButton(R.string.dialog_negative, null);
++        if (CinemaDiscovery.hasCandidate()) {
++            dialog.setNeutralButton(R.string.cinema_discover_use, (ignored, which) -> onBuiltinSources());
++        }
++        dialog.show();
++    }
++
++    private void startSourceDiscovery() {
++        boolean started = CinemaDiscovery.start(new CinemaDiscovery.Listener() {
++            @Override
++            public void onFinished(CinemaSourceMerger.Result result) {
++                if (isFinishing() || isDestroyed()) return;
++                Notify.dismiss();
++                refreshSourceRows();
++                CinemaSourceMerger.Stats stats = result.stats();
++                new MaterialAlertDialogBuilder(SettingActivity.this)
++                        .setTitle(R.string.cinema_discover_done)
++                        .setMessage(getString(R.string.cinema_discover_summary, stats.validInputs,
++                                stats.inputs, stats.sitesAdded, stats.sitesDuplicate))
++                        .setPositiveButton(R.string.cinema_discover_use, (ignored, which) -> onBuiltinSources())
++                        .show();
++            }
++
++            @Override
++            public void onError() {
++                if (isFinishing() || isDestroyed()) return;
++                Notify.dismiss();
++                Notify.show(R.string.cinema_discover_failed);
++            }
++        });
++        if (started) Notify.progress(getActivity());
++        else Notify.show(R.string.cinema_discover_busy);
++    }
++
+     private void onLive() {
+         ConfigDialog.create().live().show(this);
+     }
+@@ -645,8 +714,9 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
+ 
+     private void setWallRefresh() {
+         setWallVisible(true);
+-        Setting.putWall(0);
+-        WallConfig.get().load(getCallback());
++        Callback callback = getCallback();
++        callback.start();
++        CinemaWallpaper.load(callback);
+     }
+ 
+     private void setWallVisible(boolean visible) {
+@@ -1085,6 +1155,21 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
      }
  
      private void onVersion() {
--        Updater.create().force().start(this);
-+        Notify.show(R.string.cinema_update_notice);
++        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !getPackageManager().canRequestPackageInstalls()) {
++            new MaterialAlertDialogBuilder(this)
++                    .setMessage(R.string.cinema_update_install_permission)
++                    .setPositiveButton(R.string.cinema_update_permission_open, (dialog, which) -> {
++                        try {
++                            startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
++                                    Uri.parse("package:" + getPackageName())));
++                        } catch (Exception error) {
++                            Notify.show(R.string.cinema_update_permission_failed);
++                        }
++                    })
++                    .setNegativeButton(R.string.dialog_negative, null)
++                    .show();
++            return;
++        }
+         Updater.create().force().start(this);
      }
  
-     private void initConfig() {
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamAnimator.kt b/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamAnimator.kt
 index 3f9a763641caa3a53f761767ce7f817a0d1b44ce..db68de13aa339e76761d494a9d3e1ec1f755a4e4 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamAnimator.kt
@@ -165,6 +275,249 @@ index 3f9a763641caa3a53f761767ce7f817a0d1b44ce..db68de13aa339e76761d494a9d3e1ec1
 +        }
          view.alpha = 0.65f
          view.animate().alpha(1f).setDuration(EXIT_DURATION).setInterpolator(enterInterpolator).start()
+     }
+diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamSettingView.kt b/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamSettingView.kt
+index ac39ff77cc54b8eb290ba1652389ad8cb4495129..76e5a872d3c694fd93f724d491bba5eb7714a964 100644
+--- a/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamSettingView.kt
++++ b/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamSettingView.kt
+@@ -500,6 +500,8 @@ class JetStreamSettingView @JvmOverloads constructor(
+                             ActionSpec(KEY_VOD_HISTORY, context.getString(R.string.setting_history), R.drawable.msr_history)
+                         )
+                     ),
++                    RowSpec(KEY_BUILTIN_SOURCES, context.getString(R.string.cinema_sources_catalog)),
++                    RowSpec(KEY_DISCOVER_SOURCES, context.getString(R.string.cinema_discover_sources)),
+                     RowSpec(
+                         key = KEY_LIVE,
+                         label = context.getString(R.string.setting_live),
+@@ -513,7 +515,7 @@ class JetStreamSettingView @JvmOverloads constructor(
+                         label = context.getString(R.string.setting_wall),
+                         actions = listOf(
+                             ActionSpec(KEY_WALL_DEFAULT, context.getString(R.string.setting_default), R.drawable.msr_home),
+-                            ActionSpec(KEY_WALL_REFRESH, context.getString(R.string.setting_refresh), R.drawable.msr_refresh)
++                            ActionSpec(KEY_WALL_REFRESH, context.getString(R.string.cinema_wall_next), R.drawable.msr_refresh)
+                         )
+                     ),
+                     RowSpec(KEY_WALL_VISIBLE, context.getString(R.string.setting_wall_visible), toggle = true),
+@@ -659,6 +661,8 @@ class JetStreamSettingView @JvmOverloads constructor(
+ 
+         const val KEY_VOD = "vod"
+         const val KEY_LIVE = "live"
++        const val KEY_BUILTIN_SOURCES = "builtin_sources"
++        const val KEY_DISCOVER_SOURCES = "discover_sources"
+         const val KEY_WALL = "wall"
+         const val KEY_WALL_VISIBLE = "wall_visible"
+         const val KEY_TMDB_CONNECTION = "tmdb_connection"
+diff --git a/app/src/leanback/res/layout/activity_video.xml b/app/src/leanback/res/layout/activity_video.xml
+index 3f00c591512f821fb46279fd35c94dc891754408..8d615a92f56c740224c9f58574d980696a9a77e4 100644
+--- a/app/src/leanback/res/layout/activity_video.xml
++++ b/app/src/leanback/res/layout/activity_video.xml
+@@ -114,10 +114,10 @@
+                         android:paddingEnd="4dp"
+                         android:text="@string/playback_episodes" />
+ 
+-                    <com.fongmi.android.tv.ui.custom.JetStreamChipRow
++                    <com.fongmi.android.tv.ui.custom.JetStreamEpisodeGrid
+                         android:id="@+id/episode"
+                         android:layout_width="match_parent"
+-                        android:layout_height="48dp"
++                        android:layout_height="wrap_content"
+                         android:visibility="gone" />
+                 </com.fongmi.android.tv.ui.custom.JetStreamPlaybackSectionLayout>
+ 
+diff --git a/app/src/main/java/com/fongmi/android/tv/api/config/VodConfig.java b/app/src/main/java/com/fongmi/android/tv/api/config/VodConfig.java
+index 37a35b448ffd8700faf0f086812cf7049bd41e9b..bb05bf30d7bbdba79b38fb3e5a1c94da94347ef2 100644
+--- a/app/src/main/java/com/fongmi/android/tv/api/config/VodConfig.java
++++ b/app/src/main/java/com/fongmi/android/tv/api/config/VodConfig.java
+@@ -111,7 +111,9 @@ public class VodConfig extends BaseConfig {
+ 
+     @Override
+     protected void load(Config config) throws Throwable {
+-        String json = Decoder.getJson(UrlUtil.convert(config.getUrl()), TAG);
++        String json = CinemaDiscovery.isCandidateUrl(config.getUrl())
++                ? CinemaDiscovery.candidateContent(config.getUrl())
++                : Decoder.getJson(UrlUtil.convert(config.getUrl()), TAG);
+         checkJson(config, Json.parse(json).getAsJsonObject());
+     }
+ 
+diff --git a/app/src/main/java/com/fongmi/android/tv/api/config/WallConfig.java b/app/src/main/java/com/fongmi/android/tv/api/config/WallConfig.java
+index b4712726f74be1595d26ce14b8dbb4f6215b5166..918169842a4964eb7ee9b6c3d407ad5359da901a 100644
+--- a/app/src/main/java/com/fongmi/android/tv/api/config/WallConfig.java
++++ b/app/src/main/java/com/fongmi/android/tv/api/config/WallConfig.java
+@@ -54,6 +54,7 @@ public class WallConfig extends BaseConfig {
+ 
+     public void load() {
+         if (sync) return;
++        if (CinemaWallpaper.isProvider(getConfig().getUrl()) && Path.exists(FileUtil.getWallCache())) return;
+         load(new Callback());
+     }
+ 
+@@ -76,11 +77,25 @@ public class WallConfig extends BaseConfig {
+     @Override
+     protected void load(Config config) throws Throwable {
+         File file = FileUtil.getWall(0);
+-        checkUrl(config.getUrl(), file);
++        checkUrl(CinemaWallpaper.resolveSource(config.getUrl()), file);
+         setWallType(file);
+         setSnapshot(file);
+     }
+ 
++    void apply(File source, Config config) throws Throwable {
++        File snapshot = Path.files("wallpaper_cache.cinema.tmp");
++        try {
++            setSnapshot(source, snapshot);
++            if (!snapshot.renameTo(FileUtil.getWallCache())) throw new IllegalStateException("Cannot save wallpaper snapshot");
++        } finally {
++            if (snapshot.exists()) snapshot.delete();
++        }
++        Setting.putWallType(0);
++        Setting.putWall(0);
++        this.config = config.update();
++        this.sync = true;
++    }
++
+     @Override
+     protected boolean isLoaded() {
+         return false;
+@@ -99,9 +114,13 @@ public class WallConfig extends BaseConfig {
+     }
+ 
+     private void setSnapshot(File file) throws Throwable {
+-        Bitmap bitmap = Glide.with(App.get()).asBitmap().frame(0).load(file).override(ResUtil.getScreenWidth(), ResUtil.getScreenHeight()).skipMemoryCache(true).diskCacheStrategy(DiskCacheStrategy.NONE).submit().get();
+-        try (FileOutputStream fos = new FileOutputStream(FileUtil.getWallCache())) {
+-            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos);
++        setSnapshot(file, FileUtil.getWallCache());
++    }
++
++    private void setSnapshot(File file, File target) throws Throwable {
++        Bitmap bitmap = Glide.with(App.get()).asBitmap().frame(0).load(file).override(Math.min(1280, ResUtil.getScreenWidth()), Math.min(720, ResUtil.getScreenHeight())).skipMemoryCache(true).diskCacheStrategy(DiskCacheStrategy.NONE).submit().get();
++        try (FileOutputStream fos = new FileOutputStream(target)) {
++            if (!bitmap.compress(Bitmap.CompressFormat.JPEG, 90, fos)) throw new IllegalStateException("Cannot encode wallpaper");
+         } finally {
+             bitmap.recycle();
+         }
+diff --git a/app/src/main/java/com/fongmi/android/tv/playback/vod/VodPlaybackController.java b/app/src/main/java/com/fongmi/android/tv/playback/vod/VodPlaybackController.java
+index 2630565a1e845bdde107a260794ab634740f771f..2f25e918abc5aaa79ebc32a8d0280bdd97d20fff 100644
+--- a/app/src/main/java/com/fongmi/android/tv/playback/vod/VodPlaybackController.java
++++ b/app/src/main/java/com/fongmi/android/tv/playback/vod/VodPlaybackController.java
+@@ -15,6 +15,7 @@ import com.fongmi.android.tv.setting.Setting;
+ import com.fongmi.android.tv.setting.SourceSelectionSetting;
+ import com.fongmi.android.tv.source.EpisodeNavigator;
+ import com.fongmi.android.tv.source.EpisodeTarget;
++import com.fongmi.android.tv.source.NavigationPlaylistGuard;
+ import com.fongmi.android.tv.source.SmartSourceSelector;
+ import com.fongmi.android.tv.source.SourceReliabilityStore;
+ import com.fongmi.android.tv.source.SourceSelectionMode;
+@@ -452,6 +453,7 @@ public class VodPlaybackController {
+         requestedEpisodeMissing = false;
+         item.checkPic(host.getVodPic());
+         item.checkName(host.getVodName());
++        boolean rejectedNavigation = item.getFlags().removeIf(NavigationPlaylistGuard::isNavigationList);
+         state.setFlags(item.getFlags());
+         state.setMedia(item);
+         String key = host.getHistoryKey();
+@@ -463,6 +465,11 @@ public class VodPlaybackController {
+         host.renderFlags(item.getFlags());
+         host.renderHistory(state.getHistory());
+         host.onDetailFallbackCancelled();
++        if (rejectedNavigation && item.getFlags().isEmpty()) {
++            host.renderEpisodes(Collections.emptyList());
++            host.resetPlaybackForError(ResUtil.getString(R.string.cinema_playlist_invalid));
++            return;
++        }
+         if (!host.getVodPlayId().isEmpty()) {
+             SmartSourceSelector.FlagSelection selection = SmartSourceSelector.selectExplicitEpisode(item,
+                     host.getVodPlayId(), state.getHistory().getVodFlag());
+diff --git a/app/src/main/java/com/fongmi/android/tv/update/UpdateDownloader.java b/app/src/main/java/com/fongmi/android/tv/update/UpdateDownloader.java
+index 71b6f8982a0caa5dc949bbddf62bc2599f93ba42..f165e959845078f341021e4725b948162f0e3001 100644
+--- a/app/src/main/java/com/fongmi/android/tv/update/UpdateDownloader.java
++++ b/app/src/main/java/com/fongmi/android/tv/update/UpdateDownloader.java
+@@ -90,7 +90,7 @@ public final class UpdateDownloader {
+                     validator.validate(partial);
+                     synchronized (lock) {
+                         checkCancelled();
+-                        if (!partial.renameTo(target)) throw new LocalFileException("Cannot finalize update file");
++                        if (target.exists() || !partial.renameTo(target)) throw new LocalFileException("Cannot finalize update file");
+                         publish(progress, 100);
+                         checkCancelled();
+                         completed = true;
+diff --git a/app/src/main/java/com/fongmi/android/tv/update/UpdateManifest.java b/app/src/main/java/com/fongmi/android/tv/update/UpdateManifest.java
+index 15c15a1ea44b0d4c72a2e6725ca96bcfc25f3e92..2d7499c6d739236487426addcd9d484782ab2a63 100644
+--- a/app/src/main/java/com/fongmi/android/tv/update/UpdateManifest.java
++++ b/app/src/main/java/com/fongmi/android/tv/update/UpdateManifest.java
+@@ -42,17 +42,18 @@ public final class UpdateManifest {
+         }
+         JSONObject asset = requireObject(requireObject(root, "assets"), abi);
+         String url = requireString(asset, "url");
+-        validateAssetUrl(url, mode + "-" + abi + UpdateSources.suffix(packageName) + ".apk");
++        validateAssetUrl(url, mode + "-" + abi + UpdateSources.suffix(packageName) + ".apk", packageName);
+         long size = requireLong(asset, "size", 1, MAX_ASSET_BYTES);
+         String sha256 = requireString(asset, "sha256");
+         if (!sha256.matches("[a-fA-F0-9]{64}")) throw new IOException("Invalid APK checksum");
+         return new UpdateManifest(code, name, desc, new Asset(url, size, sha256.toLowerCase(Locale.ROOT)));
+     }
+ 
+-    private static void validateAssetUrl(String value, String fileName) throws IOException {
++    private static void validateAssetUrl(String value, String fileName, String packageName) throws IOException {
+         try {
+             URI uri = new URI(value);
+-            String prefix = "/wobuhui666/TV/releases/download/";
++            String prefix = UpdateSources.CINEMA_PACKAGE.equals(packageName)
++                    ? "/mjnhmd/tv-cinema/releases/download/" : "/wobuhui666/TV/releases/download/";
+             String path = uri.getRawPath();
+             if (!"https".equals(uri.getScheme()) || !"github.com".equals(uri.getHost()) ||
+                     uri.getRawUserInfo() != null || uri.getPort() != -1 ||
+diff --git a/app/src/main/java/com/fongmi/android/tv/update/UpdateSources.java b/app/src/main/java/com/fongmi/android/tv/update/UpdateSources.java
+index 9f27c155c006d93597e087f16f14f9304c9ed5fc..7e89a7c6c82ca79d75fc1feca49db8ef77d54a6f 100644
+--- a/app/src/main/java/com/fongmi/android/tv/update/UpdateSources.java
++++ b/app/src/main/java/com/fongmi/android/tv/update/UpdateSources.java
+@@ -11,9 +11,11 @@ import java.util.Set;
+ public final class UpdateSources {
+ 
+     private static final String RELEASES = "https://github.com/wobuhui666/TV/releases/";
++    private static final String CINEMA_RELEASES = "https://github.com/mjnhmd/tv-cinema/releases/";
+     private static final String POLICY = "https://raw.githubusercontent.com/wobuhui666/TV/ui/apple-tv-redesign/ota/policy.json";
+     /** Package of the edition that installs side by side with FongMi/TV; it has its own OTA manifest and APKs. */
+     public static final String COEXIST_PACKAGE = "com.wobuhui666.android.tv";
++    public static final String CINEMA_PACKAGE = "com.mjnhmd.tvcinema";
+ 
+     private UpdateSources() {
+     }
+@@ -24,12 +26,13 @@ public final class UpdateSources {
+ 
+     public static List<String> manifests(String mode, String packageName) {
+         if (!("leanback".equals(mode) || "mobile".equals(mode))) throw new IllegalArgumentException("Unsupported mode");
+-        return mirrors(RELEASES + "latest/download/" + mode + suffix(packageName) + ".json");
++        String releases = CINEMA_PACKAGE.equals(packageName) ? CINEMA_RELEASES : RELEASES;
++        return mirrors(releases + "latest/download/" + mode + suffix(packageName) + ".json");
+     }
+ 
+     /** File-name suffix shared by the coexist edition's OTA manifest and APK assets. */
+     public static String suffix(String packageName) {
+-        return COEXIST_PACKAGE.equals(packageName) ? "-coexist" : "";
++        return COEXIST_PACKAGE.equals(packageName) || CINEMA_PACKAGE.equals(packageName) ? "-coexist" : "";
+     }
+ 
+     public static List<String> policies() {
+@@ -49,7 +52,7 @@ public final class UpdateSources {
+         if (value == null) throw new IllegalArgumentException("Missing GitHub URL");
+         try {
+             URI uri = new URI(value);
+-            if ((!value.startsWith(RELEASES) && !value.equals(POLICY)) ||
++            if ((!value.startsWith(RELEASES) && !value.startsWith(CINEMA_RELEASES) && !value.equals(POLICY)) ||
+                     uri.getRawQuery() != null || uri.getRawFragment() != null || uri.getRawUserInfo() != null ||
+                     uri.getPort() != -1 || !uri.normalize().equals(uri) || uri.getRawPath().contains("%")) {
+                 throw new IllegalArgumentException("Unsupported GitHub update URL");
+diff --git a/app/src/main/java/com/fongmi/android/tv/utils/FileUtil.java b/app/src/main/java/com/fongmi/android/tv/utils/FileUtil.java
+index aa6eebf37307d03c59c112aa75c604d479269829..d70c53e13e3837f39587b8ef07152f02c30c9e37 100644
+--- a/app/src/main/java/com/fongmi/android/tv/utils/FileUtil.java
++++ b/app/src/main/java/com/fongmi/android/tv/utils/FileUtil.java
+@@ -121,6 +121,7 @@ public class FileUtil {
+     }
+ 
+     private static String getMimeType(String fileName) {
++        if (fileName.toLowerCase(java.util.Locale.ROOT).endsWith(".apk")) return "application/vnd.android.package-archive";
+         String mimeType = URLConnection.guessContentTypeFromName(fileName);
+         return TextUtils.isEmpty(mimeType) ? "*/*" : mimeType;
      }
 diff --git a/app/src/main/java/com/fongmi/android/tv/utils/ImgUtil.java b/app/src/main/java/com/fongmi/android/tv/utils/ImgUtil.java
 index b352552117016753d03e1715eadbed396e8e4ada..7d7d2a2f3e7dbaebb2b60d438da65aebd1e840a5 100644

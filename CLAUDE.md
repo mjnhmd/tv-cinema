@@ -5,7 +5,7 @@
 - Preserve playback, sources, subscriptions, history and remote-control capabilities.
 - Keep upstream GPL-3.0 licensing and attribution. Do not embed content providers.
 - Use a separate application ID and signing key so the original app stays installed.
-- User authorized creating a private GitHub repository and committing/pushing validated increments in this task.
+- User authorized the initial GitHub creation, earlier commits/pushes and making it public on 2026-11-09. Those historical approvals do not authorize a new commit, push, signing-secret upload or release; obtain current explicit consent under the root AGENTS.md rules.
 - Never commit signing keys, local.properties, credentials, generated APKs or dependency caches.
 
 ## Structure and naming
@@ -15,9 +15,13 @@
 - `docs/features/tv-cinema/context.md`: requirements, decisions, acceptance and handoff.
 - `.planning/tv-cinema/`: task_plan.md, findings.md and progress.md for this task.
 - `scripts/`: reproducible build, artifact verification and existing runtime utilities.
+- `scripts/tests/`: focused stdlib Python tests for Cinema CI setup, metadata and artifact staging; `test_cinema_*.py` only, no generated APKs or credentials.
+- `.github/workflows/cinema-armv7.yml`: ARMv7-only CI. Keep signing material in GitHub Actions secrets; do not publish on every source push. Ordinary CI artifacts must not be described as public download links or tested television releases.
+- `.omc/RELEASE_RULE.md`: project release-rule cache derived from the CI recipe; refresh when workflow/version rules change. No credentials or generated APKs. Feature context and verification records remain the delivery truth.
 - `app/build/outputs/`: disposable build products; never source assets.
 - `build/reference/`: ignored, pinned third-party checkouts for isolated baseline verification; do not mix their source into the application without an integration decision and provenance.
 - `build/logs/`: ignored command output; durable outcomes and limitations belong in feature verification.md.
+- `build/ci/release/`: ignored, replaceable ARMv7 release staging using fixed APK/manifest filenames; no growing version history and no signing keys. CI keeps downloadable artifacts for seven days; public Releases are a separate explicitly authorized operation.
 - `distribution/`: production baseline lock, reviewed patch set and integration metadata. Build scripts materialize the pinned paired upstream in `build/reference/`, apply only the tracked patch and add the explicitly listed Cinema sources/assets.
 - The root `app/` is the preserved first UI experiment against FongMi's unmatched 5.8.7 interfaces. The shipping entry point is `scripts/cinema-build.sh`, not the legacy root Gradle application.
 - Use `cinema_` prefixes for new TV design resources. Reuse existing icon artwork.

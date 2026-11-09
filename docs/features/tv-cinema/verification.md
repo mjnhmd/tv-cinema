@@ -1,6 +1,25 @@
 # Verification record — 2026-11-09
 
-## Current production result
+## Current follow-up — 0.1.3
+
+- Production command: `TV_VERSION_CODE=10003 TV_VERSION_NAME=0.1.3 bash scripts/cinema-build.sh --abi armeabi-v7a`.
+- Final corrected build: `BUILD SUCCESSFUL in 2m 29s`, 900 tasks; log `build/logs/cinema-armv7-013-corrected.log`.
+- Signed Release: `com.mjnhmd.tvcinema`, version `0.1.3` / code `10003`, minSdk24, targetSdk37, non-debuggable.
+- ARMv7 only: 38 `.so` files under `lib/armeabi-v7a/`; CI helper reads each ELF header and requires ELF32, little-endian and EM_ARM (40).
+- Full native audit also covers bootstrap assets, `assets/libmitv.so` and Python `.imy` archives: 169 native payloads total, all ELF32/little-endian/EM_ARM, zero foreign-ABI payloads (`cinema-armv7-full-native-audit.json`). The same nested-asset checks are included in the CI helper.
+- APK size: 91,125,389 bytes; SHA256 `1cf4e59cc01f90cf3f8ef19e01a681c4fe058ca156dbb70c06fa709c4f22153f`.
+- Canonical output: `build/outputs/tv-cinema-armv7.apk`; downloadable local staging: `build/ci/release/leanback-armeabi_v7a-coexist.apk`.
+- V2 signature verifies; certificate SHA256 `d405dcabe3e9507a7e33eb3fdf2d61de03e27b6e4bc80099b5b1d054f0d8bdc5`, matching the existing ARM64 Cinema release key.
+- Real-APK helper `verify-apk` and `stage` pass; SDK37 `V2 Signer:` output is supported and any additional differing signer certificate is rejected. Logs: `cinema-armv7-013-final-{stage,signature,badging}.log`, `cinema-armv7-013-final.sha256`.
+- Latest focused JVM suites: 98 tests, zero failures/errors (`cinema-jvm-final-identity.log`, 18s); covers row packing, navigation-list guard, source merge, wallpaper parsing and updater checks. The relative-rule collision regression first failed, then passed after resolving ext before dedupe identity.
+- CI helper: 19 unittest cases pass (`cinema-ci-unit-final.log`), including foreign-ABI rejection inside native assets and Python archives, plus workflow YAML/contract review. This is not a GitHub runner execution.
+- API36 ARM64 sourceprobe: ten episode UI cases and the then-current two source cases pass together (12 tests, 78.912s, `cinema-final-focus-safe-runtime.log`). Latest discovery-only run passes three cases (7.071s, `cinema-discovery-final-contract-runtime.log`), including actual settings/catalog selection, preservation on failure/refetch and two separate provider-relative rules without fetching plugin code.
+- UI evidence: `build/outputs/episode-flow-{mixed,overflow-idle,overflow-focused}.png`, `source-settings-manual-action.png`, `source-catalog-merged-option.png`. These are Android screenshots of production widgets in an isolated test package, not mockup images.
+- Emulator first-focus observations for 100/300/1000 titles: 265/256/467ms (`cinema-episode-metrics.log`); do not treat these as ARMv7 timing guarantees.
+- No user television is connected: Android9 ARMv7 installation/playback/memory/frame performance remains `not_tested`.
+- User authorized this commit/push/signing/publication batch. Five signing secrets are configured with name-only readback; v0.1.3 release metadata is staged, not yet publicly delivered. First cloud run, public Release/mirror downloads and actual update installation remain pending. Version-tag/draft-publication contracts pass 20 tool tests before the authorized commit.
+
+## Historical production result — 0.1.0
 
 The earlier root-application failures below are preserved as historical evidence.
 Production now uses `distribution/baseline.json` and `scripts/cinema-build.sh`,

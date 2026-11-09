@@ -1,0 +1,256 @@
+name: Cinema ARMv7 signed build
+
+on:
+  push:
+    branches: [fongmi]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+  workflow_dispatch:
+    inputs:
+      version_code:
+        description: "Optional Android versionCode; must be greater than the installed build (10000)"
+        required: false
+        type: string
+      version_name:
+        description: "Optional versionName; provide together with version_code"
+        required: false
+        type: string
+      publish:
+        description: "Create a real GitHub Release and upload the APK plus leanback-coexist.json"
+        required: false
+        default: false
+        type: boolean
+      release_notes:
+        description: "Release notes; defaults to the current commit subject"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cinema-armv7-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    env:
+      RELEASE_TAG: build-${{ github.run_id }}-${{ github.run_attempt }}
+      PUBLISH: ${{ github.event_name == 'workflow_dispatch' && inputs.publish || false }}
+    outputs:
+      version_code: ${{ steps.version.outputs.code }}
+      version_name: ${{ steps.version.outputs.name }}
+    steps:
+      - name: Checkout Cinema
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: jetbrains
+          java-version: "21"
+          cache: gradle
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Verify release-tool contracts
+        run: python3.10 -m unittest discover -s scripts/tests -p test_cinema_ci.py -v
+
+      - name: Set up Android SDK 37.0, NDK 29 and CMake
+        uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: "13114758"
+          packages: >-
+            platform-tools
+            platforms;android-37.0
+            build-tools;37.0.0
+            ndk;29.0.14206865
+            cmake;3.22.1
+
+      - name: Verify Linux toolchain
+        run: |
+          set -euo pipefail
+          test "$(uname -s)" = "Linux"
+          java -version 2>&1 | grep -q 'version "21'
+          javac -version 2>&1 | grep -q '^javac 21'
+          python3.10 -c 'import sys; assert sys.version_info[:2] == (3, 10)'
+          test -d "${ANDROID_SDK_ROOT}/platforms/android-37.0"
+          test -d "${ANDROID_SDK_ROOT}/build-tools/37.0.0"
+          test -d "${ANDROID_SDK_ROOT}/ndk/29.0.14206865"
+          test -d "${ANDROID_SDK_ROOT}/cmake/3.22.1"
+
+      - name: Configure existing signing key
+        env:
+          CINEMA_KEYSTORE_BASE64: ${{ secrets.CINEMA_KEYSTORE_BASE64 }}
+          CINEMA_KEY_ALIAS: ${{ secrets.CINEMA_KEY_ALIAS }}
+          CINEMA_STORE_PASSWORD: ${{ secrets.CINEMA_STORE_PASSWORD }}
+          CINEMA_KEY_PASSWORD: ${{ secrets.CINEMA_KEY_PASSWORD }}
+          CINEMA_CERT_SHA256: ${{ secrets.CINEMA_CERT_SHA256 }}
+        run: |
+          python3 scripts/cinema-ci.py signing \
+            --sdk-dir "${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+
+      - name: Resolve version
+        id: version
+        env:
+          INPUT_VERSION_CODE: ${{ inputs.version_code }}
+          INPUT_VERSION_NAME: ${{ inputs.version_name }}
+        run: |
+          set -euo pipefail
+          args=(version)
+          if [ -n "${INPUT_VERSION_CODE:-}" ] || [ -n "${INPUT_VERSION_NAME:-}" ]; then
+            if [ -z "${INPUT_VERSION_CODE:-}" ] || [ -z "${INPUT_VERSION_NAME:-}" ]; then
+              echo "BLOCKED: version_code and version_name must be provided together" >&2
+              exit 2
+            fi
+            args+=(--version-code "$INPUT_VERSION_CODE" --version-name "$INPUT_VERSION_NAME")
+          fi
+          output=$(python3 scripts/cinema-ci.py "${args[@]}")
+          printf '%s\n' "$output" >> "$GITHUB_ENV"
+          code=$(printf '%s\n' "$output" | sed -n 's/^TV_VERSION_CODE=//p')
+          name=$(printf '%s\n' "$output" | sed -n 's/^TV_VERSION_NAME=//p')
+          test -n "$code"
+          test -n "$name"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve release notes
+        env:
+          INPUT_RELEASE_NOTES: ${{ inputs.release_notes }}
+        run: |
+          set -euo pipefail
+          notes=${INPUT_RELEASE_NOTES:-}
+          if [ -z "$notes" ]; then
+            notes=$(git log -1 --pretty=%s)
+          fi
+          printf '%s\n' "$notes" > "$RUNNER_TEMP/cinema-release-notes.txt"
+
+      - name: Prepare pinned inputs
+        run: |
+          python3 scripts/cinema-prepare.py
+          python3 scripts/cinema-verify-inputs.py
+
+      - name: Verify Linux Media3 stub link
+        run: |
+          set -euo pipefail
+          test -L build/reference/.github
+          test "$(readlink build/reference/.github)" = "wobuhui-tv/.github"
+          test -f build/reference/wobuhui-media/settings.gradle.kts
+          grep -q 'media3-stubs' build/reference/wobuhui-media/settings.gradle.kts
+
+      - name: Build signed ARMv7 release
+        env:
+          TV_VERSION_CODE: ${{ steps.version.outputs.code }}
+          TV_VERSION_NAME: ${{ steps.version.outputs.name }}
+        run: |
+          bash scripts/cinema-build.sh --abi armeabi-v7a
+
+      - name: Stage signed APK and OTA payload
+        env:
+          CINEMA_CERT_SHA256: ${{ secrets.CINEMA_CERT_SHA256 }}
+        run: |
+          set -euo pipefail
+          args=(
+            stage
+            --apk build/outputs/tv-cinema-armv7.apk
+            --output-dir build/ci/release
+            --sdk "${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+            --cert-sha256 "$CINEMA_CERT_SHA256"
+            --repository "$GITHUB_REPOSITORY"
+            --tag "$RELEASE_TAG"
+            --desc-file "$RUNNER_TEMP/cinema-release-notes.txt"
+            --version-code "$TV_VERSION_CODE"
+            --version-name "$TV_VERSION_NAME"
+          )
+          if [ "$PUBLISH" = "true" ]; then
+            args+=(--manifest)
+          fi
+          python3 scripts/cinema-ci.py "${args[@]}"
+
+      - name: Upload 7-day artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cinema-armv7-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/ci/release/leanback-*
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Build summary
+        if: success()
+        run: |
+          if [ "$PUBLISH" = "true" ]; then
+            echo "Staged signed ARMv7 APK and OTA manifest for release $RELEASE_TAG. Publication is handled by the publish job." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Artifact-only build. No GitHub Release, OTA manifest, or public download URL was produced." >> "$GITHUB_STEP_SUMMARY"
+            echo "The signed APK is retained as a GitHub Actions artifact for 7 days; downloading it requires a GitHub login and it is not a public APK direct link." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Remove signing material
+        if: always()
+        run: |
+          rm -f local.properties
+          rm -f build/reference/wobuhui-tv/local.properties
+          rm -rf "${RUNNER_TEMP}/cinema-signing"
+          rm -f "$RUNNER_TEMP/cinema-release-notes.txt"
+
+  publish:
+    needs: build
+    if: github.event_name == 'workflow_dispatch' && inputs.publish
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      actions: read
+    env:
+      RELEASE_TAG: build-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - name: Download release payload
+        uses: actions/download-artifact@v4
+        with:
+          name: cinema-armv7-${{ github.run_id }}-${{ github.run_attempt }}
+          path: release
+
+      - name: Validate release payload
+        run: |
+          set -euo pipefail
+          test -f release/leanback-armeabi_v7a-coexist.apk
+          test -f release/leanback-coexist.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path("release/leanback-coexist.json").read_text())
+          assert data["packageName"] == "com.mjnhmd.tvcinema"
+          assert data["mode"] == "leanback"
+          assert set(data["assets"]) == {"armeabi_v7a"}
+          assert data["assets"]["armeabi_v7a"]["url"].endswith("/leanback-armeabi_v7a-coexist.apk")
+          PY
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          name=$(python3 -c 'import json; print(json.load(open("release/leanback-coexist.json"))["name"])')
+          desc=$(python3 -c 'import json; print(json.load(open("release/leanback-coexist.json")).get("desc", ""))')
+          if [ -z "$desc" ]; then desc="TV Cinema ARMv7 release"; fi
+          printf '%s\n' "$desc" > release/notes.md
+          gh release create "$RELEASE_TAG" \
+            release/leanback-armeabi_v7a-coexist.apk \
+            release/leanback-coexist.json \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "TV Cinema $name" \
+            --notes-file release/notes.md \
+            --draft
+          gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest
+          url=$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json url -q .url)
+          printf 'Released: %s\n' "$url" >> "$GITHUB_STEP_SUMMARY"

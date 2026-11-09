@@ -17,7 +17,8 @@ public final class CinemaSources {
 
     private static final String ASSET = "cinema/sources.json";
     private static final String KEY_SEEDED = "cinema_sources_seeded_version";
-    private static final int VERSION = 1;
+    private static final int VERSION = 2;
+    private static final String DEFAULT = "饭太硬";
     private static final String VOD = "vod";
     private static final String LIVE = "live";
 
@@ -30,39 +31,56 @@ public final class CinemaSources {
             Prefers.put(KEY_SEEDED, VERSION);
             return;
         }
-        List<Seed> seeds = seeds();
-        boolean hasVod = seeds.stream().anyMatch(seed -> seed.type() == BaseConfig.VOD);
-        boolean hasLive = seeds.stream().anyMatch(seed -> seed.type() == BaseConfig.LIVE);
-        if (!hasVod || !hasLive) return;
-        Config[] first = new Config[1];
-        Config[] live = new Config[1];
+        Seed seed = seeds().stream().filter(item -> DEFAULT.equals(item.name()) && item.type() == BaseConfig.VOD).findFirst().orElse(null);
+        if (seed == null) return;
         try {
             AppDatabase.get().runInTransaction(() -> {
                 long time = System.currentTimeMillis();
-                for (Seed seed : seeds) {
-                    Config config = new Config().type(seed.type()).url(seed.url()).name(seed.name());
-                    config.setTime(time--);
-                    config.insert();
-                    if (config.getId() < 0) throw new IllegalStateException();
-                    if (seed.type() == BaseConfig.VOD && first[0] == null) first[0] = config;
-                    if (seed.type() == BaseConfig.LIVE && live[0] == null) live[0] = config;
-                }
-                if (first[0] == null || live[0] == null) throw new IllegalStateException();
+                Config vod = new Config().type(BaseConfig.VOD).url(seed.url()).name(DEFAULT);
+                Config live = new Config().type(BaseConfig.LIVE).url(seed.url()).name(DEFAULT + " · 直播");
+                vod.setTime(time);
+                live.setTime(time);
+                if (vod.insert().getId() <= 0 || live.insert().getId() <= 0) throw new IllegalStateException();
             });
-        } catch (RuntimeException e) {
+        } catch (RuntimeException ignored) {
             return;
         }
-        Prefers.put("config_" + BaseConfig.VOD, first[0].getUrl());
-        Prefers.put("config_" + BaseConfig.LIVE, live[0].getUrl());
+        Prefers.put("config_" + BaseConfig.VOD, seed.url());
+        Prefers.put("config_" + BaseConfig.LIVE, seed.url());
         Prefers.put(KEY_SEEDED, VERSION);
     }
 
     public static synchronized boolean needsConsent() {
-        return Prefers.getInt(KEY_SEEDED) < VERSION && !hasUserConfig();
+        return false;
     }
 
     public static synchronized void skip() {
         Prefers.put(KEY_SEEDED, VERSION);
+    }
+
+    public static List<Entry> entries() {
+        return seeds().stream().map(seed -> new Entry(seed.type(), seed.name(), seed.url())).toList();
+    }
+
+    public static List<Entry> catalogEntries() {
+        List<Entry> result = new ArrayList<>(entries());
+        if (CinemaDiscovery.hasCandidate()) {
+            result.add(0, new Entry(BaseConfig.VOD, "手动抓取 · 合并片源", CinemaDiscovery.candidateUrl()));
+        }
+        return result;
+    }
+
+    public static Config activate(Entry entry) {
+        return Config.find(entry.url(), entry.type()).name(entry.name()).update();
+    }
+
+    public static boolean isAdded(Entry entry) {
+        return Config.getAll(entry.type()).stream().anyMatch(item -> entry.url().equals(item.getUrl()));
+    }
+
+    public static boolean isActive(Entry entry) {
+        Config current = entry.isVod() ? Config.vod() : Config.live();
+        return entry.url().equals(current.getUrl());
     }
 
     private static boolean hasUserConfig() {
@@ -107,5 +125,12 @@ public final class CinemaSources {
     }
 
     private record Seed(int type, String url, String name) {
+    }
+
+    public record Entry(int type, String name, String url) {
+
+        public boolean isVod() {
+            return type == BaseConfig.VOD;
+        }
     }
 }

@@ -9,6 +9,14 @@ Ship a native TV redesign and a verified signed ARMv7 APK for an Android 9 telev
 3. [completed] Verify secondary surfaces and preset onboarding.
 4. [completed] Verify runtime and APK compatibility boundaries.
 5. [completed] Publish evidence and target-device handoff.
+6. [pending] Audit and stabilize source/wallpaper WIP.
+7. [completed] Expose manual discovery in source catalog.
+8. [pending] Implement trusted, reachable TV update flow.
+9. [pending] Verify emulator, ARMv7 and handoff.
+10. [pending] Diagnose category-as-episode and implement TV grid.
+11. [completed] Validate natural-width titles and focus safety.
+12. [completed] Add reproducible ARMv7 CI workflow.
+13. [in_progress] Publish authorized ARMv7 and verify cloud.
 
 ## Verification rules
 - Validate before each commit; never exceed 100 changed lines without a targeted check.
@@ -31,14 +39,12 @@ Ship a native TV redesign and a verified signed ARMv7 APK for an Android 9 telev
 | Full Java compilation failed | Current custom Media3 API is absent from trial AARs; no stubs or feature removal. |
 
 ## Current handoff
-- Resource and library build passed; UI is source WIP, not runtime-verified delivery.
-- Matching current media inputs or a user-approved baseline change are required before a complete APK.
-- Historical 5.2.9 candidate rejected after complete assemble exposed 14 remaining custom-media errors; no audited complete-build fallback exists.
-- User approved referencing wobuhui666/TV. Use an isolated TV/media pair and verify before integration, rather than broad upstream-AAR searching.
-- Complete paired ARMv7 baseline built, inspected and debug-signature verified. First and second Cinema overlay Kotlin/Java increments passed.
-- Production is a reproducible pinned-source recipe plus small patch/overlay under distribution/. Original app experiment remains preserved; no mass overwrite.
-- Both optimized signed release ABIs built. ARMv7 only38ELF32ARM libs / minSdk24 / version0.1.0 / v2signature verified.
-- 9 helper tests +26 focused JVM tests passed. Our ARM64 release ran D-pad settings/Back/local H264 playback/pause/resume; target television remains not_tested.
+- `fongmi` HEAD `d3c919693` remains dirty; preserve all source/wallpaper/update WIP. Production is the pinned paired `distribution/` recipe, not legacy root Gradle.
+- ARMv7 `0.1.3` / `10003` signed Release rebuilt after resolved-rule dedupe fix: 2m29s/900 tasks, 38 ELF32/EM_ARM libraries, minSdk24, non-debuggable, v2 signature, same existing certificate. Canonical `build/outputs/tv-cinema-armv7.apk`; staged `build/ci/release/leanback-armeabi_v7a-coexist.apk`; SHA256 `1cf4e59cc01f90cf3f8ef19e01a681c4fe058ca156dbb70c06fa709c4f22153f`.
+- Natural-width episode chips, focused overflow marquee and separate remote/playback selection are implemented. 10 episode UI cases passed; actual manual-source settings/catalog/failure/refetch/two-provider rules pass 3 cases. Latest JVM suites: 98 passed; CI helper: 19 passed, including native assets/Python archive ABI checks.
+- New merged candidate is first in the six-preset catalog and is not automatically activated. Candidate files are bounded to two slots, preserving the active one on refetch.
+- Current user explicitly authorized commit/push, existing signing-secret setup and publication. Five signing secrets are configured. Initial push/cloud run/public Release remain in progress; only return links after verifying the actual downloadable assets. CI uses build-ID tags; local 0.1.3 may use matching immutable v0.1.3.
+- API36 ARM64 emulator evidence is not Android9 ARMv7 acceptance. User-TV install/playback/performance and mainland download/update routes remain untested. No disk cleanup is authorized.
 
 ## Ownership
 - Main: rules/docs, all UI resources, HomeActivity, review, commits/push and ppm.

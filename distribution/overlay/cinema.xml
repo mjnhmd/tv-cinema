@@ -5,4 +5,21 @@
     <string name="cinema_sources_accept">使用预置订阅</string>
     <string name="cinema_sources_skip">自行添加</string>
     <string name="cinema_update_notice">TV Cinema 独立签名版，请从本项目 Releases 安装更新。</string>
+    <string name="cinema_wall_next">换在线</string>
+    <string name="cinema_wall_failed">在线壁纸暂时不可用，已保留当前壁纸</string>
+    <string name="cinema_sources_catalog">内置片源</string>
+    <string name="cinema_update_install_permission">首次更新需要允许 TV Cinema 安装应用。授权后返回此处，再选择“检查更新”。</string>
+    <string name="cinema_update_permission_open">去授权</string>
+    <string name="cinema_update_permission_failed">无法打开授权页面，请在电视系统设置中允许 TV Cinema 安装未知应用</string>
+    <string name="cinema_discover_sources">手动抓取片源</string>
+    <string name="cinema_discover_not_run">仅手动运行</string>
+    <string name="cinema_discover_available">已加入内置片源，手动选择启用</string>
+    <string name="cinema_discover_notice">仅点击开始后读取内置点播订阅，去重合并后加入“内置片源”列表，不自动启用、不在抓取时运行插件。\n\n以后需要使用时，在“内置片源”选择“手动抓取 · 合并片源”。不同订阅的全局规则可能不兼容，部分线路可能不可用。</string>
+    <string name="cinema_discover_start">开始抓取</string>
+    <string name="cinema_discover_use">查看内置片源</string>
+    <string name="cinema_discover_done">合并完成</string>
+    <string name="cinema_discover_summary">成功读取 %1$d/%2$d 个订阅，保留 %3$d 个站点，去重 %4$d 个。\n\n已加入“内置片源”列表，名称为“手动抓取 · 合并片源”。当前源未改变，选择该项才会启用。</string>
+    <string name="cinema_discover_failed">抓取失败，已保留之前的候选和当前片源</string>
+    <string name="cinema_discover_busy">正在抓取，请稍候</string>
+    <string name="cinema_playlist_invalid">当前源返回了网站分类，不是剧集，请选择“换源”重试</string>
 </resources>
