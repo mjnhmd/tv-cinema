@@ -91,7 +91,8 @@ Ship a native TV redesign and a verified signed ARMv7 APK for an Android 9 telev
 - [completed] Cancel publish42794496346 and artifact42794430961; latest public release remains0.1.7.
 - [completed] Pin usable NDK29 for native stripping and trim only generated Python dependency `test`/`tests` directories before Chaquopy build.json hashes; add output guards/tests.
 - [completed] Signed ARMv7 `0.1.8+20261110.101315` /217468795 measures78,397,589B (78.40MB); original signer/package/minSdk24/ABI,37 stripped libs,2 test-free archives/hash guards pass. All37 ELF runtime sections unchanged;29 tools/78 update JVM/4 API28 Python/WASM/JNI/audio cases pass.
-- [pending] Commit/push this packaging increment and publish revised0.1.8; verify public asset/OTA size/hash/signature/source.
+- [completed] Commit/push this packaging increment and publish revised0.1.8; public release `build-42798223070-1` (`0.1.8+20261110.102204`, code217469324) verified: APK78,396,621B, SHA256 matches OTA manifest, original signer/minSdk24/ARMv7 and packaging guards pass, mirrors serve the tag.
+- Commit/push completed: `3d4a7df702acfbbc7ab4b0a8c565ae994a8262cb`, exact origin SHA verified. Publish run42798223070 queued; duplicate artifact run42798215532 cancelled to free same-branch concurrency. Formal publish reruns the complete independent gates.
 
 ## Held seek release — 2026-11-10
 - Scope: production VOD remote seek input and focused regression tests; preserve unrelated work. The user explicitly authorized this fix's commit and push with “提交推送” on 2026-11-10; branch changes and public release are outside this authorization.
