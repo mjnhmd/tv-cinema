@@ -1216,3 +1216,61 @@ index b6821c6f60412b611ba97bb5c79f3f561a030bb8..0bb659126c465f27220a31e484dfe890
                  }) { dismiss() }
              }
          }
+diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/custom/CustomKeyDownVod.java b/app/src/leanback/java/com/fongmi/android/tv/ui/custom/CustomKeyDownVod.java
+index 02ed03571eabb0ddfcaea404615a5ad9026a30e7..c38d60aaa52ecb125510f40d7e2e73520b61e6fd 100644
+--- a/app/src/leanback/java/com/fongmi/android/tv/ui/custom/CustomKeyDownVod.java
++++ b/app/src/leanback/java/com/fongmi/android/tv/ui/custom/CustomKeyDownVod.java
+@@ -14,6 +14,9 @@ import com.fongmi.android.tv.utils.KeyUtil;
+ 
+ public class CustomKeyDownVod extends GestureDetector.SimpleOnGestureListener {
+ 
++    // Allow the initial key-repeat delay, then recover if the remote loses ACTION_UP.
++    private static final long SEEK_IDLE_COMMIT_MS = 1_000;
++
+     private final GestureDetector detector;
+     private final TouchSwipeDetector swipe;
+     private final Listener listener;
+@@ -30,7 +33,7 @@ public class CustomKeyDownVod extends GestureDetector.SimpleOnGestureListener {
+         this.detector = new GestureDetector(activity, this);
+         this.swipe = new TouchSwipeDetector(activity);
+         this.listener = (Listener) activity;
+-        this.pendingSeek = new PendingSeek(listener::onSeekEnd, new PendingSeek.Scheduler() {
++        this.pendingSeek = new PendingSeek(this::commitSeek, new PendingSeek.Scheduler() {
+             @Override
+             public void post(Runnable runnable, long delayMs) {
+                 App.post(runnable, delayMs);
+@@ -40,7 +43,7 @@ public class CustomKeyDownVod extends GestureDetector.SimpleOnGestureListener {
+             public void cancel(Runnable runnable) {
+                 App.removeCallbacks(runnable);
+             }
+-        }, listener::onSeekCancel);
++        }, this::cancelSeekPreview);
+     }
+ 
+     public boolean onTouchEvent(MotionEvent e) {
+@@ -108,6 +111,7 @@ public class CustomKeyDownVod extends GestureDetector.SimpleOnGestureListener {
+             }
+             pendingSeek.cancel();
+             listener.onSeeking(KeyUtil.isLeftKey(event) ? subTime(event) : addTime(event));
++            pendingSeek.post(SEEK_IDLE_COMMIT_MS);
+         } else if (KeyUtil.isActionUp(event)
+                 && seekKeys.up(event.getKeyCode(), event.getDeviceId(), event.getDownTime())) {
+             if (event.isCanceled() || !listener.canSeek()) cancelSeek();
+@@ -115,6 +119,17 @@ public class CustomKeyDownVod extends GestureDetector.SimpleOnGestureListener {
+         }
+     }
+ 
++    private void commitSeek(long time) {
++        seekKeys.clear();
++        if (listener.canSeek()) listener.onSeekEnd(time);
++        else listener.onSeekCancel();
++    }
++
++    private void cancelSeekPreview() {
++        seekKeys.clear();
++        listener.onSeekCancel();
++    }
++
+     @Override
+     public boolean onDown(@NonNull MotionEvent event) {
+         return true;

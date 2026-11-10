@@ -1,5 +1,14 @@
 # Progress
 
+## Held seek release — 2026-11-10
+- User reports long fast-forward previews stay visible after releasing; one additional short press commits them. Read the paired production input/state/scheduler, activity dispatch and existing input tests; identified the missing-release completion gap.
+- Plan: prove failure with an Android regression, add a bounded inactivity fallback while preserving strict key ownership and all existing cancellation hooks, then verify short/held/reversed/canceled/replaced sequences.
+- Preserving existing dirty search/icon/source work. No Git mutation, release or ppm write authorized; ppm read-only query was partial/unavailable.
+- Fail-before regression: 2/2 fail on API28 ARM64 with zero seek commits after 1.35s. Added VOD 1s inactivity fallback and commit-time seekability check; explicit UP still schedules 250ms. Late held keys are cleared on both nonzero and zero-delta completion.
+- Post-fix: 14 Android tests pass (7 new + 7 existing), 12 JVM tests pass, ARMv7 Java compile and ARM64 debug/test APK assembly pass. `cinema-verify-inputs.py` passes. Next check actual production Activity playback and popup state; target television still not attached.
+- Closeout: actual VideoActivity/EXO/MediaController H.264 seek test passes (1 / 13.902s); video jumps by the accumulated 60s, dismisses the popup, continues playing and ignores late release. Total 15 Android + 12 JVM pass. Recipe prepare/verify PASS; actual Cinema ARMv7 Debug compile PASS (6s / 230 tasks). Added two explicit test overlays; no new Release, commit or push. Feature context/verification record commands, fingerprints and target-TV gaps. Suggested commit: `fix: commit held seeks when remote release is lost`.
+- Delivery authorization: the user now explicitly requests “提交推送”. Verified current input/test hashes still match the passing run and production recipe passes; preparing a seek-only commit on top of the already-pushed search/icon commits. Unrelated string ordering and other delivery receipts remain local; no public release or ppm writes.
+
 ## App icon exploration — 2026-11-10
 - Final integration passes: eight API28 offscreen archive-resource renders, unchanged RGB pixel audit, full signed ARMv7 build (3m37s / 900 tasks), package/minSdk24/ABI/original-signer audit and production input guards. Local APK `0.1.8-icon-local` / `217447200`, 91,915,944B, SHA256 `a4a9ed0b…889fd9`. Default home/playback logos, launchers, TV banner and splash share the selected image.
 - Evidence and exact prompt are in `docs/features/tv-cinema/icon-design.md` / `verification.md`. User explicitly authorized icon-only commit/push with “改完提交推送”; commit message `feat: apply jade cinema app identity`. Preserve unrelated working tree changes. No app installation, TV test, public release or ppm mutation.

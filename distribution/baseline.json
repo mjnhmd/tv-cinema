@@ -12,7 +12,7 @@
     "directory": "build/reference/wobuhui-media"
   },
   "applicationId": "com.mjnhmd.tvcinema",
-  "cinemaPatchSha256": "9601a429dbc0b94b6051babf07849ffc4510f495d818b96cd075a7bed65ae8af",
+  "cinemaPatchSha256": "d94d1587382c56df992cb36ecd4edfe91430d1ccb48d79c7cea1cc1f574121bb",
   "nativeArchives": {
     "third_party/mpv/mpv-android-ffmpeg9-native.zip": "d3f22c64ab90a1476b489c2b4f06de8296672497f2998161efb4d906f9a4a66c",
     "third_party/mpv/mpv-android-ffmpeg9-bridge.zip": "29b1ef4c8d0b48475c1b5dba464d46157d7ec2e13ce913a67fcca93e4b2c20d6"
@@ -181,6 +181,14 @@
     {
       "source": "distribution/overlay/CinemaSearchCardAndroidTest.java",
       "target": "app/src/androidTest/java/com/fongmi/android/tv/ui/CinemaSearchCardAndroidTest.java"
+    },
+    {
+      "source": "distribution/overlay/VodSeekReleaseAndroidTest.java",
+      "target": "app/src/androidTest/java/com/fongmi/android/tv/ui/custom/VodSeekReleaseAndroidTest.java"
+    },
+    {
+      "source": "distribution/overlay/VodSeekPlaybackAndroidTest.java",
+      "target": "app/src/androidTest/java/com/fongmi/android/tv/ui/custom/VodSeekPlaybackAndroidTest.java"
     }
   ],
   "cinemaDanmakuPatchSha256": "85c20971c777131b698efd022982bfec7614a52c93cffdbb261ce866fc563adc"

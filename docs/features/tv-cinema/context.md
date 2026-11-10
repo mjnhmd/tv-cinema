@@ -1,5 +1,14 @@
 # TV Cinema: television redesign
 
+## Implemented — held seek release — 2026-11-10
+- User report: holding fast-forward advances the preview, but releasing leaves the progress popup visible without seeking; one extra short fast-forward press commits it.
+- Root cause reproduced in code: production input accumulated in `PendingSeek` and only scheduled completion for a release matching the original key/device/downTime. Missing or unmatched release had no fallback. This code path matches the symptom; the user's television key-event trace has not been captured.
+- Fix scope: VOD remote seek completion with a bounded inactivity fallback, retaining existing short-press step/250ms coalescing, hold acceleration and cancellation on navigation/fullscreen exit/media changes. Do not loosen stale/foreign key ownership.
+- `CustomKeyDownVod` now refreshes a 1s idle completion after every accepted DOWN/repeat, while matching UP keeps the existing 250ms coalescing. Completion rechecks seekability and clears key ownership, including zero-offset cancellation, so late held events cannot seek again. The idle window allows the normal initial repeat delay; remotes with repeat gaps exceeding 1s still need device verification.
+- Verified on Android9/API28 ARM64: two fail-before cases, then 14 passing input regressions and one actual `VideoActivity`/MediaController/H.264 playback regression. Actual video advances by the accumulated 60s, preview closes, playback continues and a late release does not seek twice. All 12 focused JVM cases, production ARMv7 Debug compile and recipe preparation/verification pass. Full commands and logs are in `verification.md`.
+- Delivery: the user explicitly authorized committing and pushing this seek fix with “提交推送” on 2026-11-10. Preparing the focused commit on `fongmi` after `587601fbcb9604ad0117166d43f57d6682add1a7`, including only the VOD input hunk, two test overlays, matching recipe and seek evidence. No public release is authorized by this instruction.
+- Next: include this fix in an authorized release, then verify sustained forward/rewind and release on the user's television. No ARMv7 Release was rebuilt specifically for this fix; other sessions' local builds do not establish television acceptance. Preserve unrelated working-tree changes; no ppm writes for this excluded checkout.
+
 ## Implemented — selected jade app icon — 2026-11-10
 - The user selected the newly generated jade interlocking-screen icon with “可以 就用这个”. It simplifies the earlier portal concept into two rounded bands around a widescreen-shaped negative space; preserve this exact artwork and color.
 - The direction reflects cinema/discovery and multiple viewing sources, with restrained technology, soft corners and no generic play/letter mark, gold or metallic reflections. Both user-supplied reference sites were inspected; use meaningful negative-space principles rather than copying an existing mark.

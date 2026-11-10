@@ -1,5 +1,14 @@
 # Findings
 
+## Held seek release — 2026-11-10
+- Production playback is `VideoActivity`/`CastActivity` → `CustomKeyDownVod` → `SeekKeySequence` + `PendingSeek`, not the preserved root `SeekInput` experiment.
+- Accepted DOWN/repeats cancel any scheduled commit and update the preview. A commit is posted only on UP matching key code, device and original downTime. No idle fallback exists; missing/rerouted/unmatched UP leaves `PendingSeek` and the preview active until another short press posts it.
+- `SeekKeySequence` deliberately rejects foreign or stale sequences, including held events after media replacement. Retain that boundary; use a bounded inactivity fallback for VOD rather than accepting arbitrary UP events.
+- Existing Android input tests already cover canceled/foreign release, reset/fullscreen exit, navigation takeover, real replacement callbacks and accelerated steps. Extend these contracts with missing/mismatched-release and held-repeat cases. Actual television event loss/identity has not been captured, so this is a reproduced code failure path, not a measured firmware diagnosis.
+- API28 ARM64 fail-before: both missing-UP and mismatched-UP cases fail with zero commits (`cinema-seek-before-runtime.log`). After: seven added regressions plus seven existing ownership tests pass (14 total, 28.841s); three existing JVM suites pass (12 tests). Production input compile and pinned-input verification pass.
+- VOD now refreshes a 1s idle commit after accepted DOWN/repeats; matching UP retains 250ms coalescing. Both successful/zero-offset completions clear key ownership; delayed callbacks recheck seekability before sending a seek. No Live/Compose seek behavior was changed.
+- Actual production `VideoActivity.dispatchKeyEvent` + EXO/MediaController test passes with locally generated 120s H.264: missing UP commits the accumulated +60s, closes the preview, keeps playback, and ignores a late UP. Runtime is 13.902s (`cinema-seek-playback-runtime.log`). No third-party provider is needed. Production prepare/verify and Cinema-package ARMv7 Debug compile pass; no new Release APK or target-TV acceptance.
+
 ## App icon exploration — 2026-11-10
 - Final package retains identical source RGB pixels after aapt2 compression. Actual API28 renders confirm proper proportional banner scaling and legibility in 48px launcher / 32px playback masks. Build and resource checks prove packaging, not target-TV acceptance.
 - User accepted the generated jade image; byte-exact master is now `distribution/overlay/cinema_icon.png` (1254² RGB, SHA256 `5e3d01fa…36890`). Leanback-specific launcher/banner/splash/default logo bindings preserve mobile and network logos.

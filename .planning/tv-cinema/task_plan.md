@@ -29,6 +29,18 @@ Ship a native TV redesign and a verified signed ARMv7 APK for an Android 9 telev
 23. [completed] Keep search-result metadata visible on posters and allow two-line titles.
 24. [completed] Generate jade interlocking-screen icon; user selected it.
 25. [completed] Integrate selected artwork and verify actual APK resources on API28.
+26. [completed] Fix held seek previews remaining pending after button release.
+
+## Held seek release — 2026-11-10
+- Scope: production VOD remote seek input and focused regression tests; preserve unrelated work. The user explicitly authorized this fix's commit and push with “提交推送” on 2026-11-10; branch changes and public release are outside this authorization.
+- Acceptance: short presses retain the existing seek step and 250ms burst coalescing; long presses accumulate the existing accelerated preview and commit once after release. Missing or unmatched release must not leave the preview stuck. Repeated key-down events must keep the preview pending while held. Back/navigation, fullscreen exit and media replacement must still cancel old seeks.
+- [completed] Read production input, key ownership policy, pending callback scheduler, activity dispatch/cancellation, related JVM/Android tests and live-input pattern.
+- [completed] Reproduce lost/unmatched release, implement a bounded fallback without relaxing key/device ownership, and verify cancellation.
+- [completed] Run focused JVM/Android input verification and production compile; record target-TV acceptance limits.
+- [completed] Verify actual player position and seek-preview dismissal through the production Activity, then close out evidence.
+- Outcome: 12 JVM + 15 Android tests pass; actual H.264 video seeks +60s without another press and closes the popup. Production ARMv7 Debug compile and recipe checks pass. User-TV/ARMv7 Release acceptance pending.
+- [in_progress] Stage only the seek change and evidence, commit `fix: commit held seeks when remote release is lost`, push `origin/fongmi` and read back the exact remote SHA.
+- ppm context was queried read-only; service was unavailable in the sandbox and returned unrelated approximate history. This excluded checkout is not registered or written to ppm.
 
 ## App icon delivery — 2026-11-10
 - User selected the generated jade artwork and explicitly authorized committing/pushing this increment with “改完提交推送”. Public release is separate.
