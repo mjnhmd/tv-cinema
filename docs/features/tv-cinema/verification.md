@@ -1,5 +1,14 @@
 # Verification record — 2026-11-09
 
+## 饭太硬 multi-endpoint source — 2026-11-10
+- Endpoint liveness (host `curl --noproxy '*'`, no browser UA proxy tricks): `http://www.饭太硬.net/tv`, `http://www.饭太硬.cc/tv` and `https://www.饭太硬.cc/tv` all return HTTP 200 / 19,951 bytes / ETag `6aefd459-4def` / Last-Modified 2026-11-08. `https://www.饭太硬.net/tv` fails with `tlsv1 alert internal error`. `http://饭太硬.top/tv` and `http://fty.xxooo.cf/tv` do not respond.
+- Payload shape: JPEG + `**` + base64; decoding yields 48 `sites`, 6 `lives`, and the same spider `https://xiuxiu-pro-new.meitudata.com/posters/…;md5;…` as the previous 12yue copy, so the transport, not the content, was the change.
+- These are host-side liveness checks only. They do not rank endpoints for the user's China Mobile television, which is why the ranking is done at runtime on the device.
+- `CinemaSourceProbeTest` (new): picks fastest valid endpoint, skips empty/invalid payloads, reports total failure, stops early at a good-enough latency, times out a stalled endpoint and falls through, accepts official payloads containing `//` comment lines, and keeps `https://` inside string values when stripping comments.
+- Focused JVM: `:app:testLeanbackArmeabi_v7aDebugUnitTest --tests 'com.fongmi.android.tv.api.config.*'` → 31 tests, 0 failures.
+- Local ARMv7 `TV_VERSION_CODE=217435000 TV_VERSION_NAME=0.1.8` Release: `BUILD SUCCESSFUL in 3m 44s`, 900 tasks; `verify-apk` reports package `com.mjnhmd.tvcinema`, code `217435000`, minSdk24, `armeabi-v7a` only, signer `d405dcab…bdc5`; 91,134,761 bytes, SHA256 `164aadbcb588cdce5d3a68e0b251452a5debd926be45ca058a174ed02545bf97`. Packaged `assets/cinema/sources.json` carries the three endpoints.
+- Not tested: install on the 32-bit television, which endpoint wins on its network, latency of the spider/plugin download, and playback through the chosen endpoint. No Git or release operation was performed.
+
 ## MPV engine switch crash — 0.1.7
 - API28 ARM64, loopback 720p H.264 fixture, `VideoActivity` playing on EXO then `PlayerManager.setEngine(MPV)`:
   - Before: `Fatal signal 11 (SIGSEGV), code 2` in `CodecLooper`; backtrace `CCodecBufferChannel::setSurface` → `CCodec::configure` (`build/logs/cinema-mpv-playback-probe3.txt`).
