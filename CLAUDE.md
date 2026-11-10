@@ -11,7 +11,7 @@
 ## Structure and naming
 - `app/src/leanback/`: native TV activities, presenters, resources and remote navigation.
 - `app/src/main/`: existing shared playback and data behavior; change only when necessary.
-- `app/src/mobile/`: outside this redesign's scope.
+- `app/src/mobile/`: outside this redesign's scope, except removing the user-rejected real-time speech subtitle feature and its references together with shared code.
 - `docs/features/tv-cinema/context.md`: requirements, decisions, acceptance and handoff.
 - `.planning/tv-cinema/`: task_plan.md, findings.md and progress.md for this task.
 - `scripts/`: reproducible build, artifact verification and existing runtime utilities.
@@ -21,8 +21,12 @@
 - `app/build/outputs/`: disposable build products; never source assets.
 - `build/reference/`: ignored, pinned third-party checkouts for isolated baseline verification; do not mix their source into the application without an integration decision and provenance.
 - `build/logs/`: ignored command output; durable outcomes and limitations belong in feature verification.md.
+- `build/diagnostics/speech-removal/`: disposable frozen production recipe and isolated TV/Media3 sources for this removal's builds/tests. Copy only pinned tracked inputs plus declared patches/overlays; use existing Git metadata read-only, separate generated outputs and no shared-source edits. Store the before/after audit in `build/logs/`; retain until explicit cleanup.
+- `build/diagnostics/apk-size-audit/`: disposable extracted APK entries and size-only compression/ELF stripping experiments. Never replace source assets, canonical APKs, runtime dependencies or signing material from this directory; record measured opportunities and compatibility limits in feature docs.
+- `build/diagnostics/update-routing/`: frozen production TV/Media3 inputs and independent outputs for update-route tests/builds. Keep Git metadata read-only; no shared-source builds or external mirror traffic in regression tests. Local loopback fixtures only; durable evidence stays in feature docs.
 - `build/ci/release/`: ignored, replaceable ARMv7 release staging using fixed APK/manifest filenames; no growing version history and no signing keys. CI keeps downloadable artifacts for seven days; public Releases are a separate explicitly authorized operation.
 - `distribution/`: production baseline lock, reviewed patch set and integration metadata. Build scripts materialize the pinned paired upstream in `build/reference/`, apply only the tracked patch and add the explicitly listed Cinema sources/assets.
+- `distribution/baseline.json` `removals`: explicit upstream-relative source, test, resource and dependency files removed from production. Pin each original SHA-256; preparation must validate every remaining original before deleting any, reject path escapes or edited files, and tolerate already-absent entries. Verification requires all listed targets to be absent. Do not delete user data or downloaded language models on devices.
 - The root `app/` is the preserved first UI experiment against FongMi's unmatched 5.8.7 interfaces. The shipping entry point is `scripts/cinema-build.sh`, not the legacy root Gradle application.
 - Use `cinema_` prefixes for new TV design resources. The user selected the generated jade interlocking-screen icon on 2026-11-10; preserve its original artwork and colors for Cinema launcher, banner, splash and default in-app branding.
 - Keep the selected icon and its XML wrappers in `distribution/overlay/cinema_*`; declare leanback-only resource targets in `distribution/baseline.json`. Retain exploration images/prompts under the existing feature docs. Original generated artwork is the master; do not redraw or recolor it during packaging.
@@ -37,6 +41,8 @@
 - Avoid blur, parallax, autoplay heroes, animated wallpapers and continuous decoration.
 - Keep posters bounded to display size and retain recycling/cancellation.
 - Do not silently replace the upstream player, runtime contracts or stored-data schema.
+- Real-time speech recognition subtitles and subtitle translation are removed by the user's 2026-11-10 request, including their UI, model downloader, audio taps and Sherpa dependencies. Preserve normal embedded/external/ASS subtitles and Android system voice search.
+- Update speed selection runs only after the user confirms a download. Bound concurrent APK-prefix probes and traffic; cancel every probe/download on exit. Rank actual transfer samples, retain fallback routes, and keep all byte-count/hash/package/version/signer/ABI checks. Show speed/ETA as estimates; slow-route retry must remain bounded and preserve a working final route. Mobile update-dialog compatibility may change only to support the shared updater API.
 - Read relevant source, interfaces, related tests and a similar implementation before edits.
 - No unrelated refactors, formatting or new features.
 

@@ -146,6 +146,20 @@ def check_copies(tv_directory, baseline, failures):
             failures.append(f"Managed overlay target differs: {entry['target']}")
 
 
+def check_removals(tv_directory, baseline, failures):
+    module_spec = importlib.util.spec_from_file_location(
+        "cinema_prepare_removals", PROJECT_ROOT / "scripts" / "cinema-prepare.py"
+    )
+    module = importlib.util.module_from_spec(module_spec)
+    module_spec.loader.exec_module(module)
+    try:
+        for target in module.removal_targets(tv_directory, baseline):
+            if target.exists():
+                failures.append(f"Retired feature file is still present: {target.relative_to(tv_directory.resolve())}")
+    except module.PrepareError as error:
+        failures.append(str(error))
+
+
 def check_local_properties(tv_directory, failures):
     root_values = read_properties(PROJECT_ROOT / "local.properties")
     reference_values = read_properties(tv_directory / "local.properties")
@@ -187,6 +201,7 @@ def main():
         check_stub_link(PROJECT_ROOT / "build" / "reference", tv_directory, failures)
         check_patch(tv_directory, baseline, failures)
         check_copies(tv_directory, baseline, failures)
+        check_removals(tv_directory, baseline, failures)
         check_local_properties(tv_directory, failures)
     if media_directory is not None and tv_directory is not None:
         check_media_settings(tv_directory, media_directory, failures)

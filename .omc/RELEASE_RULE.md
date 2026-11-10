@@ -1,10 +1,10 @@
 # Release Rules
-<!-- last-analyzed: 2026-11-09 -->
+<!-- last-analyzed: 2026-11-10 -->
 
 ## Version Sources
 - Shipping build is `scripts/cinema-build.sh`, not the legacy root application.
-- `TV_VERSION_CODE` and `TV_VERSION_NAME` define the APK version; this local release is 10003 / 0.1.3.
-- `scripts/cinema-ci.py` defaults to timestamp codes and `0.1.3+YYYYMMDD.HHMMSS`; manual codes must exceed installed versions.
+- `TV_VERSION_CODE` and `TV_VERSION_NAME` define the APK version; `scripts/cinema-ci.py` `BASE_VERSION_NAME` is the shipping version base, currently `0.1.8`.
+- CI defaults to seconds since 2020-01-01 UTC plus 1,000,000 and `0.1.8+YYYYMMDD.HHMMSS`; manual codes must exceed installed versions. Tests pin the clock conversion and matching base version.
 - Existing local signing identity must be reused. Secrets belong only in repository Actions secrets.
 
 ## Release Trigger
@@ -15,8 +15,10 @@
 
 ## Test Gate
 - CI release-tool unittest and YAML/contract validation.
+- Run all `scripts/tests/test_cinema_*.py`, including guarded upstream-removal checks. Production preparation removes the checksum-pinned speech-subtitle files; input verification requires their absence. Final APK must exclude Sherpa JNI and speech-subtitle classes/activities while retaining ordinary subtitle dependencies.
+- Adaptive updater gate: `com.fongmi.android.tv.update.*` tests cover prefix ranking, low-speed fallback/recovery, integrity and cancellation; verify R8 APK retains probe/meter/status entry points. API28 emulator evidence and real TV/mirror throughput are separate acceptance scopes.
 - Build checks pinned source/patch/native hashes, package, requested version, API24 compatibility, non-debuggable, native ARM32 payloads and existing signer.
-- Current local evidence: 98 JVM tests, 10 episode UI cases and 3 manual-source cases. Emulator results are not Android9 ARMv7 television acceptance.
+- Current increment evidence: 78 update JVM tests, 25 CI/preparation tests, 54 retained audio/subtitle JVM tests, three API28 update dialog/network cases and two audio/SRT cases. Earlier episode/search evidence is recorded separately. Emulator results are not Android9 ARMv7 television acceptance.
 
 ## Registry / Distribution
 - Public repository: `mjnhmd/tv-cinema`.
@@ -37,5 +39,5 @@
 - `distribution/baseline.json`
 
 ## First-Time Setup Gaps
-- Current user authorization is recorded in the feature context.
-- Signing-secret installation and first real cloud build/public Release must be read back before marking complete.
+- Existing five signing-secret names and historical successful cloud/public release are verified. Do not upload or replace secrets during ordinary releases.
+- 2026-11-10 user explicitly requested “提交推送发布新版”; this authorizes the current focused commit/push and 0.1.8 publication. Record exact run/source/asset verification in the feature context; historical authorizations remain scoped to their deliveries.

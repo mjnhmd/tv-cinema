@@ -51,6 +51,42 @@ def sha256(path):
     return digest.hexdigest()
 
 
+def removal_targets(tv_directory, baseline):
+    root = tv_directory.resolve()
+    targets = []
+    seen = set()
+    for entry in baseline.get("removals", []):
+        name = entry.get("path", "")
+        digest = entry.get("sha256", "")
+        if not isinstance(name, str) or not isinstance(digest, str):
+            raise PrepareError("Removal paths and SHA-256 values must be strings")
+        relative = Path(name)
+        if (not name or "\\" in name or relative.is_absolute() or len(relative.parts) < 2
+                or ".." in relative.parts or relative.as_posix() != name
+                or relative.parts[0] != "app"
+                or not re.fullmatch(r"[0-9a-f]{64}", digest) or name in seen):
+            raise PrepareError(f"Invalid or duplicate removal target: {name}")
+        target = root / relative
+        if target.is_symlink() or target.resolve() != target:
+            raise PrepareError(f"Refusing symlink removal target: {name}")
+        if target.exists() and (not target.is_file() or sha256(target) != digest):
+            raise PrepareError(f"Removal target has unexpected edits: {name}")
+        seen.add(name)
+        targets.append(target)
+    return targets
+
+
+def apply_removals(tv_directory, baseline):
+    # Validate the entire list before deleting anything, including on resumed builds.
+    targets = removal_targets(tv_directory, baseline)
+    removed = 0
+    for target in targets:
+        if target.exists():
+            target.unlink()
+            removed += 1
+    return f"Removed {removed} retired feature files; {len(targets)} removal targets verified"
+
+
 def ensure_checkout(specification, label):
     checkout = PROJECT_ROOT / specification["directory"]
     commit = specification["commit"]
@@ -302,6 +338,8 @@ def apply_cinema_patch(tv_directory, baseline):
     permitted = set()
     for _, entries in patches:
         permitted.update({name for name, target, _, _ in entries if name == target})
+    permitted.update(str(target.relative_to(tv_directory.resolve()))
+                     for target in removal_targets(tv_directory, baseline))
     changed = set(checked_git(tv_directory, "diff", "--name-only", "HEAD").splitlines())
     if changed - permitted:
         raise PrepareError("TV checkout has changes outside the reviewed Cinema patch")
@@ -355,6 +393,7 @@ def main():
             )
         )
         messages.append(apply_cinema_patch(tv_directory, baseline))
+        messages.append(apply_removals(tv_directory, baseline))
         for message in messages:
             print(message)
         print("PASS: production inputs prepared")

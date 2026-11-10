@@ -1,5 +1,5 @@
 diff --git a/app/build.gradle b/app/build.gradle
-index 19f91509e0c4753dbed3ba68e8504053fff624d3..c955321ed1784ea2afb4ad98b35c71b3690a1a0c 100644
+index 19f91509e0c4753dbed3ba68e8504053fff624d3..15d76c86a116339486ef75f4a6be27b4f016d366 100644
 --- a/app/build.gradle
 +++ b/app/build.gradle
 @@ -132,8 +132,8 @@ android {
@@ -13,7 +13,7 @@ index 19f91509e0c4753dbed3ba68e8504053fff624d3..c955321ed1784ea2afb4ad98b35c71b3
              signingConfig = signingConfigs.release
              proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro', 'proguard-rules-media.pro'
          }
-@@ -180,6 +180,7 @@ androidComponents {
+@@ -180,10 +180,10 @@ androidComponents {
  }
  
  dependencies {
@@ -21,6 +21,10 @@ index 19f91509e0c4753dbed3ba68e8504053fff624d3..c955321ed1784ea2afb4ad98b35c71b3
      implementation fileTree(dir: "libs", include: ["*.aar"], exclude: ["mpv-android-lib-*.aar"])
      implementation project(":mpv")
      implementation project(":media3-av3a")
+-    implementation files('libs/sherpa-onnx-v1.13.4.jar')
+     implementation project(':catvod')
+     implementation project(':chaquo')
+     implementation project(':quickjs')
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/HomeActivity.java b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/HomeActivity.java
 index bba7d139580d24c850b030bb1980b05e414c5079..e2938b77f2929ffa0b3e6ba7648751732a0b02dc 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/HomeActivity.java
@@ -97,7 +101,7 @@ index e2706e7aee0a13c3f1e90e884f2c7cf40f28b838..70825d9a7efa6b89e894f2ff352bb33d
      }
  
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java
-index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..823c3e31cfaa00145af98b837aa25b70a51db511 100644
+index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..54acab0c1a818c3415abc89d70b39438c0d5f75b 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java
 +++ b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java
 @@ -3,6 +3,8 @@ package com.fongmi.android.tv.ui.activity;
@@ -120,7 +124,15 @@ index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..823c3e31cfaa00145af98b837aa25b70
  import com.fongmi.android.tv.api.config.LiveConfig;
  import com.fongmi.android.tv.api.config.VodConfig;
  import com.fongmi.android.tv.api.config.WallConfig;
-@@ -153,6 +159,9 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
+@@ -48,7 +54,6 @@ import com.fongmi.android.tv.source.SourceSelectionMode;
+ import com.fongmi.android.tv.ui.base.BaseActivity;
+ import com.fongmi.android.tv.ui.custom.JetStreamDialogDecor;
+ import com.fongmi.android.tv.ui.custom.JetStreamSettingView;
+-import com.fongmi.android.tv.ai.subtitle.AiSubtitleSettingsActivity;
+ import com.fongmi.android.tv.ui.dialog.ConfigDialog;
+ import com.fongmi.android.tv.ui.dialog.CloudflarePreferredDialog;
+ import com.fongmi.android.tv.ui.dialog.SyncplayDialog;
+@@ -153,6 +158,9 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
      private void refreshSourceRows() {
          setRowValue(JetStreamSettingView.KEY_VOD, VodConfig.getDesc());
          setRowValue(JetStreamSettingView.KEY_LIVE, LiveConfig.getDesc());
@@ -130,7 +142,7 @@ index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..823c3e31cfaa00145af98b837aa25b70
          setRowValue(JetStreamSettingView.KEY_WALL, WallConfig.getDesc());
          setRowValue(JetStreamSettingView.KEY_WALL_VISIBLE, Setting.getSwitch(JetStreamWallpaper.isVisible()));
          int[] connectionModes = {R.string.setting_tmdb_default_proxy, R.string.setting_tmdb_direct, R.string.setting_tmdb_custom_proxy};
-@@ -363,6 +372,8 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
+@@ -363,6 +371,8 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
              case JetStreamSettingView.KEY_THEME_LIGHT -> RexTheme.setLight(true);
              case JetStreamSettingView.KEY_THEME_SYSTEM -> RexTheme.setMode(ThemeMode.SYSTEM);
              case JetStreamSettingView.KEY_VOD -> onVod();
@@ -139,7 +151,15 @@ index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..823c3e31cfaa00145af98b837aa25b70
              case JetStreamSettingView.KEY_LIVE -> onLive();
              case JetStreamSettingView.KEY_WALL -> onWall();
              case JetStreamSettingView.KEY_WALL_VISIBLE -> setWallVisible(!JetStreamWallpaper.isVisible());
-@@ -526,6 +537,64 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
+@@ -381,7 +391,6 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
+             case JetStreamSettingView.KEY_CAPTION -> setCaption();
+             case JetStreamSettingView.KEY_BACKGROUND -> onBackground();
+             case JetStreamSettingView.KEY_UA -> onUa();
+-            case JetStreamSettingView.KEY_AI_SUBTITLE -> AiSubtitleSettingsActivity.start(this);
+             case JetStreamSettingView.KEY_COMMUNITY_SKIP -> {
+                 Setting.putCommunitySkipEnabled(!Setting.isCommunitySkipEnabled());
+                 setRowValue(JetStreamSettingView.KEY_COMMUNITY_SKIP, Setting.getSwitch(Setting.isCommunitySkipEnabled()));
+@@ -526,6 +535,64 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
          ConfigDialog.create().vod().show(this);
      }
  
@@ -204,7 +224,7 @@ index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..823c3e31cfaa00145af98b837aa25b70
      private void onLive() {
          ConfigDialog.create().live().show(this);
      }
-@@ -645,8 +714,9 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
+@@ -645,8 +712,9 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
  
      private void setWallRefresh() {
          setWallVisible(true);
@@ -216,7 +236,7 @@ index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..823c3e31cfaa00145af98b837aa25b70
      }
  
      private void setWallVisible(boolean visible) {
-@@ -1085,6 +1155,21 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
+@@ -1085,6 +1153,21 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
      }
  
      private void onVersion() {
@@ -303,7 +323,7 @@ index 3f9a763641caa3a53f761767ce7f817a0d1b44ce..db68de13aa339e76761d494a9d3e1ec1
          view.animate().alpha(1f).setDuration(EXIT_DURATION).setInterpolator(enterInterpolator).start()
      }
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamSettingView.kt b/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamSettingView.kt
-index ac39ff77cc54b8eb290ba1652389ad8cb4495129..76e5a872d3c694fd93f724d491bba5eb7714a964 100644
+index ac39ff77cc54b8eb290ba1652389ad8cb4495129..ec53525ed0625cc8fa779e9f6013361e4870f152 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamSettingView.kt
 +++ b/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamSettingView.kt
 @@ -500,6 +500,8 @@ class JetStreamSettingView @JvmOverloads constructor(
@@ -324,7 +344,15 @@ index ac39ff77cc54b8eb290ba1652389ad8cb4495129..76e5a872d3c694fd93f724d491bba5eb
                          )
                      ),
                      RowSpec(KEY_WALL_VISIBLE, context.getString(R.string.setting_wall_visible), toggle = true),
-@@ -659,6 +661,8 @@ class JetStreamSettingView @JvmOverloads constructor(
+@@ -554,7 +556,6 @@ class JetStreamSettingView @JvmOverloads constructor(
+                     RowSpec(KEY_CAPTION, context.getString(R.string.player_caption)),
+                     RowSpec(KEY_BACKGROUND, context.getString(R.string.player_background), toggle = true),
+                     RowSpec(KEY_UA, context.getString(R.string.player_ua)),
+-                    RowSpec(KEY_AI_SUBTITLE, context.getString(R.string.player_ai_subtitle)),
+                     RowSpec(KEY_COMMUNITY_SKIP, context.getString(R.string.player_community_skip), toggle = true),
+                     RowSpec(KEY_MPV_CONF, context.getString(R.string.player_mpv_conf)),
+                     RowSpec(KEY_MPV_ANIME4K, context.getString(R.string.player_mpv_anime4k)),
+@@ -659,6 +660,8 @@ class JetStreamSettingView @JvmOverloads constructor(
  
          const val KEY_VOD = "vod"
          const val KEY_LIVE = "live"
@@ -333,6 +361,14 @@ index ac39ff77cc54b8eb290ba1652389ad8cb4495129..76e5a872d3c694fd93f724d491bba5eb
          const val KEY_WALL = "wall"
          const val KEY_WALL_VISIBLE = "wall_visible"
          const val KEY_TMDB_CONNECTION = "tmdb_connection"
+@@ -679,7 +682,6 @@ class JetStreamSettingView @JvmOverloads constructor(
+         const val KEY_CAPTION = "caption"
+         const val KEY_BACKGROUND = "background"
+         const val KEY_UA = "ua"
+-        const val KEY_AI_SUBTITLE = "ai_subtitle"
+         const val KEY_COMMUNITY_SKIP = "community_skip"
+         const val KEY_AV3A = "av3a"
+         const val KEY_DOLBY = "dolby"
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/home/PosterHomeController.java b/app/src/leanback/java/com/fongmi/android/tv/ui/home/PosterHomeController.java
 index 75399bb4fc44ee4f6126476b41e94cacc546bc16..d27d8a73403e37637ea35efd8633e75dd5766c25 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/home/PosterHomeController.java
@@ -736,10 +772,106 @@ index 61bef92339552c316cc783acbe9690c698c28db9..32276817fb67ccf2c0469dd7ee4f626b
      // English tags must be separate words: stripping 'IT', 'Dark' or the 'x' in Matrix corrupts titles.
      private static final Pattern NOISE = Pattern.compile("(?i)(?<![a-z0-9])(?:4k|8k|16k|2160p|1080p|720p|480p|uhd|hdr10?\\+?|dolby|blu[ .-]?ray|web[ .-]?dl)(?![a-z0-9])|中文字幕|中字|国语|粤语|高清|超清|蓝光|完结|全集|全\\d+集|无删减|纯净版|修复版|导演剪辑版");
 diff --git a/app/src/main/java/com/fongmi/android/tv/update/UpdateDownloader.java b/app/src/main/java/com/fongmi/android/tv/update/UpdateDownloader.java
-index 71b6f8982a0caa5dc949bbddf62bc2599f93ba42..f165e959845078f341021e4725b948162f0e3001 100644
+index 71b6f8982a0caa5dc949bbddf62bc2599f93ba42..9b526c88780499a0a6c8693a480d1e9bdd271aba 100644
 --- a/app/src/main/java/com/fongmi/android/tv/update/UpdateDownloader.java
 +++ b/app/src/main/java/com/fongmi/android/tv/update/UpdateDownloader.java
-@@ -90,7 +90,7 @@ public final class UpdateDownloader {
+@@ -20,23 +20,33 @@ import okhttp3.Request;
+ import okhttp3.Response;
+ import okhttp3.ResponseBody;
+ 
+-/** Downloads one update, trying each source in order without reusing partial files. */
++/** Downloads one update with optional measured routing, always verifying complete new bytes. */
+ public final class UpdateDownloader {
+ 
+     private static final long MAX_SIZE = 512L * 1024 * 1024;
+ 
+     private final OkHttpClient client;
++    private final UpdateRouteProbe probe;
++    private final long slowWindowMs;
++    private final long minRate;
+     private final Object lock = new Object();
+     private volatile boolean cancelled;
+     private Call activeCall;
+     private Thread worker;
+ 
+     public UpdateDownloader(OkHttpClient client) {
++        this(client, 2_500, 256 * 1024, 4_000, 64 * 1024);
++    }
++
++    UpdateDownloader(OkHttpClient client, long probeMs, int sampleBytes, long slowWindowMs, long minRate) {
++        this.probe = new UpdateRouteProbe(client, probeMs, sampleBytes);
++        this.slowWindowMs = slowWindowMs;
++        this.minRate = minRate;
+         this.client = client.newBuilder()
+                 .connectTimeout(6, TimeUnit.SECONDS)
+                 .readTimeout(12, TimeUnit.SECONDS)
+-                // Large APKs may take several minutes; stalled reads still fail after 12 seconds.
+-                .callTimeout(600, TimeUnit.SECONDS)
++                // Keep a usable slow route alive; stalled reads still fail after 12 seconds.
++                .callTimeout(0, TimeUnit.SECONDS)
+                 .retryOnConnectionFailure(false)
+                 .followSslRedirects(false)
+                 .build();
+@@ -46,6 +56,7 @@ public final class UpdateDownloader {
+     public void cancel() {
+         synchronized (lock) {
+             cancelled = true;
++            probe.cancel();
+             if (activeCall != null) activeCall.cancel();
+             if (worker != null && worker != Thread.currentThread()) worker.interrupt();
+         }
+@@ -53,6 +64,16 @@ public final class UpdateDownloader {
+ 
+     public File download(List<String> urls, File target, long expectedSize, String sha256,
+                          Validator validator, Progress progress) throws IOException {
++        return download(urls, target, expectedSize, sha256, validator, progress, false);
++    }
++
++    public File downloadAdaptive(List<String> urls, File target, long expectedSize, String sha256,
++                                 Validator validator, Progress progress) throws IOException {
++        return download(urls, target, expectedSize, sha256, validator, progress, true);
++    }
++
++    private File download(List<String> urls, File target, long expectedSize, String sha256,
++                          Validator validator, Progress progress, boolean adaptive) throws IOException {
+         if (urls == null || urls.isEmpty()) throw new IOException("No update download sources");
+         if (validator == null) throw new IOException("Missing update validator");
+         String expectedHash = sha256 == null ? "" : sha256.trim();
+@@ -74,14 +95,30 @@ public final class UpdateDownloader {
+             }
+             delete(target);
+             delete(partial);
++            List<UpdateRouteProbe.Route> routes = new ArrayList<>();
++            if (adaptive && candidates.size() > 1) {
++                synchronized (lock) {
++                    checkCancelled();
++                    if (progress != null) progress.onTesting();
++                    checkCancelled();
++                }
++                routes = probe.rank(candidates, expectedSize);
++            } else {
++                for (int i = 0; i < candidates.size(); i++) {
++                    routes.add(new UpdateRouteProbe.Route(candidates.get(i), i + 1, 0));
++                }
++            }
++            int sourceCount = routes.size();
+             IOException failures = new IOException("All update download sources failed");
+-            for (int index = 0; index < candidates.size(); index++) {
++            for (int index = 0; index < routes.size(); index++) {
+                 checkCancelled();
+                 boolean verified = false;
+                 try {
+-                    publishSource(progress, index + 1, candidates.size());
++                    publishSource(progress, routes.get(index).number(), sourceCount);
+                     publish(progress, 0);
+-                    downloadSource(candidates.get(index), partial, expectedSize, expectedHash, progress);
++                    long alternative = adaptive && index + 1 < sourceCount
++                            ? routes.get(index + 1).bytesPerSecond() : -1;
++                    downloadSource(routes.get(index).url(), partial, expectedSize, expectedHash, progress, alternative);
+                     checkCancelled();
+                     // Every source must return these exact bytes. A different mirror cannot
+                     // repair a package, version, signer or device rejection after SHA verification.
+@@ -90,7 +127,7 @@ public final class UpdateDownloader {
                      validator.validate(partial);
                      synchronized (lock) {
                          checkCancelled();
@@ -748,6 +880,83 @@ index 71b6f8982a0caa5dc949bbddf62bc2599f93ba42..f165e959845078f341021e4725b94816
                          publish(progress, 100);
                          checkCancelled();
                          completed = true;
+@@ -100,6 +137,14 @@ public final class UpdateDownloader {
+                 } catch (IOException failure) {
+                     checkCancelled();
+                     if (verified || failure instanceof LocalFileException) throw failure;
++                    if (failure instanceof SlowSourceException && progress != null) {
++                        synchronized (lock) { checkCancelled(); progress.onSwitching(); checkCancelled(); }
++                    }
++                    if (failure instanceof SlowSourceException) {
++                        // If every later route fails, retry this known working route without a
++                        // speed cutoff. Each original route can be deferred at most once.
++                        routes.add(routes.get(index));
++                    }
+                     failures.addSuppressed(failure);
+                 } finally {
+                     synchronized (lock) {
+@@ -121,7 +166,7 @@ public final class UpdateDownloader {
+     }
+ 
+     private void downloadSource(String url, File partial, long expectedSize, String expectedHash,
+-                                Progress progress) throws IOException {
++                                Progress progress, long alternativeRate) throws IOException {
+         Request request;
+         try {
+             request = new Request.Builder().url(url).header("Accept-Encoding", "identity").build();
+@@ -135,7 +180,7 @@ public final class UpdateDownloader {
+         }
+         try (Response response = call.execute()) {
+             checkCancelled();
+-            if (!response.isSuccessful()) throw new IOException("Update HTTP " + response.code());
++            if (response.code() != 200) throw new IOException("Update HTTP " + response.code());
+             ResponseBody body = response.body();
+             if (body == null) throw new IOException("Empty update response");
+             String type = response.header("Content-Type", "").toLowerCase(Locale.ROOT);
+@@ -154,6 +199,8 @@ public final class UpdateDownloader {
+             int lastPercent = 0;
+             byte[] header = new byte[4];
+             int headerSize = 0;
++            UpdateTransferMeter meter = new UpdateTransferMeter(
++                    () -> TimeUnit.NANOSECONDS.toMillis(System.nanoTime()), slowWindowMs, minRate);
+             try (InputStream input = body.byteStream(); FileOutputStream output = openOutput(partial)) {
+                 byte[] buffer = new byte[32768];
+                 int read;
+@@ -176,6 +223,17 @@ public final class UpdateDownloader {
+                         throw new LocalFileException("Cannot write update file", failure);
+                     }
+                     digest.update(buffer, 0, read);
++                    if (meter.record(read)) {
++                        synchronized (lock) {
++                            checkCancelled();
++                            if (progress != null) progress.onTransfer(meter.bytesPerSecond(), meter.remainingSeconds(progressSize));
++                            checkCancelled();
++                        }
++                    }
++                    if (alternativeRate >= 0 && meter.shouldSwitch(progressSize, alternativeRate)) {
++                        call.cancel();
++                        throw new SlowSourceException();
++                    }
+                     if (progressSize > 0) {
+                         int percent = (int) Math.min(99, total * 100.0 / progressSize);
+                         if (percent != lastPercent) {
+@@ -279,6 +337,16 @@ public final class UpdateDownloader {
+         default void onSource(int attempt, int total) {}
+ 
+         default void onVerifying() {}
++
++        default void onTesting() {}
++
++        default void onSwitching() {}
++
++        default void onTransfer(long bytesPerSecond, long remainingSeconds) {}
++    }
++
++    private static final class SlowSourceException extends IOException {
++        private SlowSourceException() { super("Update source remained too slow"); }
+     }
+ 
+     public static final class LocalFileException extends IOException {
 diff --git a/app/src/main/java/com/fongmi/android/tv/update/UpdateManifest.java b/app/src/main/java/com/fongmi/android/tv/update/UpdateManifest.java
 index 15c15a1ea44b0d4c72a2e6725ca96bcfc25f3e92..2d7499c6d739236487426addcd9d484782ab2a63 100644
 --- a/app/src/main/java/com/fongmi/android/tv/update/UpdateManifest.java
@@ -895,7 +1104,7 @@ index b26b08324955c25c40f0bfdae9f8a02cf9f888f7..4321dd181e0c90e73f2bba3fd0a5ec12
 \ No newline at end of file
 +}
 diff --git a/app/src/main/java/com/fongmi/android/tv/ui/activity/PlaybackActivity.java b/app/src/main/java/com/fongmi/android/tv/ui/activity/PlaybackActivity.java
-index 16c645264842b242524a12d2cb13fa7df2d93550..93e407364d70982bbab9aeac63c76392b180a767 100644
+index 16c645264842b242524a12d2cb13fa7df2d93550..9be0fec790879289ab64eab0e56d0c620b3d8ec6 100644
 --- a/app/src/main/java/com/fongmi/android/tv/ui/activity/PlaybackActivity.java
 +++ b/app/src/main/java/com/fongmi/android/tv/ui/activity/PlaybackActivity.java
 @@ -26,6 +26,7 @@ import androidx.media3.common.MediaItem;
@@ -906,7 +1115,15 @@ index 16c645264842b242524a12d2cb13fa7df2d93550..93e407364d70982bbab9aeac63c76392
  import androidx.media3.exoplayer.drm.FrameworkMediaDrm;
  import androidx.media3.session.MediaController;
  import androidx.media3.session.SessionToken;
-@@ -48,6 +49,7 @@ import com.fongmi.android.tv.setting.DanmakuSetting;
+@@ -37,7 +38,6 @@ import androidx.media3.ui.danmaku.DanmakuConfig;
+ 
+ import com.fongmi.android.tv.R;
+ import com.fongmi.android.tv.App;
+-import com.fongmi.android.tv.ai.subtitle.AiSubtitleRuntime;
+ import com.fongmi.android.tv.bean.Result;
+ import com.fongmi.android.tv.player.PlayerManager;
+ import com.fongmi.android.tv.player.LiveDanmaku;
+@@ -48,6 +48,7 @@ import com.fongmi.android.tv.setting.DanmakuSetting;
  import com.fongmi.android.tv.setting.PlayerSetting;
  import com.fongmi.android.tv.ui.base.BaseActivity;
  import com.fongmi.android.tv.utils.MpvLogCollector;
@@ -914,7 +1131,7 @@ index 16c645264842b242524a12d2cb13fa7df2d93550..93e407364d70982bbab9aeac63c76392
  import com.fongmi.android.tv.utils.ResUtil;
  import com.fongmi.android.tv.utils.Util;
  import com.github.catvod.net.OkHttp;
-@@ -71,7 +73,6 @@ public abstract class PlaybackActivity extends BaseActivity implements MediaCont
+@@ -71,7 +72,6 @@ public abstract class PlaybackActivity extends BaseActivity implements MediaCont
      private boolean audioOnly;
      private boolean scrubbing;
      private boolean redirect;
@@ -922,7 +1139,19 @@ index 16c645264842b242524a12d2cb13fa7df2d93550..93e407364d70982bbab9aeac63c76392
      private long localPlaybackRequest = -1;
      private boolean bound;
      private boolean stop;
-@@ -196,15 +197,25 @@ public abstract class PlaybackActivity extends BaseActivity implements MediaCont
+@@ -121,11 +121,6 @@ public abstract class PlaybackActivity extends BaseActivity implements MediaCont
+         return mService.player();
+     }
+ 
+-    public void reloadAiSubtitleAudioPipeline() {
+-        if (mService == null || !isOwner() || player().isReleased()) return;
+-        player().rebuildAudioPipeline();
+-    }
+-
+     protected boolean isRedirect() {
+         return redirect;
+     }
+@@ -196,15 +191,25 @@ public abstract class PlaybackActivity extends BaseActivity implements MediaCont
      }
  
      public boolean isDebugViewVisible() {
@@ -951,6 +1180,38 @@ index 16c645264842b242524a12d2cb13fa7df2d93550..93e407364d70982bbab9aeac63c76392
      }
  
      public void chooseOtherPlayer(CharSequence title) {
+@@ -596,7 +601,6 @@ public abstract class PlaybackActivity extends BaseActivity implements MediaCont
+ 
+     private void configurePlayerView() {
+         PlayerView playerView = getPlayerView();
+-        AiSubtitleRuntime.get().attachPlayerView(playerView);
+         playerView.setRender(getPlaybackRender());
+         playerView.setDanmakuOkHttpClient(OkHttp.player());
+         playerView.setDanmakuEnabled(DanmakuSetting.isShow());
+@@ -655,7 +659,6 @@ public abstract class PlaybackActivity extends BaseActivity implements MediaCont
+     }
+ 
+     private void detach() {
+-        AiSubtitleRuntime.get().detachPlayerView(getPlayerView());
+         releaseController();
+         releaseBinding();
+     }
+@@ -710,7 +713,6 @@ public abstract class PlaybackActivity extends BaseActivity implements MediaCont
+         @Override
+         public void onTracksChanged() {
+             if (isOwner()) {
+-                AiSubtitleRuntime.get().onTracksChanged(player().getCurrentTracks());
+                 PlaybackActivity.this.onTracksChanged();
+             }
+         }
+@@ -773,7 +775,6 @@ public abstract class PlaybackActivity extends BaseActivity implements MediaCont
+         if (!isNativePlaybackCurrent()) return;
+         if (events.containsAny(Player.EVENT_TIMELINE_CHANGED, Player.EVENT_POSITION_DISCONTINUITY, Player.EVENT_MEDIA_ITEM_TRANSITION, Player.EVENT_PLAYBACK_STATE_CHANGED, Player.EVENT_AVAILABLE_COMMANDS_CHANGED)) updateKeyIncrement();
+         if (events.contains(Player.EVENT_POSITION_DISCONTINUITY)) {
+-            AiSubtitleRuntime.get().onPlaybackPositionDiscontinuity();
+             if (isOwner()) onPlaybackPositionDiscontinuity();
+         }
+         if (events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION) && pendingResume != null && !pendingResume.matches(player().getPlayer())) pendingResume = null;
 diff --git a/app/src/main/java/com/fongmi/android/tv/bean/Vod.java b/app/src/main/java/com/fongmi/android/tv/bean/Vod.java
 index ff0a2341b6bd9100fd816bacbc6badfe7c5be193..3cf8a33125ca5bddbb116b6ba6b650cd1a640979 100644
 --- a/app/src/main/java/com/fongmi/android/tv/bean/Vod.java
@@ -1010,27 +1271,6 @@ index ff0a2341b6bd9100fd816bacbc6badfe7c5be193..3cf8a33125ca5bddbb116b6ba6b650cd
 +        }
 +    }
  }
-diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/fragment/CollectFragment.java b/app/src/leanback/java/com/fongmi/android/tv/ui/fragment/CollectFragment.java
-index 70f11e7cf201555993edbaa3bd95677bb3596fae..25a7e13048cab0d40c177404aac22a950b9e2f62 100644
---- a/app/src/leanback/java/com/fongmi/android/tv/ui/fragment/CollectFragment.java
-+++ b/app/src/leanback/java/com/fongmi/android/tv/ui/fragment/CollectFragment.java
-@@ -29,6 +29,7 @@ import com.fongmi.android.tv.ui.custom.CustomRowPresenter;
- import com.fongmi.android.tv.ui.custom.CustomScroller;
- import com.fongmi.android.tv.ui.custom.CustomSelector;
- import com.fongmi.android.tv.ui.presenter.VodPresenter;
-+import com.fongmi.android.tv.ui.presenter.CinemaSearchPresenter;
- import com.fongmi.android.tv.utils.ResUtil;
- import com.fongmi.android.tv.setting.SourceSelectionSetting;
- import com.fongmi.android.tv.source.SourceAggregator;
-@@ -190,7 +191,7 @@ public class CollectFragment extends BaseFragment implements CustomScroller.Call
-         if (activity == null || !isAdded() || activity.isFinishing() || activity.isDestroyed()) return;
-         if (checkLastSize(items)) return;
-         List<ListRow> rows = new ArrayList<>();
--        VodPresenter presenter = new VodPresenter(this, Style.rect(), getPageSpec(Style.rect()));
-+        VodPresenter presenter = new CinemaSearchPresenter(this, getPageSpec(Style.rect()));
-         for (List<Vod> part : Lists.partition(items, getColumn())) {
-             mLast = new ArrayObjectAdapter(presenter);
-             mLast.addAll(0, part);
 diff --git a/app/src/leanback/AndroidManifest.xml b/app/src/leanback/AndroidManifest.xml
 index 624c44f2602b3c77348c62c446100176e4ea807d..5d50f1d39cf6d32c0eb4b02da92de773874048b4 100644
 --- a/app/src/leanback/AndroidManifest.xml
@@ -1065,11 +1305,32 @@ index 624c44f2602b3c77348c62c446100176e4ea807d..5d50f1d39cf6d32c0eb4b02da92de773
  
              <meta-data
                  android:name="android.app.searchable"
+diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/fragment/CollectFragment.java b/app/src/leanback/java/com/fongmi/android/tv/ui/fragment/CollectFragment.java
+index 70f11e7cf201555993edbaa3bd95677bb3596fae..25a7e13048cab0d40c177404aac22a950b9e2f62 100644
+--- a/app/src/leanback/java/com/fongmi/android/tv/ui/fragment/CollectFragment.java
++++ b/app/src/leanback/java/com/fongmi/android/tv/ui/fragment/CollectFragment.java
+@@ -29,6 +29,7 @@ import com.fongmi.android.tv.ui.custom.CustomRowPresenter;
+ import com.fongmi.android.tv.ui.custom.CustomScroller;
+ import com.fongmi.android.tv.ui.custom.CustomSelector;
+ import com.fongmi.android.tv.ui.presenter.VodPresenter;
++import com.fongmi.android.tv.ui.presenter.CinemaSearchPresenter;
+ import com.fongmi.android.tv.utils.ResUtil;
+ import com.fongmi.android.tv.setting.SourceSelectionSetting;
+ import com.fongmi.android.tv.source.SourceAggregator;
+@@ -190,7 +191,7 @@ public class CollectFragment extends BaseFragment implements CustomScroller.Call
+         if (activity == null || !isAdded() || activity.isFinishing() || activity.isDestroyed()) return;
+         if (checkLastSize(items)) return;
+         List<ListRow> rows = new ArrayList<>();
+-        VodPresenter presenter = new VodPresenter(this, Style.rect(), getPageSpec(Style.rect()));
++        VodPresenter presenter = new CinemaSearchPresenter(this, getPageSpec(Style.rect()));
+         for (List<Vod> part : Lists.partition(items, getColumn())) {
+             mLast = new ArrayObjectAdapter(presenter);
+             mLast.addAll(0, part);
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamPlaybackSpecsView.kt b/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamPlaybackSpecsView.kt
 index b6821c6f60412b611ba97bb5c79f3f561a030bb8..0bb659126c465f27220a31e484dfe8902226e68b 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamPlaybackSpecsView.kt
 +++ b/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamPlaybackSpecsView.kt
-@@ -22,7 +22,8 @@
+@@ -22,7 +22,8 @@ import android.util.AttributeSet
  import android.view.View
  import android.view.animation.OvershootInterpolator
  import android.view.animation.PathInterpolator
@@ -1079,7 +1340,7 @@ index b6821c6f60412b611ba97bb5c79f3f561a030bb8..0bb659126c465f27220a31e484dfe890
  import kotlin.math.ceil
  import kotlin.math.max
  import kotlin.math.min
-@@ -77,14 +78,8 @@
+@@ -77,14 +78,8 @@ class JetStreamPlaybackSpecsView @JvmOverloads constructor(
          color = 0xFFE2E2E7.toInt()
          typeface = Typeface.create(jetStreamTypeface(context), Typeface.BOLD)
      }
@@ -1096,7 +1357,7 @@ index b6821c6f60412b611ba97bb5c79f3f561a030bb8..0bb659126c465f27220a31e484dfe890
      private var logoSize = 0f
      private val pill = RectF()
      private val fullBounds = RectF()
-@@ -114,7 +109,6 @@
+@@ -114,7 +109,6 @@ class JetStreamPlaybackSpecsView @JvmOverloads constructor(
      private var contentOffset = 0f
      private var logoScale = 1f
      private var logoRotation = 0f
@@ -1104,7 +1365,7 @@ index b6821c6f60412b611ba97bb5c79f3f561a030bb8..0bb659126c465f27220a31e484dfe890
      private var active = false
      private var animator: ValueAnimator? = null
      private val enter = Runnable { enter() }
-@@ -142,7 +136,6 @@
+@@ -142,7 +136,6 @@ class JetStreamPlaybackSpecsView @JvmOverloads constructor(
          textOpacity = 0f
          logoScale = 0.7f
          logoRotation = -14f
@@ -1112,7 +1373,7 @@ index b6821c6f60412b611ba97bb5c79f3f561a030bb8..0bb659126c465f27220a31e484dfe890
          alpha = 0f
          visibility = VISIBLE
          requestLayout()
-@@ -187,7 +180,6 @@
+@@ -187,7 +180,6 @@ class JetStreamPlaybackSpecsView @JvmOverloads constructor(
          bodyPaint.color = 0xD51B1B1D.toInt()
          expansion = 0f
          textOpacity = 0f
@@ -1120,7 +1381,7 @@ index b6821c6f60412b611ba97bb5c79f3f561a030bb8..0bb659126c465f27220a31e484dfe890
          alpha = 0f
          scaleX = 1f
          scaleY = 1f
-@@ -266,6 +258,7 @@
+@@ -266,6 +258,7 @@ class JetStreamPlaybackSpecsView @JvmOverloads constructor(
          pivotY = h / 2f
          val size = min(h * 0.68f, 32f * density).toInt()
          logoSize = size.toFloat()
@@ -1128,7 +1389,7 @@ index b6821c6f60412b611ba97bb5c79f3f561a030bb8..0bb659126c465f27220a31e484dfe890
          logoClip.reset()
          logoClip.addCircle(size / 2f, size / 2f, size / 2f, Path.Direction.CW)
      }
-@@ -300,43 +293,7 @@
+@@ -300,43 +293,7 @@ class JetStreamPlaybackSpecsView @JvmOverloads constructor(
          canvas.scale(logoScale, logoScale)
          canvas.translate(-size / 2f, -size / 2f)
          canvas.clipPath(logoClip)
@@ -1173,7 +1434,7 @@ index b6821c6f60412b611ba97bb5c79f3f561a030bb8..0bb659126c465f27220a31e484dfe890
          canvas.restoreToCount(save)
      }
  
-@@ -397,7 +354,6 @@
+@@ -397,7 +354,6 @@ class JetStreamPlaybackSpecsView @JvmOverloads constructor(
              textOpacity = 1f
              logoScale = 1f
              logoRotation = 0f
@@ -1181,7 +1442,7 @@ index b6821c6f60412b611ba97bb5c79f3f561a030bb8..0bb659126c465f27220a31e484dfe890
              contentOffset = 0f
              invalidate()
              postDelayed(holdFinished, HOLD_MILLIS)
-@@ -410,7 +366,6 @@
+@@ -410,7 +366,6 @@ class JetStreamPlaybackSpecsView @JvmOverloads constructor(
              scaleY = scaleX
              logoScale = 0.7f + 0.3f * spring
              logoRotation = -14f * (1f - ease.getInterpolation(progress))
@@ -1189,7 +1450,7 @@ index b6821c6f60412b611ba97bb5c79f3f561a030bb8..0bb659126c465f27220a31e484dfe890
          }) {
              scaleX = 1f
              scaleY = 1f
-@@ -421,10 +376,8 @@
+@@ -421,10 +376,8 @@ class JetStreamPlaybackSpecsView @JvmOverloads constructor(
                  contentOffset = -6f * density * (1f - textOpacity)
                  // One restrained settle while the specifications arrive, never an idle spinner.
                  logoScale = 1f + 0.065f * kotlin.math.sin(progress * Math.PI).toFloat()
@@ -1200,7 +1461,7 @@ index b6821c6f60412b611ba97bb5c79f3f561a030bb8..0bb659126c465f27220a31e484dfe890
                  postDelayed(holdFinished, HOLD_MILLIS)
              }
          }
-@@ -439,7 +392,6 @@
+@@ -439,7 +392,6 @@ class JetStreamPlaybackSpecsView @JvmOverloads constructor(
          animatePhase(150, { progress -> textOpacity = 1f - progress }) {
              animatePhase(380, { progress ->
                  expansion = 1f - ease.getInterpolation(progress)
@@ -1208,7 +1469,7 @@ index b6821c6f60412b611ba97bb5c79f3f561a030bb8..0bb659126c465f27220a31e484dfe890
              }) {
                  animatePhase(180, { progress ->
                      alpha = 1f - progress
-@@ -447,7 +399,6 @@
+@@ -447,7 +399,6 @@ class JetStreamPlaybackSpecsView @JvmOverloads constructor(
                      scaleX = scale
                      scaleY = scale
                      logoScale = scale
@@ -1274,6 +1535,723 @@ index 02ed03571eabb0ddfcaea404615a5ad9026a30e7..c38d60aaa52ecb125510f40d7e2e7352
      @Override
      public boolean onDown(@NonNull MotionEvent event) {
          return true;
+diff --git a/app/proguard-rules.pro b/app/proguard-rules.pro
+index c7437da3d9cfb8b985b867d41b918e344d384569..8dec4e111080ac0a6e0827f5fb94d60c5396d570 100644
+--- a/app/proguard-rules.pro
++++ b/app/proguard-rules.pro
+@@ -3,9 +3,6 @@
+ -keep class com.fongmi.quickjs.method.** { *; }
+ -keep class com.fongmi.android.tv.bean.** { *; }
+ 
+-# sherpa-onnx Java methods are JNI entry points and their names/signatures must remain stable.
+--keep class com.k2fsa.sherpa.onnx.** { *; }
+-
+ # Gson
+ -keep class com.google.gson.** { *; }
+ 
+diff --git a/app/src/main/AndroidManifest.xml b/app/src/main/AndroidManifest.xml
+index 86665409aff456027f1a751bc482e79a2d09b9f4..b5df922b9985a9662d2d8aabf1275bf7b9c27ecb 100644
+--- a/app/src/main/AndroidManifest.xml
++++ b/app/src/main/AndroidManifest.xml
+@@ -82,10 +82,6 @@
+             android:process=":error_activity"
+             android:theme="@style/Theme.Crash" />
+ 
+-        <activity
+-            android:name=".ai.subtitle.AiSubtitleSettingsActivity"
+-            android:exported="false" />
+-
+         <receiver
+             android:name=".receiver.ActionReceiver"
+             android:exported="false">
+diff --git a/app/src/main/java/com/fongmi/android/tv/player/exo/ExoUtil.java b/app/src/main/java/com/fongmi/android/tv/player/exo/ExoUtil.java
+index 5c21b02e8646a8e4ced46912887d53d69d09e668..ed5451cb41051122f781893d79e244e44698f3eb 100644
+--- a/app/src/main/java/com/fongmi/android/tv/player/exo/ExoUtil.java
++++ b/app/src/main/java/com/fongmi/android/tv/player/exo/ExoUtil.java
+@@ -42,11 +42,6 @@ import androidx.media3.exoplayer.util.EventLogger;
+ 
+ import com.fongmi.android.tv.App;
+ import com.fongmi.android.tv.BuildConfig;
+-import com.fongmi.android.tv.ai.subtitle.AiAudioOutputProvider;
+-import com.fongmi.android.tv.ai.subtitle.AiAudioTrackBufferSizeProvider;
+-import com.fongmi.android.tv.ai.subtitle.AiSubtitleRuntime;
+-import com.fongmi.android.tv.ai.subtitle.AiSubtitleSettings;
+-import com.fongmi.android.tv.ai.subtitle.PcmTapAudioProcessor;
+ import com.fongmi.android.tv.player.engine.PlayerEngine;
+ import com.fongmi.android.tv.player.track.LangUtil;
+ import com.fongmi.android.tv.setting.PlayerSetting;
+@@ -69,7 +64,7 @@ public class ExoUtil {
+                 .setRenderersFactory(buildPlaybackRenderersFactory(decode))
+                 .setMediaSourceFactory(buildMediaSourceFactory())
+                 // Sony's Dolby Vision OMX stack regularly needs >500 ms to flush/release. The
+-                // Media3 default reports a false fatal timeout during AI AudioSink rebuilds.
++                // Media3 default can report a false fatal timeout during renderer release.
+                 .setReleaseTimeoutMs(3_000L);
+         ExoPlayer player = preloader == null ? builder.build() : preloader.buildExoPlayer(builder);
+         if (BuildConfig.DEBUG) player.addAnalyticsListener(new EventLogger());
+@@ -224,28 +219,14 @@ public class ExoUtil {
+     }
+ 
+     private static AudioSink buildAudioSink(Context context, boolean enableFloatOutput, boolean enableAudioOutputPlaybackParams, boolean softwareOnly) {
+-        boolean aiSubtitle = AiSubtitleSettings.isEnabled();
+         boolean effects = com.fongmi.android.tv.setting.AudioEffectSetting.enabled();
+         DefaultAudioSink.Builder builder = new DefaultAudioSink.Builder(context)
+-                .setEnableFloatOutput(aiSubtitle || effects ? false : enableFloatOutput)
++                .setEnableFloatOutput(effects ? false : enableFloatOutput)
+                 .setEnableAudioOutputPlaybackParameters(enableAudioOutputPlaybackParams);
+         ArrayList<AudioProcessor> processors = new ArrayList<>();
+-        // ASR receives the original PCM, before EQ/normalization changes its spectral content.
+-        if (aiSubtitle) processors.add(new PcmTapAudioProcessor(AiSubtitleRuntime.get().createPcmSink()));
+         if (effects) processors.add(new com.fongmi.android.tv.player.audio.AudioEffectProcessor());
+         if (!processors.isEmpty()) builder.setAudioProcessors(processors.toArray(new AudioProcessor[0]));
+-        if (aiSubtitle) {
+-            // Match the reference application's audio-lookahead design: playback starts normally,
+-            // while the renderer is allowed to fill several seconds of decoded PCM ahead of the
+-            // AudioTrack play head. ASR works on that future audio and late results are discarded.
+-            // A null-capabilities provider deliberately disables encoded passthrough for this
+-            // AI-enabled sink only. Otherwise E-AC3/JOC can bypass AudioProcessors completely.
+-            builder.setAudioOutputProvider(new AiAudioOutputProvider(
+-                    new AudioTrackAudioOutputProvider.Builder(null)
+-                            .setAudioTrackBufferSizeProvider(new AiAudioTrackBufferSizeProvider())
+-                            .build(),
+-                    AiSubtitleRuntime.get().createAudioClockSink()));
+-        } else if (softwareOnly || effects || !PlayerSetting.isAudioPassThrough()) {
++        if (softwareOnly || effects || !PlayerSetting.isAudioPassThrough()) {
+             builder.setAudioOutputProvider(new AudioTrackAudioOutputProvider.Builder(null).build());
+         }
+         return builder.build();
+diff --git a/app/src/main/java/com/fongmi/android/tv/player/exo/ExoPlayerEngine.java b/app/src/main/java/com/fongmi/android/tv/player/exo/ExoPlayerEngine.java
+index 32586fa3bad81039372ded585da046fcdc51608a..f6efa8fd349bd98e32a0bd6f85ed262931b6b6dd 100644
+--- a/app/src/main/java/com/fongmi/android/tv/player/exo/ExoPlayerEngine.java
++++ b/app/src/main/java/com/fongmi/android/tv/player/exo/ExoPlayerEngine.java
+@@ -9,7 +9,6 @@ import androidx.media3.exoplayer.ExoPlayer;
+ 
+ import com.fongmi.android.tv.player.engine.PlayerEngine;
+ import com.fongmi.android.tv.player.PlaybackSpecs;
+-import com.fongmi.android.tv.ai.subtitle.AiSubtitleRuntime;
+ import com.fongmi.android.tv.player.media.MediaItemFactory;
+ import com.fongmi.android.tv.player.media.PlaySpec;
+ import com.fongmi.android.tv.setting.PlayerSetting;
+@@ -56,7 +55,6 @@ public class ExoPlayerEngine implements PlayerEngine {
+ 
+     @Override
+     public void release() {
+-        AiSubtitleRuntime.get().stopSession();
+         preCache.release();
+         next.release();
+         preloadCoordinator.detach();
+@@ -89,13 +87,11 @@ public class ExoPlayerEngine implements PlayerEngine {
+     @Override
+     public void start(PlaySpec spec, long startPositionMs) {
+         this.spec = spec;
+-        AiSubtitleRuntime.get().startSession(player);
+         startInternal(startPositionMs);
+     }
+ 
+     @Override
+     public void stop() {
+-        AiSubtitleRuntime.get().stopSession();
+         preCache.stop();
+         subtitles.clear();
+         player.stop();
+diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/LiveActivity.java b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/LiveActivity.java
+index 790124a80aea6ff7feaed0079f77b20f4cdacc1d..b2ba171558fb28f839667cd4a1951eb574320e9b 100644
+--- a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/LiveActivity.java
++++ b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/LiveActivity.java
+@@ -28,7 +28,6 @@ import com.fongmi.android.tv.App;
+ import com.fongmi.android.tv.Constant;
+ import com.fongmi.android.tv.R;
+ import com.fongmi.android.tv.ui.custom.PlaybackSpecsController;
+-import com.fongmi.android.tv.ai.subtitle.AiSubtitlePlaybackUi;
+ import com.fongmi.android.tv.api.config.LiveConfig;
+ import com.fongmi.android.tv.bean.Channel;
+ import com.fongmi.android.tv.bean.Config;
+@@ -206,8 +205,6 @@ public class LiveActivity extends PlaybackActivity implements GroupAdapter.OnCli
+         mBinding.control.action.text.setOnClickListener(this::onTrack);
+         mBinding.control.action.audio.setOnClickListener(this::onTrack);
+         mBinding.control.action.video.setOnClickListener(this::onTrack);
+-        mBinding.control.action.aiSubtitle.setOnClickListener(view -> AiSubtitlePlaybackUi.toggle(this, mBinding.control.action.aiSubtitle, mBinding.control.action.aiLanguage));
+-        mBinding.control.action.aiLanguage.setOnClickListener(view -> AiSubtitlePlaybackUi.chooseLanguage(this, mBinding.control.action.aiSubtitle, mBinding.control.action.aiLanguage));
+         mBinding.control.action.speed.setUpListener(this::onSpeedAdd);
+         mBinding.control.action.speed.setDownListener(this::onSpeedSub);
+         mBinding.control.action.text.setUpListener(this::onSubtitleClick);
+@@ -1420,7 +1417,6 @@ public class LiveActivity extends PlaybackActivity implements GroupAdapter.OnCli
+     protected void onStart() {
+         super.onStart();
+         if (mSpecs != null) mSpecs.setStarted(true);
+-        AiSubtitlePlaybackUi.refresh(mBinding.control.action.aiSubtitle, mBinding.control.action.aiLanguage);
+         mClock.stop().start();
+     }
+ 
+diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/VideoActivity.java b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/VideoActivity.java
+index b181c843f13ab06b0daed7360f5954b7b594d37f..ba0624a9d5733a9a52af6413cd93537baa2029ae 100644
+--- a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/VideoActivity.java
++++ b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/VideoActivity.java
+@@ -38,7 +38,6 @@ import com.fongmi.android.tv.BuildConfig;
+ import com.fongmi.android.tv.Constant;
+ import com.fongmi.android.tv.R;
+ import com.fongmi.android.tv.ui.custom.PlaybackSpecsController;
+-import com.fongmi.android.tv.ai.subtitle.AiSubtitlePlaybackUi;
+ import com.fongmi.android.tv.api.DanmakuApi;
+ import com.fongmi.android.tv.api.SiteApi;
+ import com.fongmi.android.tv.api.config.VodConfig;
+@@ -464,8 +463,6 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+         mBinding.control.action.text.setOnClickListener(this::onTrack);
+         mBinding.control.action.audio.setOnClickListener(this::onTrack);
+         mBinding.control.action.video.setOnClickListener(this::onTrack);
+-        mBinding.control.action.aiSubtitle.setOnClickListener(view -> AiSubtitlePlaybackUi.toggle(this, mBinding.control.action.aiSubtitle, mBinding.control.action.aiLanguage));
+-        mBinding.control.action.aiLanguage.setOnClickListener(view -> AiSubtitlePlaybackUi.chooseLanguage(this, mBinding.control.action.aiSubtitle, mBinding.control.action.aiLanguage));
+         mBinding.control.action.speed.setUpListener(this::onSpeedAdd);
+         mBinding.control.action.speed.setDownListener(this::onSpeedSub);
+         mBinding.control.action.ending.setUpListener(this::onEndingAdd);
+@@ -2291,7 +2288,6 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+         super.onStart();
+         if (mSpecs != null) mSpecs.setStarted(true);
+         SyncplaySession.get().observe(mSyncplayObserver);
+-        AiSubtitlePlaybackUi.refresh(mBinding.control.action.aiSubtitle, mBinding.control.action.aiLanguage);
+         mClock.stop().start();
+     }
+ 
+diff --git a/app/src/leanback/res/layout/view_control_vod_action.xml b/app/src/leanback/res/layout/view_control_vod_action.xml
+index e1756c3a201c66d88454a48dcf3bea48cf3d6adc..2377a05d4396117423defba019925fbf65a8d5eb 100644
+--- a/app/src/leanback/res/layout/view_control_vod_action.xml
++++ b/app/src/leanback/res/layout/view_control_vod_action.xml
+@@ -107,20 +107,6 @@
+             android:tag="2"
+             android:text="@string/play_track_video" />
+ 
+-        <com.fongmi.android.tv.ui.custom.JetStreamControlTextView
+-            android:id="@+id/aiSubtitle"
+-            android:layout_width="wrap_content"
+-            android:layout_height="wrap_content"
+-            android:layout_marginEnd="12dp"
+-            android:text="@string/ai_subtitle_off" />
+-
+-        <com.fongmi.android.tv.ui.custom.JetStreamControlTextView
+-            android:id="@+id/aiLanguage"
+-            android:layout_width="wrap_content"
+-            android:layout_height="wrap_content"
+-            android:layout_marginEnd="12dp"
+-            android:text="@string/ai_subtitle_language" />
+-
+         <com.fongmi.android.tv.ui.custom.JetStreamControlUpDownView
+             android:id="@+id/opening"
+             android:layout_width="wrap_content"
+diff --git a/app/src/leanback/res/layout/view_control_live_action.xml b/app/src/leanback/res/layout/view_control_live_action.xml
+index 8b67d68c1c9c5dd6beea869dc06591ad80957057..ad811e168f98befbed8046191e414dd18c183dcf 100644
+--- a/app/src/leanback/res/layout/view_control_live_action.xml
++++ b/app/src/leanback/res/layout/view_control_live_action.xml
+@@ -97,20 +97,6 @@
+             android:tag="2"
+             android:text="@string/play_track_video" />
+ 
+-        <com.fongmi.android.tv.ui.custom.JetStreamControlTextView
+-            android:id="@+id/aiSubtitle"
+-            android:layout_width="wrap_content"
+-            android:layout_height="wrap_content"
+-            android:layout_marginEnd="12dp"
+-            android:text="@string/ai_subtitle_off" />
+-
+-        <com.fongmi.android.tv.ui.custom.JetStreamControlTextView
+-            android:id="@+id/aiLanguage"
+-            android:layout_width="wrap_content"
+-            android:layout_height="wrap_content"
+-            android:layout_marginEnd="12dp"
+-            android:text="@string/ai_subtitle_language" />
+-
+         <com.fongmi.android.tv.ui.custom.JetStreamControlTextView
+             android:id="@+id/invert"
+             android:layout_width="wrap_content"
+diff --git a/app/src/mobile/java/com/fongmi/android/tv/ui/activity/LiveActivity.java b/app/src/mobile/java/com/fongmi/android/tv/ui/activity/LiveActivity.java
+index ff1bca351716ec66b13dcf099a472dd2931b7863..9ae9054ccc5997d04860be2bf6beba09ce29f7d3 100644
+--- a/app/src/mobile/java/com/fongmi/android/tv/ui/activity/LiveActivity.java
++++ b/app/src/mobile/java/com/fongmi/android/tv/ui/activity/LiveActivity.java
+@@ -26,7 +26,6 @@ import com.bumptech.glide.request.transition.Transition;
+ import com.fongmi.android.tv.App;
+ import com.fongmi.android.tv.Constant;
+ import com.fongmi.android.tv.R;
+-import com.fongmi.android.tv.ai.subtitle.AiSubtitlePlaybackUi;
+ import com.fongmi.android.tv.api.config.LiveConfig;
+ import com.fongmi.android.tv.bean.CastVideo;
+ import com.fongmi.android.tv.bean.Channel;
+@@ -198,8 +197,6 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
+         mBinding.control.action.text.setOnClickListener(this::onTrack);
+         mBinding.control.action.audio.setOnClickListener(this::onTrack);
+         mBinding.control.action.video.setOnClickListener(this::onTrack);
+-        mBinding.control.action.aiSubtitle.setOnClickListener(view -> AiSubtitlePlaybackUi.toggle(this, mBinding.control.action.aiSubtitle, mBinding.control.action.aiLanguage));
+-        mBinding.control.action.aiLanguage.setOnClickListener(view -> AiSubtitlePlaybackUi.chooseLanguage(this, mBinding.control.action.aiSubtitle, mBinding.control.action.aiLanguage));
+         mBinding.control.action.home.setOnClickListener(view -> onHome());
+         mBinding.control.action.line.setOnClickListener(view -> onLine());
+         mBinding.control.action.scale.setOnClickListener(view -> onScale());
+@@ -1134,7 +1131,6 @@ public class LiveActivity extends PlaybackActivity implements CustomKeyDown.List
+     @Override
+     protected void onStart() {
+         super.onStart();
+-        AiSubtitlePlaybackUi.refresh(mBinding.control.action.aiSubtitle, mBinding.control.action.aiLanguage);
+         setAudioOnly(false);
+         setStop(false);
+     }
+diff --git a/app/src/mobile/java/com/fongmi/android/tv/ui/activity/VideoActivity.java b/app/src/mobile/java/com/fongmi/android/tv/ui/activity/VideoActivity.java
+index 8709a0f68625ba0d3fdc37a8f2e780b0136d7685..203ae7082d3823b3daaeeb2030c5e988e6dd9a70 100644
+--- a/app/src/mobile/java/com/fongmi/android/tv/ui/activity/VideoActivity.java
++++ b/app/src/mobile/java/com/fongmi/android/tv/ui/activity/VideoActivity.java
+@@ -42,7 +42,6 @@ import com.fongmi.android.tv.App;
+ import com.fongmi.android.tv.player.PlayerManager;
+ import com.fongmi.android.tv.Constant;
+ import com.fongmi.android.tv.R;
+-import com.fongmi.android.tv.ai.subtitle.AiSubtitlePlaybackUi;
+ import com.fongmi.android.tv.api.DanmakuApi;
+ import com.fongmi.android.tv.api.SiteApi;
+ import com.fongmi.android.tv.api.config.VodConfig;
+@@ -401,8 +400,6 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
+         mBinding.control.action.text.setOnClickListener(this::onTrack);
+         mBinding.control.action.audio.setOnClickListener(this::onTrack);
+         mBinding.control.action.video.setOnClickListener(this::onTrack);
+-        mBinding.control.action.aiSubtitle.setOnClickListener(view -> AiSubtitlePlaybackUi.toggle(this, mBinding.control.action.aiSubtitle, mBinding.control.action.aiLanguage));
+-        mBinding.control.action.aiLanguage.setOnClickListener(view -> AiSubtitlePlaybackUi.chooseLanguage(this, mBinding.control.action.aiSubtitle, mBinding.control.action.aiLanguage));
+         mBinding.control.action.scale.setOnClickListener(view -> onScale());
+         mBinding.control.action.speed.setOnClickListener(view -> onSpeed());
+         mBinding.control.action.reset.setOnClickListener(view -> onReset());
+@@ -1756,7 +1753,6 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
+     @Override
+     protected void onStart() {
+         super.onStart();
+-        AiSubtitlePlaybackUi.refresh(mBinding.control.action.aiSubtitle, mBinding.control.action.aiLanguage);
+         mClock.stop().start();
+         setAudioOnly(false);
+         setStop(false);
+diff --git a/app/src/mobile/res/layout/view_control_vod_action.xml b/app/src/mobile/res/layout/view_control_vod_action.xml
+index 5cdb898a03b6c63cb7752a11d33b34c07b2b6811..a7a056a18d573f39e38efc3e8f62d23254b7b865 100644
+--- a/app/src/mobile/res/layout/view_control_vod_action.xml
++++ b/app/src/mobile/res/layout/view_control_vod_action.xml
+@@ -74,16 +74,6 @@
+             android:tag="2"
+             android:text="@string/play_track_video" />
+ 
+-        <com.google.android.material.textview.MaterialTextView
+-            android:id="@+id/aiSubtitle"
+-            style="@style/Control"
+-            android:text="@string/ai_subtitle_off" />
+-
+-        <com.google.android.material.textview.MaterialTextView
+-            android:id="@+id/aiLanguage"
+-            style="@style/Control"
+-            android:text="@string/ai_subtitle_language" />
+-
+         <com.google.android.material.textview.MaterialTextView
+             android:id="@+id/opening"
+             style="@style/Control"
+diff --git a/app/src/mobile/res/layout/view_control_live_action.xml b/app/src/mobile/res/layout/view_control_live_action.xml
+index 45df1a1b0c3295e7e2daf9626287603377d8da77..ec1d9a765fd36fe50d48aeebd3e6c4354d4f8619 100644
+--- a/app/src/mobile/res/layout/view_control_live_action.xml
++++ b/app/src/mobile/res/layout/view_control_live_action.xml
+@@ -71,16 +71,6 @@
+             android:tag="2"
+             android:text="@string/play_track_video" />
+ 
+-        <com.google.android.material.textview.MaterialTextView
+-            android:id="@+id/aiSubtitle"
+-            style="@style/Control"
+-            android:text="@string/ai_subtitle_off" />
+-
+-        <com.google.android.material.textview.MaterialTextView
+-            android:id="@+id/aiLanguage"
+-            style="@style/Control"
+-            android:text="@string/ai_subtitle_language" />
+-
+         <com.google.android.material.textview.MaterialTextView
+             android:id="@+id/invert"
+             style="@style/Control"
+diff --git a/app/src/mobile/java/com/fongmi/android/tv/ui/fragment/SettingPlayerFragment.java b/app/src/mobile/java/com/fongmi/android/tv/ui/fragment/SettingPlayerFragment.java
+index d1ab09ac2315ecf417841e54a9c93f3f55159929..fd7705b587c6ed8b7ceca8a9f0f8c42d24417ca5 100644
+--- a/app/src/mobile/java/com/fongmi/android/tv/ui/fragment/SettingPlayerFragment.java
++++ b/app/src/mobile/java/com/fongmi/android/tv/ui/fragment/SettingPlayerFragment.java
+@@ -11,7 +11,6 @@ import androidx.annotation.Nullable;
+ import androidx.viewbinding.ViewBinding;
+ 
+ import com.fongmi.android.tv.R;
+-import com.fongmi.android.tv.ai.subtitle.AiSubtitleSettingsActivity;
+ import com.fongmi.android.tv.databinding.FragmentSettingPlayerBinding;
+ import com.fongmi.android.tv.impl.SpeedListener;
+ import com.fongmi.android.tv.impl.UaListener;
+@@ -82,7 +81,6 @@ public class SettingPlayerFragment extends BaseFragment implements UaListener, S
+         mBinding.adblock.setOnClickListener(this::setAdblock);
+         mBinding.preload.setOnClickListener(this::onPreload);
+         mBinding.decode.setOnClickListener(this::onDecode);
+-        mBinding.aiSubtitle.setOnClickListener(v -> AiSubtitleSettingsActivity.start(requireContext()));
+         mBinding.communitySkip.setOnClickListener(this::setCommunitySkip);
+         mBinding.ua.setOnClickListener(this::onUa);
+     }
+diff --git a/app/src/mobile/java/com/fongmi/android/tv/ui/dialog/ControlDialog.java b/app/src/mobile/java/com/fongmi/android/tv/ui/dialog/ControlDialog.java
+index 127fa4ddee4a16f3c421ff05e2c123f95434a8aa..18698ba3766d229b30873641e6993d607dfe918f 100644
+--- a/app/src/mobile/java/com/fongmi/android/tv/ui/dialog/ControlDialog.java
++++ b/app/src/mobile/java/com/fongmi/android/tv/ui/dialog/ControlDialog.java
+@@ -83,9 +83,6 @@ public class ControlDialog extends BaseBottomSheetDialog implements ParseAdapter
+         binding.decode.setText(parent.control.action.decode.getText());
+         binding.ending.setText(parent.control.action.ending.getText());
+         binding.opening.setText(parent.control.action.opening.getText());
+-        binding.aiSubtitle.setText(parent.control.action.aiSubtitle.getText());
+-        binding.aiSubtitle.setSelected(parent.control.action.aiSubtitle.isSelected());
+-        binding.aiLanguage.setText(parent.control.action.aiLanguage.getText());
+         binding.repeat.setSelected(parent.control.action.repeat.isSelected());
+         binding.timer.setSelected(Timer.get().isRunning());
+         setMediaOptionVisible();
+@@ -103,8 +100,6 @@ public class ControlDialog extends BaseBottomSheetDialog implements ParseAdapter
+         binding.text.setOnClickListener(v -> dismiss(parent.control.action.text));
+         binding.audio.setOnClickListener(v -> dismiss(parent.control.action.audio));
+         binding.video.setOnClickListener(v -> dismiss(parent.control.action.video));
+-        binding.aiSubtitle.setOnClickListener(this::onAiSubtitle);
+-        binding.aiLanguage.setOnClickListener(v -> dismiss(parent.control.action.aiLanguage));
+         binding.player.setOnClickListener(v -> dismiss(parent.control.action.player));
+         binding.danmaku.setOnClickListener(v -> dismiss(parent.control.action.danmaku));
+         binding.edition.setOnClickListener(v -> dismiss(parent.control.action.edition));
+@@ -123,13 +118,6 @@ public class ControlDialog extends BaseBottomSheetDialog implements ParseAdapter
+         dismiss();
+     }
+ 
+-    private void onAiSubtitle(View view) {
+-        parent.control.action.aiSubtitle.performClick();
+-        binding.aiSubtitle.setText(parent.control.action.aiSubtitle.getText());
+-        binding.aiSubtitle.setSelected(parent.control.action.aiSubtitle.isSelected());
+-        binding.aiLanguage.setText(parent.control.action.aiLanguage.getText());
+-    }
+-
+     private void setSpeed(@NonNull Slider slider, float value, boolean fromUser) {
+         parent.control.action.speed.setText(player.setSpeed(value));
+         if (history != null) history.setSpeed(player.getSpeed());
+diff --git a/app/src/mobile/res/layout/dialog_control.xml b/app/src/mobile/res/layout/dialog_control.xml
+index 3f07cf3b1e22c8d8d1d8f9dbef516ded7c39b06a..9fdf9ad6b7737d4a6753715f98f35140d60157a9 100644
+--- a/app/src/mobile/res/layout/dialog_control.xml
++++ b/app/src/mobile/res/layout/dialog_control.xml
+@@ -269,25 +269,7 @@
+             android:visibility="gone"
+             tools:visibility="visible" />
+ 
+-        <com.google.android.material.textview.MaterialTextView
+-            android:id="@+id/aiSubtitle"
+-            android:layout_width="wrap_content"
+-            android:layout_height="wrap_content"
+-            android:layout_marginStart="8dp"
+-            android:background="@drawable/shape_accent"
+-            android:text="@string/ai_subtitle_off"
+-            android:textColor="@color/selector_control"
+-            android:textSize="14sp" />
+ 
+-        <com.google.android.material.textview.MaterialTextView
+-            android:id="@+id/aiLanguage"
+-            android:layout_width="wrap_content"
+-            android:layout_height="wrap_content"
+-            android:layout_marginStart="8dp"
+-            android:background="@drawable/shape_accent"
+-            android:text="@string/ai_subtitle_language"
+-            android:textColor="@color/selector_control"
+-            android:textSize="14sp" />
+ 
+     </androidx.appcompat.widget.LinearLayoutCompat>
+ 
+diff --git a/app/src/mobile/res/layout/fragment_setting_player.xml b/app/src/mobile/res/layout/fragment_setting_player.xml
+index afc39706f264315a8d31d6592bcd864475495f11..2eaa7018536ebd435452852376051c86f8191d02 100644
+--- a/app/src/mobile/res/layout/fragment_setting_player.xml
++++ b/app/src/mobile/res/layout/fragment_setting_player.xml
+@@ -389,23 +389,6 @@
+ 
+             </androidx.appcompat.widget.LinearLayoutCompat>
+ 
+-            <androidx.appcompat.widget.LinearLayoutCompat
+-                android:id="@+id/aiSubtitle"
+-                android:layout_width="match_parent"
+-                android:layout_height="wrap_content"
+-                android:layout_marginTop="16dp"
+-                android:background="@drawable/shape_item"
+-                android:orientation="horizontal">
+-
+-                <com.google.android.material.textview.MaterialTextView
+-                    android:layout_width="wrap_content"
+-                    android:layout_height="wrap_content"
+-                    android:text="@string/player_ai_subtitle"
+-                    android:textColor="@color/white"
+-                    android:textSize="16sp" />
+-
+-            </androidx.appcompat.widget.LinearLayoutCompat>
+-
+             <androidx.appcompat.widget.LinearLayoutCompat
+                 android:id="@+id/communitySkip"
+                 android:layout_width="match_parent"
+diff --git a/app/src/main/res/values/strings.xml b/app/src/main/res/values/strings.xml
+index 2b5b756fd9e085c66e74dc2fca4e79dace2d9307..bba3a626c1388e5628a05faca2f1ba5db229c5b7 100644
+--- a/app/src/main/res/values/strings.xml
++++ b/app/src/main/res/values/strings.xml
+@@ -214,17 +214,7 @@
+     <string name="player_mpv_dolby">Dolby Vision platform hardware decode</string>
+     <string name="player_dv7">Dolby Vision (HEVC fallback)</string>
+     <string name="player_mpv_hdr">HDR (auto)</string>
+-    <string name="player_ai_subtitle">Live speech subtitles &amp; translation</string>
+     <string name="player_community_skip">Community intro/outro skipping</string>
+-    <string name="ai_subtitle_on">Subtitle translation: On</string>
+-    <string name="ai_subtitle_off">Subtitle translation: Off</string>
+-    <string name="ai_subtitle_language">Source: %1$s</string>
+-    <string name="ai_subtitle_choose_language">Current source language</string>
+-    <string name="ai_subtitle_model_missing">The %1$s language pack is not installed. Download it before enabling subtitles.</string>
+-    <string name="ai_subtitle_starting">Subtitle translation service is starting…</string>
+-    <string name="ai_subtitle_memory_blocked">This device does not meet the safe memory requirement for the %1$s language pack.</string>
+-    <string name="ai_subtitle_go_download">Download</string>
+-    <string name="ai_secret_push_info">Open %1$s on your phone, select Settings, paste the value and tap Confirm.</string>
+ 
+     <!-- Danmaku -->
+     <string name="danmaku_load">Danmaku load</string>
+@@ -279,6 +269,11 @@
+     <string name="update_check_failed">Unable to check for updates. Please try again later.</string>
+     <string name="update_download_failed">Unable to download a complete update from any source. Please try again.</string>
+     <string name="update_download_progress">Route %1$d/%2$d · %3$d%%</string>
++    <string name="update_download_active">Downloading…</string>
++    <string name="update_testing_routes">Choosing a faster download route…</string>
++    <string name="update_switching_route">This route is slow. Trying another…</string>
++    <string name="update_remaining_time">About %1$s remaining</string>
++    <string name="update_waiting_data">Waiting for data…</string>
+     <string name="update_download_verifying">Verifying update…</string>
+     <string name="update_download_wrong_package">This update belongs to a different app.</string>
+     <string name="update_download_wrong_version">The downloaded update does not match the requested version.</string>
+diff --git a/app/src/main/res/values-zh-rCN/strings.xml b/app/src/main/res/values-zh-rCN/strings.xml
+index b996295d85de6991198c645f79407edaa74ebb6d..d195af40cbcc117fe6f5ddc8e00381b5de6b099f 100644
+--- a/app/src/main/res/values-zh-rCN/strings.xml
++++ b/app/src/main/res/values-zh-rCN/strings.xml
+@@ -213,17 +213,7 @@
+     <string name="player_mpv_dolby">杜比视界平台硬解</string>
+     <string name="player_dv7">杜比视界(HEVC 回退)</string>
+     <string name="player_mpv_hdr">HDR（自动）</string>
+-    <string name="player_ai_subtitle">实时语音字幕与翻译</string>
+     <string name="player_community_skip">社区片头片尾跳过</string>
+-    <string name="ai_subtitle_on">字幕翻译：开</string>
+-    <string name="ai_subtitle_off">字幕翻译：关</string>
+-    <string name="ai_subtitle_language">源语种：%1$s</string>
+-    <string name="ai_subtitle_choose_language">选择当前直播源语种</string>
+-    <string name="ai_subtitle_model_missing">尚未下载“%1$s”语言包，请先下载后再开启字幕翻译。</string>
+-    <string name="ai_subtitle_starting">字幕翻译服务正在启动中…</string>
+-    <string name="ai_subtitle_memory_blocked">设备内存不满足“%1$s”语言包的安全运行门槛。</string>
+-    <string name="ai_subtitle_go_download">去下载</string>
+-    <string name="ai_secret_push_info">请在手机打开 %1$s\n选择“设定”，粘贴内容后点确定。</string>
+ 
+     <!-- Danmaku -->
+     <string name="danmaku_load">弹幕加载</string>
+@@ -278,6 +268,11 @@
+     <string name="update_check_failed">检查更新失败，请稍后重试</string>
+     <string name="update_download_failed">所有线路均未能下载完整安装包，请重试</string>
+     <string name="update_download_progress">线路 %1$d/%2$d · %3$d%%</string>
++    <string name="update_download_active">下载中…</string>
++    <string name="update_testing_routes">正在选择较快的下载线路…</string>
++    <string name="update_switching_route">当前线路较慢，正在尝试其他线路…</string>
++    <string name="update_remaining_time">预计剩余 %1$s</string>
++    <string name="update_waiting_data">正在等待数据…</string>
+     <string name="update_download_verifying">正在校验安装包…</string>
+     <string name="update_download_wrong_package">下载的安装包属于其他应用，无法更新</string>
+     <string name="update_download_wrong_version">下载的安装包与待更新版本不一致</string>
+diff --git a/app/src/main/res/values-zh-rTW/strings.xml b/app/src/main/res/values-zh-rTW/strings.xml
+index c95ed095b8cfec254112038667075b66e4fd269a..2415efd32e8a3024b63a4f4e93ebde3baf88461d 100644
+--- a/app/src/main/res/values-zh-rTW/strings.xml
++++ b/app/src/main/res/values-zh-rTW/strings.xml
+@@ -213,17 +213,7 @@
+     <string name="player_mpv_dolby">杜比視界平台硬解</string>
+     <string name="player_dv7">杜比視界(HEVC 回退)</string>
+     <string name="player_mpv_hdr">HDR（自動）</string>
+-    <string name="player_ai_subtitle">即時語音字幕與翻譯</string>
+     <string name="player_community_skip">社群片頭片尾跳過</string>
+-    <string name="ai_subtitle_on">字幕翻譯：開</string>
+-    <string name="ai_subtitle_off">字幕翻譯：關</string>
+-    <string name="ai_subtitle_language">來源語種：%1$s</string>
+-    <string name="ai_subtitle_choose_language">選擇目前直播源語種</string>
+-    <string name="ai_subtitle_model_missing">尚未下載「%1$s」語言包，請先下載後再開啟字幕翻譯。</string>
+-    <string name="ai_subtitle_starting">字幕翻譯服務正在啟動中…</string>
+-    <string name="ai_subtitle_memory_blocked">裝置記憶體不滿足「%1$s」語言包的安全運行門檻。</string>
+-    <string name="ai_subtitle_go_download">去下載</string>
+-    <string name="ai_secret_push_info">請在手機開啟 %1$s\n選擇「設定」，貼上內容後點確定。</string>
+ 
+     <!-- Danmaku -->
+     <string name="danmaku_load">彈幕載入</string>
+@@ -278,6 +268,11 @@
+     <string name="update_check_failed">檢查更新失敗，請稍後重試</string>
+     <string name="update_download_failed">所有線路均未能下載完整安裝包，請重試</string>
+     <string name="update_download_progress">線路 %1$d/%2$d · %3$d%%</string>
++    <string name="update_download_active">下載中…</string>
++    <string name="update_testing_routes">正在選擇較快的下載線路…</string>
++    <string name="update_switching_route">目前線路較慢，正在嘗試其他線路…</string>
++    <string name="update_remaining_time">預計剩餘 %1$s</string>
++    <string name="update_waiting_data">正在等待資料…</string>
+     <string name="update_download_verifying">正在驗證安裝包…</string>
+     <string name="update_download_wrong_package">下載的安裝包屬於其他應用程式，無法更新</string>
+     <string name="update_download_wrong_version">下載的安裝包與待更新版本不一致</string>
+diff --git a/app/src/androidTest/java/com/fongmi/android/tv/test/PythonSourcePlaybackTest.java b/app/src/androidTest/java/com/fongmi/android/tv/test/PythonSourcePlaybackTest.java
+index abf99095aa8b7de6cc891fddcac94efa709ea0fe..6c80898a2bb30913654af0f8a72fefebe71c83d9 100644
+--- a/app/src/androidTest/java/com/fongmi/android/tv/test/PythonSourcePlaybackTest.java
++++ b/app/src/androidTest/java/com/fongmi/android/tv/test/PythonSourcePlaybackTest.java
+@@ -27,18 +27,12 @@ import androidx.media3.common.PlaybackException;
+ import androidx.media3.common.PlaybackParameters;
+ import androidx.media3.common.Player;
+ import androidx.media3.common.Tracks;
+-import androidx.media3.common.audio.AudioProcessor;
+ import androidx.media3.datasource.HttpDataSource;
+-import androidx.media3.exoplayer.DefaultRenderersFactory;
+ import androidx.media3.exoplayer.ExoPlayer;
+ import androidx.media3.exoplayer.analytics.AnalyticsListener;
+-import androidx.media3.exoplayer.audio.AudioSink;
+-import androidx.media3.exoplayer.audio.AudioTrackAudioOutputProvider;
+-import androidx.media3.exoplayer.audio.DefaultAudioSink;
+ import androidx.test.ext.junit.runners.AndroidJUnit4;
+ import androidx.test.platform.app.InstrumentationRegistry;
+ 
+-import com.fongmi.android.tv.ai.subtitle.PcmTapAudioProcessor;
+ import com.fongmi.android.tv.player.engine.PlayerEngine;
+ import com.fongmi.android.tv.player.exo.ExoPlayerEngine;
+ import com.fongmi.android.tv.player.exo.MediaSourceFactory;
+@@ -95,7 +89,7 @@ import is.xyz.mpv.MPVNode;
+ public final class PythonSourcePlaybackTest {
+     private static final Map<String, Object> SETTINGS = Map.ofEntries(
+             Map.entry("preload", false), Map.entry("preload_next", true), Map.entry("tunnel", false),
+-            Map.entry("audio_effect_preset", 0), Map.entry("ai_subtitle_enabled", false),
++            Map.entry("audio_effect_preset", 0),
+             Map.entry("mpv_gpu_next", false), Map.entry("mpv_vulkan", false),
+             Map.entry("mpv_hdr", 2), Map.entry("mpv_anime4k", 0));
+     private final Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+@@ -124,7 +118,6 @@ public final class PythonSourcePlaybackTest {
+     private Map<String, ?> saved;
+     private CorePlaybackActivity activity;
+     private PlayerEngine engine;
+-    private ExoPlayer pcmPlayer;
+     private String sourceSha;
+     private String reportName = "setup";
+     private long timeoutMs;
+@@ -183,7 +176,6 @@ public final class PythonSourcePlaybackTest {
+                         if (engine instanceof MpvPlayerEngine) MPVLib.removeObserver(mpvObserver);
+                         engine.bindPlayerView(null); activity.view.setPlayer(null); engine.release();
+                     }
+-                    if (pcmPlayer != null) pcmPlayer.release();
+                 } finally { if (activity != null) activity.finish(); }
+             });
+             if (engine instanceof MpvPlayerEngine) {
+@@ -417,46 +409,6 @@ public final class PythonSourcePlaybackTest {
+         } finally { main(probe::close); checkpoint(); }
+     }
+ 
+-    @Test public void exoSourceAudioReachesTheProductionPcmTapWithoutAnAsrModel() throws Exception {
+-        reportName = "pcm";
+-        int index = caseIndex < 0 ? 0 : caseIndex;
+-        refreshCase(index);
+-        JSONObject record = record(index);
+-        AtomicLong samples = new AtomicLong();
+-        AtomicLong audible = new AtomicLong();
+-        AtomicInteger rate = new AtomicInteger();
+-        PlaySpec first = spec(cases.get(index), index);
+-        main(() -> {
+-            DefaultRenderersFactory renderers = new DefaultRenderersFactory(target) {
+-                @Override protected AudioSink buildAudioSink(@NonNull Context context, boolean floatOutput, boolean playbackParams) {
+-                    return new DefaultAudioSink.Builder(context).setEnableFloatOutput(false)
+-                            .setAudioProcessors(new AudioProcessor[]{new PcmTapAudioProcessor((mono, sampleRate) -> {
+-                                rate.set(sampleRate);
+-                                samples.addAndGet(mono.length);
+-                                for (float sample : mono) if (Float.isFinite(sample) && Math.abs(sample) > 0.0001f) audible.incrementAndGet();
+-                            })})
+-                            .setAudioOutputProvider(new AudioTrackAudioOutputProvider.Builder(null).build()).build();
+-                }
+-            }.setEnableDecoderFallback(true);
+-            pcmPlayer = new ExoPlayer.Builder(target).setRenderersFactory(renderers)
+-                    .setMediaSourceFactory(new MediaSourceFactory()).build();
+-            pcmPlayer.addListener(listener());
+-            pcmPlayer.setTrackSelectionParameters(pcmPlayer.getTrackSelectionParameters().buildUpon()
+-                    .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, true).setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true).build());
+-            pcmPlayer.setVolume(0);
+-            pcmPlayer.setMediaItem(MediaItemFactory.from(first));
+-            pcmPlayer.prepare();
+-            pcmPlayer.play();
+-        });
+-        await(() -> rate.get() > 0 && samples.get() >= rate.get() && audible.get() > 100,
+-                "decoded source PCM with nonzero samples at the production tap");
+-        record.put("sampleRate", rate.get());
+-        record.put("samples", samples.get());
+-        record.put("nonzeroSamples", audible.get());
+-        record.put("coverage", "DECODED_PCM_TAP_ONLY_ASR_AND_TRANSLATION_NOT_RUN");
+-        record.put("status", "PASS");
+-    }
+-
+     private void createEngine(boolean mpv) {
+         if (mpv) assertTrue("MPV native library unavailable", MpvPlayerEngine.isAvailable());
+         main(() -> {
+diff --git a/app/src/androidTest/java/com/fongmi/android/tv/player/TimeshiftExoIntegrationTest.java b/app/src/androidTest/java/com/fongmi/android/tv/player/TimeshiftExoIntegrationTest.java
+index 3d5fb90dd3887d082af306f6d9132ede10288a7d..700107eb1f6d67cccd409e0364246b601c930cc9 100644
+--- a/app/src/androidTest/java/com/fongmi/android/tv/player/TimeshiftExoIntegrationTest.java
++++ b/app/src/androidTest/java/com/fongmi/android/tv/player/TimeshiftExoIntegrationTest.java
+@@ -58,7 +58,7 @@ public class TimeshiftExoIntegrationTest {
+             Map.entry("preload", false), Map.entry("preload_next", false),
+             Map.entry("audio_effect_preset", 0), Map.entry("audio_pass_through", false),
+             Map.entry("audio_prefer", false), Map.entry("video_prefer", false), Map.entry("av3a", false),
+-            Map.entry("subtitle_libass", false), Map.entry("ai_subtitle_enabled", false), Map.entry("community_skip_enabled", false));
++            Map.entry("subtitle_libass", false), Map.entry("community_skip_enabled", false));
+ 
+     private final Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+     private final AtomicReference<String> error = new AtomicReference<>();
+diff --git a/app/src/androidTest/java/com/fongmi/android/tv/api/AssrtSubtitleSearchAndroidTest.java b/app/src/androidTest/java/com/fongmi/android/tv/api/AssrtSubtitleSearchAndroidTest.java
+index b8b3a1a8bccafc0a85794fb40ebe70f47db4a96e..ba35e4892d2ac36dd096ce1334f19f06db7feb74 100644
+--- a/app/src/androidTest/java/com/fongmi/android/tv/api/AssrtSubtitleSearchAndroidTest.java
++++ b/app/src/androidTest/java/com/fongmi/android/tv/api/AssrtSubtitleSearchAndroidTest.java
+@@ -83,7 +83,7 @@ public final class AssrtSubtitleSearchAndroidTest {
+             Map.entry("preload", false), Map.entry("preload_next", false), Map.entry("incognito", true),
+             Map.entry("audio_effect_preset", 0), Map.entry("audio_pass_through", false),
+             Map.entry("audio_prefer", false), Map.entry("video_prefer", false), Map.entry("av3a", false),
+-            Map.entry("subtitle_libass", false), Map.entry("ai_subtitle_enabled", false),
++            Map.entry("subtitle_libass", false),
+             Map.entry("community_skip_enabled", false));
+ 
+     private final Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+diff --git a/app/src/androidTest/java/com/fongmi/android/tv/syncplay/SyncplayPlaybackIntegrationTest.java b/app/src/androidTest/java/com/fongmi/android/tv/syncplay/SyncplayPlaybackIntegrationTest.java
+index 999a0548d33344b9166ef4ec5e9cae5b2194df7c..85999741b886446f59199d1601dac22c3f384140 100644
+--- a/app/src/androidTest/java/com/fongmi/android/tv/syncplay/SyncplayPlaybackIntegrationTest.java
++++ b/app/src/androidTest/java/com/fongmi/android/tv/syncplay/SyncplayPlaybackIntegrationTest.java
+@@ -62,7 +62,7 @@ public final class SyncplayPlaybackIntegrationTest {
+             Map.entry("player_engine", PlayerSetting.ENGINE_EXO), Map.entry("tunnel", false),
+             Map.entry("preload", false), Map.entry("preload_next", false),
+             Map.entry("audio_effect_preset", 0), Map.entry("audio_pass_through", false),
+-            Map.entry("ai_subtitle_enabled", false), Map.entry("community_skip_enabled", false));
++            Map.entry("community_skip_enabled", false));
+ 
+     private final Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+     private final Context target = instrumentation.getTargetContext();
+diff --git a/app/src/androidTest/java/com/fongmi/android/tv/player/skip/CommunitySkipPlaybackAndroidTest.java b/app/src/androidTest/java/com/fongmi/android/tv/player/skip/CommunitySkipPlaybackAndroidTest.java
+index 46de97afcfca34e953044ff451dddb340f8935e5..5b2dfabc00febd4f1183e00e14c85f0082ea0a51 100644
+--- a/app/src/androidTest/java/com/fongmi/android/tv/player/skip/CommunitySkipPlaybackAndroidTest.java
++++ b/app/src/androidTest/java/com/fongmi/android/tv/player/skip/CommunitySkipPlaybackAndroidTest.java
+@@ -59,7 +59,7 @@ public final class CommunitySkipPlaybackAndroidTest {
+             Map.entry("preload", false), Map.entry("preload_next", false), Map.entry("incognito", true),
+             Map.entry("audio_effect_preset", 0), Map.entry("audio_pass_through", false),
+             Map.entry("audio_prefer", false), Map.entry("video_prefer", false), Map.entry("av3a", false),
+-            Map.entry("subtitle_libass", false), Map.entry("ai_subtitle_enabled", false),
++            Map.entry("subtitle_libass", false),
+             Map.entry("community_skip_enabled", true));
+ 
+     private final Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+diff --git a/app/src/androidTest/java/com/fongmi/android/tv/player/mpv/MpvVideoOutputRecoveryIntegrationTest.java b/app/src/androidTest/java/com/fongmi/android/tv/player/mpv/MpvVideoOutputRecoveryIntegrationTest.java
+index cc666becac849d327bff67daffa0447840ce3538..c6a7de579a74521b53dc33f1a62585fb822f7af6 100644
+--- a/app/src/androidTest/java/com/fongmi/android/tv/player/mpv/MpvVideoOutputRecoveryIntegrationTest.java
++++ b/app/src/androidTest/java/com/fongmi/android/tv/player/mpv/MpvVideoOutputRecoveryIntegrationTest.java
+@@ -58,7 +58,7 @@ public final class MpvVideoOutputRecoveryIntegrationTest {
+             Map.entry("mpv_vulkan", true), Map.entry("mpv_hdr", 2), Map.entry("mpv_anime4k", 0),
+             Map.entry("preload", false), Map.entry("preload_next", false), Map.entry("tunnel", false),
+             Map.entry("audio_effect_preset", 0), Map.entry("audio_pass_through", false),
+-            Map.entry("ai_subtitle_enabled", false), Map.entry("community_skip_enabled", false));
++            Map.entry("community_skip_enabled", false));
+     private static final Map<String, String> HEADERS = Map.of(
+             "User-Agent", "TV-VO-Recovery-Fixture", "X-Recovery-Fixture", "local-only");
+     private final Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+diff --git a/app/src/tvPreviewTest/java/com/fongmi/android/tv/ui/custom/PlaybackSpecsControllerTest.java b/app/src/tvPreviewTest/java/com/fongmi/android/tv/ui/custom/PlaybackSpecsControllerTest.java
+index 9577870dc46d395d2e1c08716de581c76169e798..c06d88f96ab15d186249c0dd88fc00f5eaeccb79 100644
+--- a/app/src/tvPreviewTest/java/com/fongmi/android/tv/ui/custom/PlaybackSpecsControllerTest.java
++++ b/app/src/tvPreviewTest/java/com/fongmi/android/tv/ui/custom/PlaybackSpecsControllerTest.java
+@@ -49,7 +49,7 @@ public final class PlaybackSpecsControllerTest {
+             Map.entry("preload_next", false), Map.entry("audio_effect_preset", 0),
+             Map.entry("audio_pass_through", false), Map.entry("audio_prefer", false),
+             Map.entry("video_prefer", false), Map.entry("av3a", false),
+-            Map.entry("subtitle_libass", false), Map.entry("ai_subtitle_enabled", false),
++            Map.entry("subtitle_libass", false),
+             Map.entry("community_skip_enabled", false));
+     private final Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+     private final AtomicReference<String> error = new AtomicReference<>();
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/custom/PosterTitleMarquee.java b/app/src/leanback/java/com/fongmi/android/tv/ui/custom/PosterTitleMarquee.java
 index 9efb10ec1f459e563248ad97ca000281111054ca..6713d2212c034cd956f13db549bc50f16e29b4a4 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/custom/PosterTitleMarquee.java
@@ -1330,3 +2308,240 @@ index 9efb10ec1f459e563248ad97ca000281111054ca..6713d2212c034cd956f13db549bc50f1
          title.setEllipsize(TextUtils.TruncateAt.MARQUEE);
          title.setMarqueeRepeatLimit(-1);
          title.setSelected(true);
+diff --git a/app/src/main/java/com/fongmi/android/tv/Updater.java b/app/src/main/java/com/fongmi/android/tv/Updater.java
+index 84f4027e40034ca59cb7844fe9e73354c7e6bfa2..0c447d4a6e9e8da745e0cc0c5399cb8eaeb98720 100644
+--- a/app/src/main/java/com/fongmi/android/tv/Updater.java
++++ b/app/src/main/java/com/fongmi/android/tv/Updater.java
+@@ -144,7 +144,7 @@ public class Updater implements UpdateListener, DefaultLifecycleObserver {
+             try {
+                 CacheManager.clearOldUpdates(System.currentTimeMillis() - CHECK_INTERVAL);
+                 DiagnosticLog.record("ota", "download code=" + release.code);
+-                File file = download.download(UpdateSources.mirrors(release.asset.url),
++                File file = download.downloadAdaptive(UpdateSources.mirrors(release.asset.url),
+                         destination, release.asset.size, release.asset.sha256,
+                         validator, new UpdateDownloader.Progress() {
+                             @Override
+@@ -169,6 +169,23 @@ public class Updater implements UpdateListener, DefaultLifecycleObserver {
+                                     if (!closed && dialog != null) dialog.setVerifying();
+                                 });
+                             }
++
++                            @Override
++                            public void onTesting() {
++                                App.post(() -> { if (!closed && dialog != null) dialog.setTesting(); });
++                            }
++
++                            @Override
++                            public void onSwitching() {
++                                App.post(() -> { if (!closed && dialog != null) dialog.setSwitching(); });
++                            }
++
++                            @Override
++                            public void onTransfer(long bytesPerSecond, long remainingSeconds) {
++                                App.post(() -> {
++                                    if (!closed && dialog != null) dialog.setTransfer(bytesPerSecond, remainingSeconds);
++                                });
++                            }
+                         });
+                 App.post(() -> install(file));
+             } catch (Exception e) {
+diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/dialog/UpdateDialog.java b/app/src/leanback/java/com/fongmi/android/tv/ui/dialog/UpdateDialog.java
+index 676aa436f31e6326957c501fe85dd0ae35c08075..d23538c3a9d73023af3d6c966d57446ddd5af28f 100644
+--- a/app/src/leanback/java/com/fongmi/android/tv/ui/dialog/UpdateDialog.java
++++ b/app/src/leanback/java/com/fongmi/android/tv/ui/dialog/UpdateDialog.java
+@@ -10,6 +10,7 @@ import androidx.viewbinding.ViewBinding;
+ import com.fongmi.android.tv.R;
+ import com.fongmi.android.tv.databinding.DialogUpdateBinding;
+ import com.fongmi.android.tv.impl.UpdateListener;
++import com.fongmi.android.tv.update.UpdateProgressText;
+ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+ 
+ public class UpdateDialog extends BaseAlertDialog {
+@@ -20,6 +21,9 @@ public class UpdateDialog extends BaseAlertDialog {
+     private String desc;
+     private int sourceAttempt;
+     private int sourceCount;
++    private int percent;
++    private long bytesPerSecond;
++    private long remainingSeconds = -1;
+ 
+     public static UpdateDialog create() {
+         return new UpdateDialog();
+@@ -77,18 +81,47 @@ public class UpdateDialog extends BaseAlertDialog {
+     }
+ 
+     public void setProgress(int progress) {
+-        if (binding == null) return;
+-        binding.confirm.setText(getString(R.string.update_download_progress, sourceAttempt, sourceCount, progress));
++        percent = progress;
++        renderTransfer();
+     }
+ 
+     public void setSource(int attempt, int total) {
+         sourceAttempt = attempt;
+         sourceCount = total;
+-        setProgress(0);
++        percent = 0;
++        bytesPerSecond = 0;
++        remainingSeconds = -1;
++        renderTransfer();
++    }
++
++    public void setTesting() { status(getString(R.string.update_testing_routes)); }
++
++    public void setSwitching() { status(getString(R.string.update_switching_route)); }
++
++    public void setTransfer(long speed, long seconds) {
++        bytesPerSecond = speed;
++        remainingSeconds = seconds;
++        renderTransfer();
+     }
+ 
+-    public void setVerifying() {
+-        if (binding != null) binding.confirm.setText(R.string.update_download_verifying);
++    public void setVerifying() { status(getString(R.string.update_download_verifying)); }
++
++    private void renderTransfer() {
++        if (binding == null) return;
++        String text = getString(R.string.update_download_progress, sourceAttempt, sourceCount, percent);
++        if (bytesPerSecond > 0) {
++            text += "\n" + UpdateProgressText.speed(bytesPerSecond);
++            if (remainingSeconds >= 0) text += " · " + getString(R.string.update_remaining_time,
++                    UpdateProgressText.duration(remainingSeconds));
++        } else text += "\n" + getString(R.string.update_waiting_data);
++        status(text);
++    }
++
++    private void status(String text) {
++        if (binding == null) return;
++        binding.updateStatus.setVisibility(View.VISIBLE);
++        binding.updateStatus.setText(text);
++        binding.confirm.setText(R.string.update_download_active);
+     }
+ 
+     private void onConfirm(View view) {
+diff --git a/app/src/mobile/java/com/fongmi/android/tv/ui/dialog/UpdateDialog.java b/app/src/mobile/java/com/fongmi/android/tv/ui/dialog/UpdateDialog.java
+index e65b1d8dfff6f276e72181b59c23a7c6bfe14f80..d35503dbeeeb92e56f7abf0dcabd489be206771b 100644
+--- a/app/src/mobile/java/com/fongmi/android/tv/ui/dialog/UpdateDialog.java
++++ b/app/src/mobile/java/com/fongmi/android/tv/ui/dialog/UpdateDialog.java
+@@ -1,6 +1,7 @@
+ package com.fongmi.android.tv.ui.dialog;
+ 
+ import android.content.DialogInterface;
++import android.view.View;
+ 
+ import androidx.annotation.NonNull;
+ import androidx.appcompat.app.AlertDialog;
+@@ -10,6 +11,7 @@ import androidx.viewbinding.ViewBinding;
+ import com.fongmi.android.tv.R;
+ import com.fongmi.android.tv.databinding.DialogUpdateBinding;
+ import com.fongmi.android.tv.impl.UpdateListener;
++import com.fongmi.android.tv.update.UpdateProgressText;
+ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+ 
+ public class UpdateDialog extends BaseAlertDialog {
+@@ -20,6 +22,9 @@ public class UpdateDialog extends BaseAlertDialog {
+     private String desc;
+     private int sourceAttempt;
+     private int sourceCount;
++    private int percent;
++    private long bytesPerSecond;
++    private long remainingSeconds = -1;
+ 
+     public static UpdateDialog create() {
+         return new UpdateDialog();
+@@ -73,19 +78,48 @@ public class UpdateDialog extends BaseAlertDialog {
+     }
+ 
+     public void setProgress(int progress) {
+-        AlertDialog dialog = (AlertDialog) getDialog();
+-        if (dialog != null) dialog.getButton(AlertDialog.BUTTON_POSITIVE).setText(getString(R.string.update_download_progress, sourceAttempt, sourceCount, progress));
++        percent = progress;
++        renderTransfer();
+     }
+ 
+     public void setSource(int attempt, int total) {
+         sourceAttempt = attempt;
+         sourceCount = total;
+-        setProgress(0);
++        percent = 0;
++        bytesPerSecond = 0;
++        remainingSeconds = -1;
++        renderTransfer();
++    }
++
++    public void setTesting() { status(getString(R.string.update_testing_routes)); }
++
++    public void setSwitching() { status(getString(R.string.update_switching_route)); }
++
++    public void setTransfer(long speed, long seconds) {
++        bytesPerSecond = speed;
++        remainingSeconds = seconds;
++        renderTransfer();
++    }
++
++    public void setVerifying() { status(getString(R.string.update_download_verifying)); }
++
++    private void renderTransfer() {
++        if (binding == null) return;
++        String text = getString(R.string.update_download_progress, sourceAttempt, sourceCount, percent);
++        if (bytesPerSecond > 0) {
++            text += "\n" + UpdateProgressText.speed(bytesPerSecond);
++            if (remainingSeconds >= 0) text += " · " + getString(R.string.update_remaining_time,
++                    UpdateProgressText.duration(remainingSeconds));
++        } else text += "\n" + getString(R.string.update_waiting_data);
++        status(text);
+     }
+ 
+-    public void setVerifying() {
++    private void status(String text) {
++        if (binding == null) return;
++        binding.updateStatus.setVisibility(View.VISIBLE);
++        binding.updateStatus.setText(text);
+         AlertDialog dialog = (AlertDialog) getDialog();
+-        if (dialog != null) dialog.getButton(AlertDialog.BUTTON_POSITIVE).setText(R.string.update_download_verifying);
++        if (dialog != null) dialog.getButton(AlertDialog.BUTTON_POSITIVE).setText(R.string.update_download_active);
+     }
+ 
+     @Override
+diff --git a/app/src/leanback/res/layout/dialog_update.xml b/app/src/leanback/res/layout/dialog_update.xml
+index 58e0067842d73da666a9041d851bb5d63b361d75..42db5ddefa75be99a67decd6e4c2ae6b3c70b05d 100644
+--- a/app/src/leanback/res/layout/dialog_update.xml
++++ b/app/src/leanback/res/layout/dialog_update.xml
+@@ -27,6 +27,15 @@
+ 
+     </com.fongmi.android.tv.ui.custom.JetStreamDialogScrollView>
+ 
++    <com.fongmi.android.tv.ui.custom.JetStreamBodyTextView
++        android:id="@+id/updateStatus"
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:layout_marginBottom="16dp"
++        android:accessibilityLiveRegion="polite"
++        android:visibility="gone"
++        android:maxLines="3" />
++
+     <com.fongmi.android.tv.ui.custom.JetStreamDialogButtonRowLayout
+         android:layout_width="match_parent"
+         android:layout_height="wrap_content"
+diff --git a/app/src/mobile/res/layout/dialog_update.xml b/app/src/mobile/res/layout/dialog_update.xml
+index a4ab5fc558d218a9f3f8bf85bc29eeb1477e8607..9e7f9e4648d54cf66a9ec59c261f84237b855e46 100644
+--- a/app/src/mobile/res/layout/dialog_update.xml
++++ b/app/src/mobile/res/layout/dialog_update.xml
+@@ -24,4 +24,14 @@
+             tools:text="1. 新增 ffmpeg 音頻軟解\n2. 詳情頁新增分詞快搜\n3. 修復搜尋閃退問題\n4. 設定支援渲染切換" />
+ 
+     </androidx.core.widget.NestedScrollView>
+-</androidx.appcompat.widget.LinearLayoutCompat>
+\ No newline at end of file
++    <com.google.android.material.textview.MaterialTextView
++        android:id="@+id/updateStatus"
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:layout_marginTop="16dp"
++        android:accessibilityLiveRegion="polite"
++        android:maxLines="3"
++        android:textColor="?attr/colorOnSurface"
++        android:textSize="14sp"
++        android:visibility="gone" />
++</androidx.appcompat.widget.LinearLayoutCompat>

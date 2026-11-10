@@ -12,7 +12,7 @@
     "directory": "build/reference/wobuhui-media"
   },
   "applicationId": "com.mjnhmd.tvcinema",
-  "cinemaPatchSha256": "2f3376507eebf9107c0ac9e1569b5de0580999f13bf020aa0825ec167b626dff",
+  "cinemaPatchSha256": "78673dc698872fb25c58358a88f9dc51253fefb6997b9bfbb4cb3e6ac72b089e",
   "nativeArchives": {
     "third_party/mpv/mpv-android-ffmpeg9-native.zip": "d3f22c64ab90a1476b489c2b4f06de8296672497f2998161efb4d906f9a4a66c",
     "third_party/mpv/mpv-android-ffmpeg9-bridge.zip": "29b1ef4c8d0b48475c1b5dba464d46157d7ec2e13ce913a67fcca93e4b2c20d6"
@@ -189,7 +189,213 @@
     {
       "source": "distribution/overlay/VodSeekPlaybackAndroidTest.java",
       "target": "app/src/androidTest/java/com/fongmi/android/tv/ui/custom/VodSeekPlaybackAndroidTest.java"
+    },
+    {
+      "source": "distribution/overlay/CinemaSubtitleRemovalAndroidTest.java",
+      "target": "app/src/androidTest/java/com/fongmi/android/tv/player/exo/CinemaSubtitleRemovalAndroidTest.java"
+    },
+    {
+      "source": "distribution/overlay/UpdateRouteProbe.java",
+      "target": "app/src/main/java/com/fongmi/android/tv/update/UpdateRouteProbe.java"
+    },
+    {
+      "source": "distribution/overlay/UpdateTransferMeter.java",
+      "target": "app/src/main/java/com/fongmi/android/tv/update/UpdateTransferMeter.java"
+    },
+    {
+      "source": "distribution/overlay/UpdateProgressText.java",
+      "target": "app/src/main/java/com/fongmi/android/tv/update/UpdateProgressText.java"
+    },
+    {
+      "source": "distribution/overlay/UpdateRouteProbeTest.java",
+      "target": "app/src/test/java/com/fongmi/android/tv/update/UpdateRouteProbeTest.java"
+    },
+    {
+      "source": "distribution/overlay/UpdateTransferMeterTest.java",
+      "target": "app/src/test/java/com/fongmi/android/tv/update/UpdateTransferMeterTest.java"
+    },
+    {
+      "source": "distribution/overlay/UpdateProgressTextTest.java",
+      "target": "app/src/test/java/com/fongmi/android/tv/update/UpdateProgressTextTest.java"
+    },
+    {
+      "source": "distribution/overlay/UpdateAdaptiveDownloaderTest.java",
+      "target": "app/src/test/java/com/fongmi/android/tv/update/UpdateAdaptiveDownloaderTest.java"
+    },
+    {
+      "source": "distribution/overlay/UpdateDownloadAndroidTest.java",
+      "target": "app/src/androidTest/java/com/fongmi/android/tv/update/UpdateDownloadAndroidTest.java"
+    },
+    {
+      "source": "distribution/overlay/UpdateRouteProbeTest.java",
+      "target": "app/src/androidTest/java/com/fongmi/android/tv/update/UpdateRouteProbeTest.java"
+    },
+    {
+      "source": "distribution/overlay/UpdateAdaptiveDownloaderTest.java",
+      "target": "app/src/androidTest/java/com/fongmi/android/tv/update/UpdateAdaptiveDownloaderTest.java"
     }
   ],
-  "cinemaDanmakuPatchSha256": "85c20971c777131b698efd022982bfec7614a52c93cffdbb261ce866fc563adc"
+  "cinemaDanmakuPatchSha256": "85c20971c777131b698efd022982bfec7614a52c93cffdbb261ce866fc563adc",
+  "removals": [
+    {
+      "path": "app/libs/sherpa-onnx-v1.13.4.jar",
+      "sha256": "c529915aa0c56213678065ad47f3d19c39564555c3a6d95bdbb79e8af82b88fe"
+    },
+    {
+      "path": "app/src/androidTest/java/com/fongmi/android/tv/test/AsrModelDownloadTest.java",
+      "sha256": "42302b00e6bd9dcbd6400304715b7074d749dda880f9d27088b33c360cd53e00"
+    },
+    {
+      "path": "app/src/androidTest/java/com/fongmi/android/tv/test/PythonSourceAsrTest.java",
+      "sha256": "be1a33fe6e2d917038dc0847efb6a0b47bfc97bd637b6f93c26467481baee5ca"
+    },
+    {
+      "path": "app/src/leanback/java/com/fongmi/android/tv/ai/subtitle/AiSubtitleSettingsActivity.java",
+      "sha256": "dc676e5d4127549b58bfc46de68a4087216abeeb05cd972b3f9b87afedcba8b3"
+    },
+    {
+      "path": "app/src/leanback/res/color/ai_dropdown_item_background.xml",
+      "sha256": "846e90a7f79b4be931f7b8d5d4d25964a23772846001f7e7d58b7a03c494a5a7"
+    },
+    {
+      "path": "app/src/leanback/res/color/ai_dropdown_item_text.xml",
+      "sha256": "c5f83481c2ae0a65520aa0aeeb4f44c068992cbf3102b696d0aff018b12716cb"
+    },
+    {
+      "path": "app/src/leanback/res/drawable/ai_dropdown_popup.xml",
+      "sha256": "d95e7058060b9a6460b535664a4c8c6d443883c728ab18ba2c577662b9314dd0"
+    },
+    {
+      "path": "app/src/leanback/res/layout/activity_ai_subtitle_settings.xml",
+      "sha256": "4ab0e0dd76e40c618fb34d51d4e317177098bdcd8dc84db410d3b82c84898b57"
+    },
+    {
+      "path": "app/src/leanback/res/values/ai_subtitle_styles.xml",
+      "sha256": "ee54a45edbe7d29798b81cca4386ab66e63a5357fa17fa12bc75e15aee6707f4"
+    },
+    {
+      "path": "app/src/main/java/com/fongmi/android/tv/ai/subtitle/AiAudioOutputProvider.java",
+      "sha256": "1df1d23d023000efc7b0063baf6de9375816683d89d65f73278f6c25102e3b77"
+    },
+    {
+      "path": "app/src/main/java/com/fongmi/android/tv/ai/subtitle/AiAudioTrackBufferSizeProvider.java",
+      "sha256": "7c1eaa260d4d0babc2b699749d2bbbd8b577531335a8a42341a744481ca56c35"
+    },
+    {
+      "path": "app/src/main/java/com/fongmi/android/tv/ai/subtitle/AiLanguage.java",
+      "sha256": "88e2506efbf4fc489eeadf5a02cc921849d223a2b5ffbab9bf0040a9ec90c790"
+    },
+    {
+      "path": "app/src/main/java/com/fongmi/android/tv/ai/subtitle/AiSecretPushDialog.java",
+      "sha256": "93560255d568d8adf4eb32fa6902090f595f97d2ccb4ba8a31682262c50e45c4"
+    },
+    {
+      "path": "app/src/main/java/com/fongmi/android/tv/ai/subtitle/AiSubtitlePlaybackUi.java",
+      "sha256": "39e6b6563a9cc9e872fc89248ff7d49d71a411da7d8b09e8705e94c84ac3c191"
+    },
+    {
+      "path": "app/src/main/java/com/fongmi/android/tv/ai/subtitle/AiSubtitleRuntime.java",
+      "sha256": "7484bf2d32d85ecfdb45fe56ebc7a30df9480d544ca2b690c6a52b6549af88ab"
+    },
+    {
+      "path": "app/src/main/java/com/fongmi/android/tv/ai/subtitle/AiSubtitleSettings.java",
+      "sha256": "bcdd2b7e05b67369aa7506f5166e8bf4be623a1c9a0d8c505d3dedef424acfd2"
+    },
+    {
+      "path": "app/src/main/java/com/fongmi/android/tv/ai/subtitle/AsrModel.java",
+      "sha256": "1e38e6f35d87124dcd68f4d44bbe8c068a813745b47e369deaa3a8b8d8cf4cdf"
+    },
+    {
+      "path": "app/src/main/java/com/fongmi/android/tv/ai/subtitle/AsrModelManager.java",
+      "sha256": "3aff0b86dde41a3d873b7eb12324cc894da4b55dae05d7573715e5ca4be51aaf"
+    },
+    {
+      "path": "app/src/main/java/com/fongmi/android/tv/ai/subtitle/LatestQueue.java",
+      "sha256": "4c561f7edcb1ad1639aa1f5b3715c2887b20966a7a133910e778b0106ca8b6ca"
+    },
+    {
+      "path": "app/src/main/java/com/fongmi/android/tv/ai/subtitle/ModelFile.java",
+      "sha256": "a8491fa236e69d191b2d847d4fb3fe86240d1137762f10c8eb4790f6f4a5f3e8"
+    },
+    {
+      "path": "app/src/main/java/com/fongmi/android/tv/ai/subtitle/OpenAiSubtitleTranslator.java",
+      "sha256": "e77fd96a28138bfd26df34bb656d7fe9835f8d22fc4933d354a6937d3607f8bd"
+    },
+    {
+      "path": "app/src/main/java/com/fongmi/android/tv/ai/subtitle/PcmTapAudioProcessor.java",
+      "sha256": "e3122d30164c50f782dbeb254ddf983f4845402136fd52f080202d3424e987f1"
+    },
+    {
+      "path": "app/src/main/java/com/fongmi/android/tv/ai/subtitle/SecretStore.java",
+      "sha256": "37a39c7bee72115940c6e532bc4418a3a1da2457aaaff1cec45e93bc7de4c48b"
+    },
+    {
+      "path": "app/src/main/java/com/fongmi/android/tv/ai/subtitle/SherpaSubtitleController.java",
+      "sha256": "ed0686bbefab32b7de04ab97aab5700f485ae6fb0b5d5bb203f501957cfb8b25"
+    },
+    {
+      "path": "app/src/main/java/com/fongmi/android/tv/ai/subtitle/YoudaoSubtitleTranslator.java",
+      "sha256": "d275bc3d18272e7b6440dc5e9a50e1e9b5feb30770e66b30d4511f43caafe28c"
+    },
+    {
+      "path": "app/src/main/jniLibs/arm64-v8a/libsherpa-onnx-jni.so",
+      "sha256": "f1f156ccb636d6411725771c830a24c6027be4d055c5e84bdce3c58468662241"
+    },
+    {
+      "path": "app/src/main/jniLibs/armeabi-v7a/libsherpa-onnx-jni.so",
+      "sha256": "630c30b8df6ec4f62de17f5c8280f7e62f9aa0ee53ef802e7513822adc8d491c"
+    },
+    {
+      "path": "app/src/main/res/color/ai_dropdown_item_background.xml",
+      "sha256": "94eba19de0eff85a19287e3f9a748a6bc94430f5518f62850535ff6e0c85dd07"
+    },
+    {
+      "path": "app/src/main/res/color/ai_dropdown_item_text.xml",
+      "sha256": "5f9748a2f2a472a2e616f89b1c239815227bb259dc355fe197fb9c53af3aa196"
+    },
+    {
+      "path": "app/src/main/res/drawable/ai_dropdown_popup.xml",
+      "sha256": "5ba293b93d7b0d9fdd1188a88ab5c40790e33948631c13c9c35220d97011477c"
+    },
+    {
+      "path": "app/src/main/res/layout/dialog_ai_secret_push.xml",
+      "sha256": "bcbf97ec263f90785d3f8c417b27cb22ddb8611bf6baea2ddb6a68ecbf36f6b0"
+    },
+    {
+      "path": "app/src/main/res/layout/item_ai_dropdown.xml",
+      "sha256": "10ccf33cf4edbf2e53f724ea8d3495654469ad935a7186f83a75c6c991abc116"
+    },
+    {
+      "path": "app/src/mobile/java/com/fongmi/android/tv/ai/subtitle/AiSubtitleSettingsActivity.java",
+      "sha256": "965092f0aec9cff1a6d874b7d9520ad5f7fc423fae616d480ec70f1c85912d20"
+    },
+    {
+      "path": "app/src/mobile/res/layout/activity_ai_subtitle_settings.xml",
+      "sha256": "406f3428fc69a90342f7127f94a93f9d87d49866d260922cb30a7b54867c95bd"
+    },
+    {
+      "path": "app/src/mobile/res/values/ai_subtitle_styles.xml",
+      "sha256": "1e57c43e4e351645de2b4547ea36dca904ff4246c0c0216dd42650de87ff130c"
+    },
+    {
+      "path": "app/src/test/java/com/fongmi/android/tv/ai/subtitle/AiAudioTrackBufferSizeProviderTest.java",
+      "sha256": "1b2e6fccd99545cabed811d59dba59d50f7af60cbafcdc5d306090726a4e3d54"
+    },
+    {
+      "path": "app/src/test/java/com/fongmi/android/tv/ai/subtitle/AiSubtitleCueTest.java",
+      "sha256": "cd15920c8110f4827a17721ed57f70b737f142a59ece955430ad9e6b5798063e"
+    },
+    {
+      "path": "app/src/test/java/com/fongmi/android/tv/ai/subtitle/LanguageRoutingTest.java",
+      "sha256": "ed37d1be181df26399cebc32bba16e198b4d70f044454c3de69a8ead750700e0"
+    },
+    {
+      "path": "app/src/test/java/com/fongmi/android/tv/ai/subtitle/LatestQueueStressTest.java",
+      "sha256": "c0d53e66407a4c6d09cbbf6c542fbd8ce29e18d5bded22b9ca5b390b03c50ef3"
+    },
+    {
+      "path": "app/src/test/java/com/fongmi/android/tv/ai/subtitle/OpenAiSubtitleTranslatorTest.java",
+      "sha256": "69cb0c155d8700a1b4b3a1b9d447ea56c78d0881abc98e86d528e39be95e7229"
+    }
+  ]
 }

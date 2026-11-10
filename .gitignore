@@ -38,6 +38,10 @@ __tests__/
 test_*.py
 test.gradle
 
+# Cinema build and input-removal regression tests are maintained source.
+!scripts/tests/
+!scripts/tests/test_cinema_*.py
+
 /tmp/
 /temp/
 *.tmp
