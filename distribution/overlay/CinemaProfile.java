@@ -1,6 +1,7 @@
 package com.fongmi.android.tv.utils;
 
 import com.fongmi.android.tv.setting.BrowseExperienceSettings;
+import com.fongmi.android.tv.setting.DanmakuSetting;
 import com.fongmi.android.tv.setting.PreloadSetting;
 import com.fongmi.android.tv.setting.Setting;
 import com.github.catvod.utils.Prefers;
@@ -11,6 +12,15 @@ public final class CinemaProfile {
     }
 
     public static void initialize() {
+        // Public LogVar instance: DanDanPlay-compatible search and XML comment endpoints.
+        if (!Prefers.getPrefers().contains("cinema_danmaku_defaults_v1")) {
+            if (!Prefers.getPrefers().contains("danmaku_logvar_url")) {
+                DanmakuSetting.putLogvarUrl("https://dmfl.us.ci/87654321");
+            }
+            if (!Prefers.getPrefers().contains("danmaku_load")) DanmakuSetting.putLoad(true);
+            if (!Prefers.getPrefers().contains("danmaku_auto")) DanmakuSetting.putAuto(true);
+            Prefers.put("cinema_danmaku_defaults_v1", true);
+        }
         // Applies to existing installs too: the profile marker was already written by 0.1.x.
         if (!Prefers.getPrefers().contains("cinema_low_end_preload_v1")) {
             if (!Prefers.getPrefers().contains("preload_next")) PreloadSetting.putNextEpisode(false);
