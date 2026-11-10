@@ -1,5 +1,13 @@
 # Progress
 
+## Search-result cards — 2026-11-10
+- Requested: fixed visible source/rating metadata on posters and more complete, two-line titles. Read current production flow, holder/layout, model, title/rating tests and build integration.
+- Decision: isolate the change to ordinary search with a dedicated presenter/holder/layout. After user rejected side-by-side score/update text on small posters, source remains top-right and bottom metadata uses stacked full-width lines; title gets a stable two-line slot.
+- Preserving all existing dirty files and unrelated materialized-checkout changes. Checkout is outside ppm managed roots; no ledger write, Git history or remote mutation.
+- Implemented optional explicit ten-point scores, independent of certification, plus a search-only presenter/holder and native layout. `VodReviewScoreTest` 4 and existing `VodContentRatingTest` 6 pass; production ARMv7 Debug Java/resource compile passes (33s, 230 tasks). Recipe prepare/input guards and XML parse pass.
+- Runtime complete: shared sourceprobe validation was interrupted by another session; final checks run on dedicated Android9/API28 ARM64 emulator-5562 with frozen app/test APKs. Five card/Parcel cases pass plus the existing full search filtering/Back-focus integration case. Final bitmap-background screenshots `search-cards-{unfocused,focused}.png` inspected, including 94/110dp widths and empty/long metadata.
+- Result: implemented and verified locally; stable two-line title, persistent stacked poster metadata, missing-value clearing, grouped-source refresh and D-pad/OK/long-click pass. The user explicitly authorized commit/push for this search increment on 2026-11-10; stage only its code, production recipe and evidence. No new ARMv7 Release build, TV acceptance or ppm write for this UI. Next: review actual TV appearance before any authorized release.
+
 ## 饭太硬 multi-endpoint source — 2026-11-10
 - Confirmed the built-in 饭太硬 entry pointed at a third-party 12yue copy behind Cloudflare, not 饭太硬's own domain; official `.cc`/`.net` return the same 48-site config with a newer timestamp.
 - Added `CinemaSourceProbe` (endpoint timing with timeout, early stop and payload validation), made 饭太硬 a three-endpoint group resolved as `cinema://fantai`, added schema-v3 migration off the legacy URL, and strip whole-line `//` comments from official payloads.

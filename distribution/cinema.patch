@@ -951,3 +951,83 @@ index 16c645264842b242524a12d2cb13fa7df2d93550..93e407364d70982bbab9aeac63c76392
      }
  
      public void chooseOtherPlayer(CharSequence title) {
+diff --git a/app/src/main/java/com/fongmi/android/tv/bean/Vod.java b/app/src/main/java/com/fongmi/android/tv/bean/Vod.java
+index ff0a2341b6bd9100fd816bacbc6badfe7c5be193..3cf8a33125ca5bddbb116b6ba6b650cd1a640979 100644
+--- a/app/src/main/java/com/fongmi/android/tv/bean/Vod.java
++++ b/app/src/main/java/com/fongmi/android/tv/bean/Vod.java
+@@ -82,6 +82,10 @@ public class Vod implements Parcelable, Diffable<Vod> {
+     @SerializedName(value = "vod_certification", alternate = {"content_rating", "age_rating"})
+     @JsonAdapter(ContentRatingAdapter.class)
+     private String contentRating;
++    @Element(name = "score", required = false)
++    @SerializedName(value = "vod_score", alternate = {"vod_douban_score", "douban_score"})
++    @JsonAdapter(ReviewScoreAdapter.class)
++    private String reviewScore;
+     private String backdrop;
+     /** Rex 卡片副题用的流派串（最多 2 个中文流派，可为空）。 */
+     private String genreText;
+@@ -126,6 +130,7 @@ public class Vod implements Parcelable, Diffable<Vod> {
+         this.vodActor = in.readString();
+         this.vodContent = in.readString();
+         this.contentRating = in.readString();
++        this.reviewScore = in.readString();
+         this.backdrop = in.readString();
+         this.genreText = in.readString();
+         this.vodPlayFrom = in.readString();
+@@ -245,6 +250,14 @@ public class Vod implements Parcelable, Diffable<Vod> {
+         this.contentRating = contentRating;
+     }
+ 
++    /** Optional ten-point review score, separate from content certification. */
++    public String getScore() {
++        String value = reviewScore == null ? "" : reviewScore.trim();
++        if (!value.matches("[0-9]{1,2}(?:\\.[0-9]{1,2})?")) return "";
++        double score = Double.parseDouble(value);
++        return score > 0 && score <= 10 ? value : "";
++    }
++
+     public String getBackdrop() {
+         return TextUtils.isEmpty(backdrop) ? getPic() : backdrop.trim();
+     }
+@@ -462,6 +475,7 @@ public class Vod implements Parcelable, Diffable<Vod> {
+         dest.writeString(this.vodActor);
+         dest.writeString(this.vodContent);
+         dest.writeString(this.contentRating);
++        dest.writeString(this.reviewScore);
+         dest.writeString(this.backdrop);
+         dest.writeString(this.genreText);
+         dest.writeString(this.vodPlayFrom);
+@@ -516,4 +530,12 @@ public class Vod implements Parcelable, Diffable<Vod> {
+                     ? json.getAsString() : null;
+         }
+     }
++
++    public static final class ReviewScoreAdapter implements JsonDeserializer<String> {
++        @Override
++        public String deserialize(JsonElement json, Type type, JsonDeserializationContext context) {
++            return json.isJsonPrimitive() && !json.getAsJsonPrimitive().isBoolean()
++                    ? json.getAsString() : null;
++        }
++    }
+ }
+diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/fragment/CollectFragment.java b/app/src/leanback/java/com/fongmi/android/tv/ui/fragment/CollectFragment.java
+index 70f11e7cf201555993edbaa3bd95677bb3596fae..25a7e13048cab0d40c177404aac22a950b9e2f62 100644
+--- a/app/src/leanback/java/com/fongmi/android/tv/ui/fragment/CollectFragment.java
++++ b/app/src/leanback/java/com/fongmi/android/tv/ui/fragment/CollectFragment.java
+@@ -29,6 +29,7 @@ import com.fongmi.android.tv.ui.custom.CustomRowPresenter;
+ import com.fongmi.android.tv.ui.custom.CustomScroller;
+ import com.fongmi.android.tv.ui.custom.CustomSelector;
+ import com.fongmi.android.tv.ui.presenter.VodPresenter;
++import com.fongmi.android.tv.ui.presenter.CinemaSearchPresenter;
+ import com.fongmi.android.tv.utils.ResUtil;
+ import com.fongmi.android.tv.setting.SourceSelectionSetting;
+ import com.fongmi.android.tv.source.SourceAggregator;
+@@ -190,7 +191,7 @@ public class CollectFragment extends BaseFragment implements CustomScroller.Call
+         if (activity == null || !isAdded() || activity.isFinishing() || activity.isDestroyed()) return;
+         if (checkLastSize(items)) return;
+         List<ListRow> rows = new ArrayList<>();
+-        VodPresenter presenter = new VodPresenter(this, Style.rect(), getPageSpec(Style.rect()));
++        VodPresenter presenter = new CinemaSearchPresenter(this, getPageSpec(Style.rect()));
+         for (List<Vod> part : Lists.partition(items, getColumn())) {
+             mLast = new ArrayObjectAdapter(presenter);
+             mLast.addAll(0, part);

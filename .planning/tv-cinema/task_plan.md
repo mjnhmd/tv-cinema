@@ -26,6 +26,15 @@ Ship a native TV redesign and a verified signed ARMv7 APK for an Android 9 telev
 20. [in_progress] Move settings to home nav and add playback preload mitigation.
 21. [completed] Fix MPV engine-switch SIGSEGV on Android 9.
 22. [completed] Publish 0.1.7 MPV crash fix.
+23. [completed] Keep search-result metadata visible on posters and allow two-line titles.
+
+## Search-result cards — 2026-11-10
+- Scope: ordinary search results only; preserve other poster cards, source selection, playback and existing dirty source/debug work. The user explicitly authorized committing and pushing this search increment on 2026-11-10; unrelated concurrent changes are excluded.
+- Acceptance: source at poster top-right; poster bottom stacks full-width score/year and update/source-count lines, avoiding the side-by-side crowding the user rejected. Title reserves two lines and keeps its dimensions across focus changes. Missing metadata leaves no empty badges; recycled/grouped results refresh correctly; D-pad and OK/long-press behavior remain reachable.
+- [completed] Read production card/controller, model, related title/rating tests and native layout patterns.
+- [completed] Add an isolated search card and explicit optional review-score support.
+- [completed] Compile production resources/source and verify attached cards, long titles, focus and recycled metadata; record actual runtime limits.
+- Verification: 10 JVM metadata tests, production ARMv7 Debug Java/resource compilation, 5 API28 ARM64 card/Parcel tests and 1 complete search integration pass. Final native screenshots inspected. No new ARMv7 Release or user-TV acceptance. Commit message: `feat: keep search metadata visible and show two-line titles`.
 
 ## Current investigation — FongMi player upstreams — 2026-11-10
 - Scope: read-only code/history comparison of FongMi/media and FongMi/mpv-android with the actual pinned production pair; no player replacement, dependency update, build, commit or push.

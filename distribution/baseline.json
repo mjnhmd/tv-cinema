@@ -12,7 +12,7 @@
     "directory": "build/reference/wobuhui-media"
   },
   "applicationId": "com.mjnhmd.tvcinema",
-  "cinemaPatchSha256": "b0b8ab69f54dba26e6ba4e74d2b3876d163da62f3230f77166aa15f82dee5067",
+  "cinemaPatchSha256": "ff1a72f361b0a1cb66c4fd1468df221396575139ad3f543484981bb44f59f0c9",
   "nativeArchives": {
     "third_party/mpv/mpv-android-ffmpeg9-native.zip": "d3f22c64ab90a1476b489c2b4f06de8296672497f2998161efb4d906f9a4a66c",
     "third_party/mpv/mpv-android-ffmpeg9-bridge.zip": "29b1ef4c8d0b48475c1b5dba464d46157d7ec2e13ce913a67fcca93e4b2c20d6"
@@ -121,6 +121,34 @@
     {
       "source": "distribution/overlay/MpvHwDecPolicyTest.java",
       "target": "app/src/test/java/com/fongmi/android/tv/player/mpv/MpvHwDecPolicyTest.java"
+    },
+    {
+      "source": "distribution/overlay/VodReviewScoreTest.java",
+      "target": "app/src/test/java/com/fongmi/android/tv/bean/VodReviewScoreTest.java"
+    },
+    {
+      "source": "distribution/overlay/cinema_search_card.xml",
+      "target": "app/src/leanback/res/layout/cinema_search_card.xml"
+    },
+    {
+      "source": "distribution/overlay/cinema_search_badge.xml",
+      "target": "app/src/leanback/res/drawable/cinema_search_badge.xml"
+    },
+    {
+      "source": "distribution/overlay/cinema_search_scrim.xml",
+      "target": "app/src/leanback/res/drawable/cinema_search_scrim.xml"
+    },
+    {
+      "source": "distribution/overlay/CinemaSearchCardHolder.java",
+      "target": "app/src/leanback/java/com/fongmi/android/tv/ui/holder/CinemaSearchCardHolder.java"
+    },
+    {
+      "source": "distribution/overlay/CinemaSearchPresenter.java",
+      "target": "app/src/leanback/java/com/fongmi/android/tv/ui/presenter/CinemaSearchPresenter.java"
+    },
+    {
+      "source": "distribution/overlay/CinemaSearchCardAndroidTest.java",
+      "target": "app/src/androidTest/java/com/fongmi/android/tv/ui/CinemaSearchCardAndroidTest.java"
     }
   ],
   "cinemaDanmakuPatchSha256": "85c20971c777131b698efd022982bfec7614a52c93cffdbb261ce866fc563adc"

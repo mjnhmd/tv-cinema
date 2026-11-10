@@ -1,5 +1,15 @@
 # Findings
 
+## Search-result metadata and titles — 2026-11-10
+- Ordinary search uses `CollectFragment` → `VodPresenter` → `VodRectHolder`. The holder hides its below-title metadata row on blur; `adapter_vod_rect.xml` limits titles to one 26dp line.
+- `VodRectHolder` is reused outside search. Use a search-specific presenter/holder/layout for this request, preserving other card surfaces.
+- At the start, production `Vod` had certification (`getContentRating`), which explicitly is not a review score, but no review-score field. Added optional explicit ten-point scores independently; never interpret certification or infer a rating from title/update text.
+- Existing native title tests attach widgets in the disposable `com.fongmi.android.tv.sourceprobe` app. Existing card roots/posters supply outline and focus styling; reuse those rather than introducing a new UI framework.
+- Initial sandboxed `adb devices -l` failed because it could not bind its localhost listener. Runtime verification needs approved local Android-tool access; this is not evidence of an empty device list.
+- User rejected simultaneous bottom-left score/bottom-right update text on small posters. Revised to stacked full-width bottom lines over a gradient; source remains top-right. Approved ADB check confirms no connected devices; existing isolated API28 ARM64 AVD is available, with a stale pre-move image path to correct before starting.
+- Concurrent held-seek/icon work is modifying disjoint production files and shared recipe/docs. Preserve their entries when appending this task's patch/copies. Another session used the sourceprobe package on emulator-5554 during our first instrumentation, yielding `Process crashed`; logs show its seek tests replaced the active run. Same-AVD read-only startup was refused, so final verification uses independent `cinema-search-api28-arm64` at emulator-5562 with frozen copies of this task's app/test APKs. Do not stop emulator-5554.
+- Final: 10 JVM metadata tests, production ARMv7 Debug Java/resource compile, 5 API28 ARM64 attached card/Parcel checks and 1 full search integration pass. Actual bitmap-background screenshots at 94/110dp widths show no score/update overlap; source/update ellipsize independently and titles keep two lines across focus. Empty/recycled/grouped-source fields refresh without focus. Real TV and new ARMv7 Release remain untested.
+
 ## 饭太硬 candidate endpoints — 2026-11-10
 - Built-in default is not 饭太硬's own domain: `app/src/leanback/assets/cinema/sources.json` points at the 12yue re-host `https://0.12yue.de5.net/tvbox/饭太硬.json`, which resolves to Cloudflare `104.21.47.215`. Domestic mobile-broadband latency is the expected weak point; content is a 48-site copy identical to the official one.
 - Official `/tv` serves a JPEG followed by `**` + base64 JSON, not plain JSON. The app's `com.fongmi.android.tv.api.Decoder.getJson` handles that envelope, so the official endpoint is usable as-is.
