@@ -6,7 +6,8 @@
   - After `MpvHwDecPolicy` selects `mediacodec-copy` on SDK<=28: instrumented switch passes, `event: file-loaded`, position >1s, no SIGSEGV (`cinema-mpv-policy-probe2.txt`).
 - JVM `MpvHwDecPolicyTest`: 1 test, 0 failures.
 - Local ARMv7 `TV_VERSION_CODE=217433204 TV_VERSION_NAME=0.1.7` signed Release passes package/minSdk/ARMv7/original-signer checks; 91,128,921 bytes, SHA256 `742c45d1398c73214be2672a60506d174ce960a215893589382ee1e5c566a457`.
-- Not tested: user's 32-bit television, Amlogic hardware decode path, sustained MPV frame rate/memory, or public OTA for 0.1.7.
+- Published cloud release `build-42727947198-1`: `0.1.7+20261110.004454` / code `217434694`; downloaded APK 91,125,793 bytes, SHA256 `75276eafeba1305c40eaebcda3b06b2f43559f067db207ba22a35619b121baa0`, matching manifest; `verify-apk` passes package/minSdk24/ARMv7/original signer; latest manifest works through `gh-proxy.com`.
+- Not tested: user's 32-bit television, Amlogic hardware decode path, sustained MPV frame rate/memory, and actual in-app update on the TV.
 
 ## Navigation and playback preload — 0.1.6
 - Focused JVM run covering `source.*`, `ui.home.*` and `model.*`: 18 suites / 216 tests / 0 failures (`cinema-016-compile.log`).
