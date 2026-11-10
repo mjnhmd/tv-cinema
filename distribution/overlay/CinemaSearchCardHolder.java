@@ -5,6 +5,7 @@ import android.view.View;
 import com.fongmi.android.tv.bean.Vod;
 import com.fongmi.android.tv.databinding.CinemaSearchCardBinding;
 import com.fongmi.android.tv.ui.base.BaseVodHolder;
+import com.fongmi.android.tv.ui.custom.PosterTitleMarquee;
 import com.fongmi.android.tv.ui.presenter.VodPresenter;
 import com.fongmi.android.tv.utils.ImgUtil;
 import com.fongmi.android.tv.utils.ResUtil;
@@ -13,6 +14,7 @@ import com.fongmi.android.tv.utils.ResUtil;
 public final class CinemaSearchCardHolder extends BaseVodHolder {
     private final CinemaSearchCardBinding binding;
     private final VodPresenter.OnClickListener listener;
+    private final PosterTitleMarquee titleMarquee;
 
     public CinemaSearchCardHolder(CinemaSearchCardBinding binding, VodPresenter.OnClickListener listener, int[] size) {
         super(binding.getRoot());
@@ -21,10 +23,12 @@ public final class CinemaSearchCardHolder extends BaseVodHolder {
         binding.getRoot().getLayoutParams().width = size[0];
         binding.poster.getLayoutParams().height = size[1];
         binding.site.setMaxWidth(Math.max(1, size[0] - ResUtil.dp2px(16)));
+        titleMarquee = PosterTitleMarquee.bindWithFixedHeight(binding.name);
     }
 
     @Override public void initView(Vod item) {
         binding.name.setText(item.getName());
+        titleMarquee.refresh();
         binding.site.setText(item.getSiteName());
         binding.site.setVisibility(item.getSiteName().isEmpty() ? View.GONE : View.VISIBLE);
         String score = item.getScore();

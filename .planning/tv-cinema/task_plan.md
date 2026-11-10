@@ -30,6 +30,14 @@ Ship a native TV redesign and a verified signed ARMv7 APK for an Android 9 telev
 24. [completed] Generate jade interlocking-screen icon; user selected it.
 25. [completed] Integrate selected artwork and verify actual APK resources on API28.
 26. [completed] Fix held seek previews remaining pending after button release.
+27. [completed] Scroll truncated search titles on focus while retaining the two-line card footprint.
+
+## Search-title focused marquee — 2026-11-10
+- [completed] Read search holder/layout/tests, native marquee helper and existing focus/rebind test patterns.
+- [completed] Add actual-pixel overflow/fit/blur/rebind/detach regressions, reproduce failure and implement an opt-in fixed-height native marquee.
+- [completed] Compile ARMv7 source/resources from isolated pinned production recipe; run API28 ARM64 UI checks and full search integration; update evidence and handoff.
+- Acceptance: only a title ellipsized after wrapping to two lines scrolls; raw title remains intact; losing focus restores two lines; card/title height never shrinks; metadata and D-pad/OK/long-click behavior remain unchanged. The user explicitly authorized committing/pushing this increment on 2026-11-10; stage only its helper, holder, tests, recipe and evidence.
+- Result: seven search tests pass, 27.987s, final ARMv7 Debug compile succeeds and screenshots inspected. Two unrelated original single-line poster pixel failures also reproduce with unchanged helper on API28; recorded separately. Shared full build and true ARMv7 TV acceptance remain outside these isolated checks.
 
 ## Held seek release — 2026-11-10
 - Scope: production VOD remote seek input and focused regression tests; preserve unrelated work. The user explicitly authorized this fix's commit and push with “提交推送” on 2026-11-10; branch changes and public release are outside this authorization.

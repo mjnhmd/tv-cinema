@@ -11,6 +11,7 @@ import android.graphics.Shader;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Parcel;
 import android.os.SystemClock;
+import android.text.TextUtils;
 import android.util.Base64;
 import android.view.KeyEvent;
 import android.view.View;
@@ -42,6 +43,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
 
 import static org.junit.Assert.*;
 
@@ -85,6 +88,7 @@ public final class CinemaSearchCardAndroidTest {
             other.requestFocus();
         });
         instrumentation.waitForIdleSync();
+        await(() -> other.hasWindowFocus() && other.hasFocus(), "search fixture window and initial focus");
     }
 
     @After public void cleanup() {
@@ -168,6 +172,150 @@ public final class CinemaSearchCardAndroidTest {
             assertEquals("9.1", restored.getSourceCandidates().get(0).getScore());
             assertEquals(parcel.dataSize(), parcel.dataPosition());
         } finally { parcel.recycle(); }
+    }
+
+    @Test public void overflowingTitleScrollsOnlyOnFocusAndKeepsItsTwoLineFootprint() {
+        String text = "这是一部很长的电影标题，包含导演剪辑版和完整修复版的信息，最后几个字也应该能读到";
+        BaseVodHolder holder = add(item(text, "测试来源", "更新至12集", "8.6"), 110);
+        TextView title = holder.view.findViewById(R.id.name);
+        await(() -> title.getLayout() != null && !title.isLayoutRequested(), "two-line title layout");
+        int titleHeight = value(title::getHeight);
+        int cardHeight = value(holder.view::getHeight);
+        assertEquals(2, value(title::getMaxLines).intValue());
+        assertTrue("Unfocused long title must be truncated: " + value(() -> "lines="
+                + title.getLineCount() + " focus=" + holder.view.hasFocus() + " selected=" + title.isSelected()
+                + " width=" + title.getWidth() + " layoutWidth=" + title.getLayout().getWidth()),
+                value(() -> title.getLayout().getLineCount() > title.getMaxLines()
+                        || title.getLayout().getEllipsisCount(1) > 0));
+        assertStill(title);
+        instrumentation.runOnMainSync(() -> assertTrue(holder.view.requestFocus()));
+        await(() -> title.getEllipsize() == TextUtils.TruncateAt.MARQUEE && title.isSelected()
+                && !title.isLayoutRequested(), "focused overflow marquee");
+        assertMoving(title);
+        NativeUiEvidence.capture("search-title-marquee-focused");
+        assertEquals("The title slot must keep two-line height", titleHeight, value(title::getHeight).intValue());
+        assertEquals("Marquee must not resize the card", cardHeight, value(holder.view::getHeight).intValue());
+        assertEquals(text, value(() -> title.getText().toString()));
+        instrumentation.runOnMainSync(() -> { assertVisibleMetadata(holder); assertTrue(other.requestFocus()); });
+        await(() -> title.getMaxLines() == 2 && title.getEllipsize() == TextUtils.TruncateAt.END
+                && !title.isSelected() && !title.isLayoutRequested(), "two-line title after blur");
+        assertEquals(2, value(() -> title.getLayout().getLineCount()).intValue());
+        assertTrue("Blurred overflow must show an ellipsis", value(() -> title.getLayout().getEllipsisCount(1) > 0));
+        assertStill(title);
+        assertEquals(titleHeight, value(title::getHeight).intValue());
+        assertEquals(cardHeight, value(holder.view::getHeight).intValue());
+        NativeUiEvidence.capture("search-title-marquee-blurred");
+        assertEquals(0, clicks.get());
+    }
+
+    @Test public void fittingTwoLineTitleStaysStillAndFocusedRebindRestartsOnlyForOverflow() {
+        BaseVodHolder holder = add(item("哈利·波特与阿兹卡班的囚徒", "测试来源", "全12集", "8.6"), 110);
+        TextView title = holder.view.findViewById(R.id.name);
+        instrumentation.runOnMainSync(() -> assertTrue(holder.view.requestFocus()));
+        await(() -> title.getLayout() != null && title.getLayout().getLineCount() == 2
+                && !title.isLayoutRequested(), "fitting two-line title");
+        int height = value(holder.view::getHeight);
+        assertEquals(TextUtils.TruncateAt.END, value(title::getEllipsize));
+        assertStill(title);
+        String overflow = "一个长到两行也放不下的电影标题，需要在选中后自动滚动才能读完最后的内容";
+        instrumentation.runOnMainSync(() -> holder.initView(item(overflow, "测试来源", "全12集", "8.6")));
+        await(() -> title.getEllipsize() == TextUtils.TruncateAt.MARQUEE && title.isSelected()
+                && !title.isLayoutRequested(), "marquee after focused rebind");
+        assertMoving(title);
+        assertEquals(height, value(holder.view::getHeight).intValue());
+        instrumentation.runOnMainSync(() -> holder.initView(item("短片名", "测试来源", "全12集", "8.6")));
+        await(() -> title.getMaxLines() == 2 && title.getEllipsize() == TextUtils.TruncateAt.END
+                && !title.isSelected() && !title.isLayoutRequested(), "short focused rebind stops marquee");
+        assertStill(title);
+        assertEquals(height, value(holder.view::getHeight).intValue());
+        instrumentation.runOnMainSync(() -> {
+            holder.initView(item(overflow, "测试来源", "全12集", "8.6"));
+            row.removeView(holder.view);
+            assertFalse(title.isSelected());
+            assertEquals(2, title.getMaxLines());
+            assertTrue(other.requestFocus());
+            row.addView(holder.view);
+        });
+        await(() -> title.isAttachedToWindow() && !title.isLayoutRequested(), "recycled title reattached");
+        assertTrue(value(other::hasFocus));
+        assertStill(title);
+        instrumentation.runOnMainSync(() -> assertTrue(holder.view.requestFocus()));
+        await(() -> title.getEllipsize() == TextUtils.TruncateAt.MARQUEE && title.isSelected()
+                && !title.isLayoutRequested(), "marquee resumes on focused reattached card");
+        assertMoving(title);
+        assertEquals(height, value(holder.view::getHeight).intValue());
+    }
+
+    @Test public void englishOverflowScrollsWithStableCardHeight() {
+        BaseVodHolder holder = add(item("A very long movie title with a director's cut and a restored edition that must scroll to reveal the ending",
+                "测试来源", "完整版", "8.6"), 110);
+        TextView title = holder.view.findViewById(R.id.name);
+        int height = value(holder.view::getHeight);
+        instrumentation.runOnMainSync(() -> assertTrue(holder.view.requestFocus()));
+        await(() -> title.getEllipsize() == TextUtils.TruncateAt.MARQUEE && title.isSelected()
+                && !title.isLayoutRequested(), "English title marquee");
+        assertMoving(title);
+        assertEquals(height, value(holder.view::getHeight).intValue());
+        instrumentation.runOnMainSync(() -> assertTrue(other.requestFocus()));
+        await(() -> title.getMaxLines() == 2 && !title.isSelected() && !title.isLayoutRequested(), "English title blur");
+        assertTrue(value(() -> title.getLayout().getEllipsisCount(1) > 0));
+        assertStill(title);
+        assertEquals(height, value(holder.view::getHeight).intValue());
+    }
+
+    private Bitmap pixels(TextView title) {
+        return value(() -> {
+            Bitmap bitmap = Bitmap.createBitmap(title.getWidth(), title.getHeight(), Bitmap.Config.ARGB_8888);
+            title.draw(new Canvas(bitmap));
+            return bitmap;
+        });
+    }
+
+    private void assertMoving(TextView title) {
+        SystemClock.sleep(600);
+        Bitmap first = pixels(title);
+        try {
+            long deadline = SystemClock.uptimeMillis() + 6000;
+            while (SystemClock.uptimeMillis() < deadline) {
+                SystemClock.sleep(200);
+                Bitmap next = pixels(title);
+                try { if (!first.sameAs(next)) return; }
+                finally { next.recycle(); }
+            }
+            fail("Focused overflow title pixels must actually scroll");
+        } finally { first.recycle(); }
+    }
+
+    private void assertStill(TextView title) {
+        SystemClock.sleep(600);
+        Bitmap first = pixels(title);
+        try {
+            for (int sample = 0; sample < 8; sample++) {
+                SystemClock.sleep(250);
+                Bitmap next = pixels(title);
+                try { assertTrue("Fitting or unfocused text must stay still", first.sameAs(next)); }
+                finally { next.recycle(); }
+            }
+        } finally { first.recycle(); }
+    }
+
+    private void await(BooleanSupplier condition, String description) {
+        long deadline = SystemClock.uptimeMillis() + 5000;
+        while (SystemClock.uptimeMillis() < deadline) {
+            if (value(condition::getAsBoolean)) return;
+            SystemClock.sleep(50);
+        }
+        fail("Timed out waiting for " + description);
+    }
+
+    private <T> T value(Supplier<T> action) {
+        AtomicReference<T> result = new AtomicReference<>();
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+        instrumentation.runOnMainSync(() -> {
+            try { result.set(action.get()); } catch (Throwable error) { failure.set(error); }
+        });
+        if (failure.get() != null) throw new AssertionError("UI operation failed", failure.get());
+        return result.get();
     }
 
     private BaseVodHolder add(Vod item, int width) {

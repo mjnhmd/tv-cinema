@@ -1,5 +1,15 @@
 # Progress
 
+## Search-title focused marquee — 2026-11-10
+- User accepted conditional focused scrolling for titles truncated after two-line wrapping. Read native helper, search holder/layout, current tests and similar history-title behavior; plan is native marquee with a search-only height lock, preserving other cards.
+- Existing dirty patch/docs belong to other work and will be preserved. No commit/push authorized for this follow-up; verification and implementation in progress.
+- Validation isolated from concurrent subtitle-removal work: `build/reference/cinema-search-title-tv` materializes the committed pinned recipe, checked against all declared Git blob IDs, plus this search-only increment. Shared checkout compile failed on missing Sherpa dependency while the other task was in progress; no reversal of its changes.
+- Fail-before API28 ARM64: added actual-card overflow regression fails waiting for marquee (8.727s, `cinema-search-marquee-before-runtime.log`). Native helper now offers opt-in measured-height retention and search holder binds it once; default users remain unchanged. Fixed ARMv7 source compile and Android runtime in progress.
+- First six search tests pass with pixel movement and stable title/card height, but screenshot review found native two-line ellipsis missing after TextWatcher binding. Changed only the opt-in search binding to explicit holder refresh, added English overflow coverage and strict blur ellipsis assertion; revalidation in progress.
+- Baseline comparison: original unchanged helper also fails 2 existing single-line poster pixel tests on API28 (`cinema-search-marquee-original-helper-runtime.log`, 21.377s), while its history-title test passes. Preserve that unrelated behavior; do not claim a whole-poster-suite pass.
+- Final: explicit holder refresh preserves API28 two-line ellipsis; Chinese/English overflow scrolls with stable measured title/card height. Seven card/search checks pass (27.987s, `cinema-search-marquee-ellipsis-runtime.log`); isolated pinned-recipe ARMv7 Debug source compile and ARM64 test APK assembly pass (1m28s, 554 tasks). Final focus/blur screenshots inspected. Current production helper/holder match the tested bytes; no user-TV or latest shared full-build acceptance claim.
+- The user explicitly authorized committing/pushing this title-scrolling increment with “提交推送” on 2026-11-10. Prepare only its helper hunk, holder, tests, recipe checksum and evidence; preserve concurrent subtitle-removal changes. Commit message: `feat: scroll truncated search titles on focus`. No public release or ppm write.
+
 ## Held seek release — 2026-11-10
 - User reports long fast-forward previews stay visible after releasing; one additional short press commits them. Read the paired production input/state/scheduler, activity dispatch and existing input tests; identified the missing-release completion gap.
 - Plan: prove failure with an Android regression, add a bounded inactivity fallback while preserving strict key ownership and all existing cancellation hooks, then verify short/held/reversed/canceled/replaced sequences.

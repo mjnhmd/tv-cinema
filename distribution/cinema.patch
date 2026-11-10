@@ -1274,3 +1274,59 @@ index 02ed03571eabb0ddfcaea404615a5ad9026a30e7..c38d60aaa52ecb125510f40d7e2e7352
      @Override
      public boolean onDown(@NonNull MotionEvent event) {
          return true;
+diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/custom/PosterTitleMarquee.java b/app/src/leanback/java/com/fongmi/android/tv/ui/custom/PosterTitleMarquee.java
+index 9efb10ec1f459e563248ad97ca000281111054ca..6713d2212c034cd956f13db549bc50f16e29b4a4 100644
+--- a/app/src/leanback/java/com/fongmi/android/tv/ui/custom/PosterTitleMarquee.java
++++ b/app/src/leanback/java/com/fongmi/android/tv/ui/custom/PosterTitleMarquee.java
+@@ -25,6 +25,7 @@ public final class PosterTitleMarquee implements View.OnAttachStateChangeListene
+     private final int maxHeight;
+     private final int repeatLimit;
+     private final boolean singleLine;
++    private final boolean preserveHeight;
+     private ViewTreeObserver observer;
+     private boolean marquee;
+     private boolean pending;
+@@ -32,11 +33,21 @@ public final class PosterTitleMarquee implements View.OnAttachStateChangeListene
+     private int availableWidth = -1;
+ 
+     public static void bind(TextView title) {
+-        new PosterTitleMarquee(title);
++        new PosterTitleMarquee(title, false);
+     }
+ 
+-    private PosterTitleMarquee(TextView title) {
++    /** The holder must call refresh after binding text, retaining native multiline ellipsis. */
++    public static PosterTitleMarquee bindWithFixedHeight(TextView title) {
++        return new PosterTitleMarquee(title, true);
++    }
++
++    public void refresh() {
++        evaluateOriginalLayout();
++    }
++
++    private PosterTitleMarquee(TextView title, boolean preserveHeight) {
+         this.title = title;
++        this.preserveHeight = preserveHeight;
+         ellipsize = title.getEllipsize();
+         transformation = title.getTransformationMethod();
+         singleLine = transformation instanceof SingleLineTransformationMethod;
+@@ -47,7 +58,8 @@ public final class PosterTitleMarquee implements View.OnAttachStateChangeListene
+         repeatLimit = title.getMarqueeRepeatLimit();
+         title.addOnAttachStateChangeListener(this);
+         title.addOnLayoutChangeListener(this);
+-        title.addTextChangedListener(this);
++        // TextWatcher forces Editable/DynamicLayout, which loses multiline ellipsis on API28.
++        if (!preserveHeight) title.addTextChangedListener(this);
+         if (title.isAttachedToWindow()) onViewAttachedToWindow(title);
+     }
+ 
+@@ -132,7 +144,9 @@ public final class PosterTitleMarquee implements View.OnAttachStateChangeListene
+         }
+         configuring = true;
+         marquee = true;
++        int measuredHeight = title.getHeight();
+         title.setSingleLine(true);
++        if (preserveHeight) title.setHeight(measuredHeight);
+         title.setEllipsize(TextUtils.TruncateAt.MARQUEE);
+         title.setMarqueeRepeatLimit(-1);
+         title.setSelected(true);
