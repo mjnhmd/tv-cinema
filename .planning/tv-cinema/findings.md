@@ -1,5 +1,17 @@
 # Findings
 
+## 饭太硬 candidate endpoints — 2026-11-10
+- Built-in default is not 饭太硬's own domain: `app/src/leanback/assets/cinema/sources.json` points at the 12yue re-host `https://0.12yue.de5.net/tvbox/饭太硬.json`, which resolves to Cloudflare `104.21.47.215`. Domestic mobile-broadband latency is the expected weak point; content is a 48-site copy identical to the official one.
+- Official `/tv` serves a JPEG followed by `**` + base64 JSON, not plain JSON. The app's `com.fongmi.android.tv.api.Decoder.getJson` handles that envelope, so the official endpoint is usable as-is.
+- Live today (HTTP 200, 19,951 bytes, 48 sites / 6 lives, Last-Modified 2026-11-08): `http://www.饭太硬.net/tv` (BlogCDN), `http://www.饭太硬.cc/tv` (nginx), `https://www.饭太硬.cc/tv` (valid TLS, same ETag `6aefd459-4def`).
+- Dead: `http://饭太硬.top/tv` and `http://fty.xxooo.cf/tv` (no response).
+- Third-party mirrors live but are older copies: `https://jijietvbox.lol/tv/fty.json` (17,343B, 50 sites), plus the current 12yue re-host (17,765B, 48 sites).
+- `https://www.饭太硬.net/tv` fails TLS (`tlsv1 alert internal error`), so `.net` is HTTP-only and `CinemaSources.seeds()` would drop it. Only `https://www.饭太硬.cc/tv` is currently shippable without relaxing the HTTPS-only filter.
+- Host probes prove endpoint liveness and content only. No device is connected, so no TV-network ranking exists yet.
+- Implementation: 饭太硬 is now a three-endpoint group (`https://www.饭太硬.cc/tv`, `http://www.饭太硬.net/tv` flagged insecure, `https://jijietvbox.lol/tv/fty.json`) activated as `cinema://fantai`. `CinemaDiscovery` times the endpoints on the TV, caches the winner for 24h and re-probes on failure or expiry; `CinemaSourceProbe` holds the timing/validation logic and is JVM-tested.
+- `https://` stays mandatory for every endpoint without `"insecure": true`, so the HTTP official host is the only plaintext exception and it is declared in the asset, not hard-coded.
+- Official `.cc`/`.net` payloads include whole-line `//` comments that strict JSON rejects; both the probe and the discovery decode path strip those lines. Inline `https://` inside string values must survive, which a line-start-anchored regex guarantees.
+
 ## MPV Android 9 surface crash — 2026-11-10
 - Switching EXO→MPV during playback crashed on API28 inside `CCodecBufferChannel::setSurface` with SIGSEGV, not a Java exception. `mediacodec-copy` avoids passing a Surface and completes playback; `MpvHwDecPolicy` limits that path to SDK<=28 so newer devices keep surface-first decoding.
 - The copy path may fall back to software decode; it fixes the crash, not necessarily MPV performance.

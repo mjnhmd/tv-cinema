@@ -1,11 +1,25 @@
 {
-  "version": 1,
+  "version": 2,
   "generatedFrom": "https://0.12yue.de5.net/config.json",
   "sources": [
     {
       "name": "饭太硬",
       "type": "vod",
-      "url": "https://0.12yue.de5.net/tvbox/%E9%A5%AD%E5%A4%AA%E7%A1%AC.json"
+      "endpoints": [
+        {
+          "label": "官方 cc",
+          "url": "https://www.xn--sss604efuw.cc/tv"
+        },
+        {
+          "label": "官方 net",
+          "url": "http://www.xn--sss604efuw.net/tv",
+          "insecure": true
+        },
+        {
+          "label": "极恶转载",
+          "url": "https://jijietvbox.lol/tv/fty.json"
+        }
+      ]
     },
     {
       "name": "南风",

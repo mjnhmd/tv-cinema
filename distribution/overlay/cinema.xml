@@ -21,5 +21,7 @@
     <string name="cinema_discover_summary">成功读取 %1$d/%2$d 个订阅，保留 %3$d 个站点，去重 %4$d 个。\n\n已加入“内置片源”列表，名称为“手动抓取 · 合并片源”。当前源未改变，选择该项才会启用。</string>
     <string name="cinema_discover_failed">抓取失败，已保留之前的候选和当前片源</string>
     <string name="cinema_discover_busy">正在抓取，请稍候</string>
+    <string name="cinema_source_probe_pick">饭太硬线路已选 %1$s（%2$d ms）</string>
+    <string name="cinema_source_probe_none">饭太硬线路都不可用，已保留当前片源</string>
     <string name="cinema_playlist_invalid">当前源返回了网站分类，不是剧集，请选择“换源”重试</string>
 </resources>

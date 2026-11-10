@@ -1,5 +1,11 @@
 # Progress
 
+## 饭太硬 multi-endpoint source — 2026-11-10
+- Confirmed the built-in 饭太硬 entry pointed at a third-party 12yue copy behind Cloudflare, not 饭太硬's own domain; official `.cc`/`.net` return the same 48-site config with a newer timestamp.
+- Added `CinemaSourceProbe` (endpoint timing with timeout, early stop and payload validation), made 饭太硬 a three-endpoint group resolved as `cinema://fantai`, added schema-v3 migration off the legacy URL, and strip whole-line `//` comments from official payloads.
+- 31 JVM tests in `api.config.*` pass (6 new). Local ARMv7 `0.1.8`/`217435000` built and verified, SHA256 `164aadbc…45bf97`. Not tested on the user's television.
+- Concurrent-session note: another session edited `CinemaProfile.java`, `distribution/cinema.patch`, `distribution/baseline.json` and this feature's docs while this work ran. `cinema.patch` and `baseline.json` hashes were temporarily inconsistent, blocking `scripts/cinema-prepare.py`, so the local APK was built by invoking Gradle directly in the pinned checkout. Re-run `cinema-prepare.py` before any official or CI build.
+
 ## MPV Android 9 crash fix — 2026-11-10
 - Reproduced EXO→MPV native SIGSEGV on API28. Added `MpvHwDecPolicy` (`mediacodec-copy` on SDK<=28); API28 probe now plays past one second without crashing.
 - JVM policy test passes; local ARMv7 0.1.7/217433204 built (91,128,921B, sha 742c45d1..., same signer). Published cloud 0.1.7 code 217434694 as `build-42727947198-1`; downloaded APK sha 75276eaf..., signature/ABI/manifest verified.

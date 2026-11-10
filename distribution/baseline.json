@@ -47,6 +47,14 @@
       "target": "app/src/leanback/java/com/fongmi/android/tv/api/config/CinemaDiscovery.java"
     },
     {
+      "source": "distribution/overlay/CinemaSourceProbe.java",
+      "target": "app/src/leanback/java/com/fongmi/android/tv/api/config/CinemaSourceProbe.java"
+    },
+    {
+      "source": "distribution/overlay/CinemaSourceProbeTest.java",
+      "target": "app/src/test/java/com/fongmi/android/tv/api/config/CinemaSourceProbeTest.java"
+    },
+    {
       "source": "distribution/overlay/CinemaDiscoveryAndroidTest.java",
       "target": "app/src/androidTest/java/com/fongmi/android/tv/api/config/CinemaDiscoveryAndroidTest.java"
     },

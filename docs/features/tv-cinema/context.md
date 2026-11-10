@@ -1,5 +1,14 @@
 # TV Cinema: television redesign
 
+## Implemented — 饭太硬 multi-endpoint source — 2026-11-10
+- User reports the built-in `饭太硬` subscription loads slowly on a domestic China Mobile home-broadband television. Cause: the bundled address was not 饭太硬's own domain but a third-party copy `https://0.12yue.de5.net/tvbox/饭太硬.json` behind Cloudflare (`104.21.47.215`), and its payload was an older 48-site snapshot.
+- Endpoint survey (host probes for liveness/content only; no TV measurement): live `https://www.饭太硬.cc/tv` (valid TLS) and `http://www.饭太硬.net/tv` (its HTTPS handshake fails, so HTTP only); both return the same 19,951-byte JPEG + `**` + base64 envelope with 48 sites and 6 lives. Dead: `饭太硬.top`, `fty.xxooo.cf`. Older mirror: `https://jijietvbox.lol/tv/fty.json` (50 sites).
+- `app/src/leanback/assets/cinema/sources.json` v2 turns 饭太硬 into a group of three endpoints: official cc (HTTPS), official net (HTTP, explicitly `"insecure": true`), then the jijietvbox mirror. `CinemaSources` still requires `https://` unless an endpoint carries that flag.
+- A multi-endpoint entry activates as `cinema://fantai`. `CinemaDiscovery` resolves it on first load by timing each endpoint (8s cap each, early stop at ≤1200ms), keeps the winner for 24h, re-probes when it fails or expires, and shows a toast naming the chosen endpoint and its latency. The measurement runs on the television, so the pick reflects the TV's own network.
+- Schema v3 migrates existing installs once: a VOD config still pointing at the legacy 12yue URL becomes the group, and the matching LIVE config becomes the primary HTTPS endpoint because `LiveConfig` has no candidate hook.
+- Official payloads carry whole-line `//` comments; the probe and discovery strip those lines before parsing while keeping `https://` inside string values intact.
+- Verification: 31 JVM tests in `api.config.*` (6 new probe cases) pass; local ARMv7 `0.1.8` / `217435000` builds and passes package/minSdk/ABI/signer checks (91,134,761 bytes, SHA256 `164aadbcb588cdce5d3a68e0b251452a5debd926be45ca058a174ed02545bf97`). Not tested: the user's television network, which endpoint wins there, and playback through the winner.
+
 ## Implemented — MPV Android 9 crash fix — 2026-11-10
 - User reports switching to MPV crashes immediately. Reproduced on API28 ARM64 with a loopback H.264 fixture: MPV hardware decode (`mediacodec,mediacodec-copy`) reaches playback and then dies with native `SIGSEGV` in `CCodecBufferChannel::setSurface` on `CodecLooper`. This is an Android 9 platform surface/MediaCodec crash, not a Java exception.
 - `MpvHwDecPolicy` selects `mediacodec-copy` on SDK <= 28 and the normal surface-first chain on newer systems. After the change the same playback + engine-switch test reaches `file-loaded`, advances beyond one second and exits cleanly; no surface is handed to MediaCodec in the Android 9 path. MPV may fall back to software decoding on this path, so smoothness is not guaranteed.
