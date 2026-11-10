@@ -12,12 +12,44 @@
     "directory": "build/reference/wobuhui-media"
   },
   "applicationId": "com.mjnhmd.tvcinema",
-  "cinemaPatchSha256": "ff1a72f361b0a1cb66c4fd1468df221396575139ad3f543484981bb44f59f0c9",
+  "cinemaPatchSha256": "9601a429dbc0b94b6051babf07849ffc4510f495d818b96cd075a7bed65ae8af",
   "nativeArchives": {
     "third_party/mpv/mpv-android-ffmpeg9-native.zip": "d3f22c64ab90a1476b489c2b4f06de8296672497f2998161efb4d906f9a4a66c",
     "third_party/mpv/mpv-android-ffmpeg9-bridge.zip": "29b1ef4c8d0b48475c1b5dba464d46157d7ec2e13ce913a67fcca93e4b2c20d6"
   },
   "copies": [
+    {
+      "source": "distribution/overlay/cinema_icon.png",
+      "target": "app/src/leanback/res/drawable-xxxhdpi/cinema_icon.png"
+    },
+    {
+      "source": "distribution/overlay/cinema_icon_background.xml",
+      "target": "app/src/leanback/res/drawable/cinema_icon_background.xml"
+    },
+    {
+      "source": "distribution/overlay/cinema_icon_foreground.xml",
+      "target": "app/src/leanback/res/drawable/cinema_icon_foreground.xml"
+    },
+    {
+      "source": "distribution/overlay/cinema_launcher.xml",
+      "target": "app/src/leanback/res/mipmap/cinema_launcher.xml"
+    },
+    {
+      "source": "distribution/overlay/cinema_launcher_adaptive.xml",
+      "target": "app/src/leanback/res/mipmap-anydpi-v26/cinema_launcher.xml"
+    },
+    {
+      "source": "distribution/overlay/cinema_banner.xml",
+      "target": "app/src/leanback/res/mipmap/cinema_banner.xml"
+    },
+    {
+      "source": "distribution/overlay/cinema_logo.xml",
+      "target": "app/src/leanback/res/drawable/ic_logo.xml"
+    },
+    {
+      "source": "distribution/overlay/cinema_brand.xml",
+      "target": "app/src/leanback/res/values/cinema_brand.xml"
+    },
     {
       "source": "app/src/leanback/java/com/fongmi/android/tv/api/config/CinemaSources.java",
       "target": "app/src/leanback/java/com/fongmi/android/tv/api/config/CinemaSources.java"

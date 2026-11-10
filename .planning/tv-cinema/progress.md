@@ -1,5 +1,14 @@
 # Progress
 
+## App icon exploration — 2026-11-10
+- Final integration passes: eight API28 offscreen archive-resource renders, unchanged RGB pixel audit, full signed ARMv7 build (3m37s / 900 tasks), package/minSdk24/ABI/original-signer audit and production input guards. Local APK `0.1.8-icon-local` / `217447200`, 91,915,944B, SHA256 `a4a9ed0b…889fd9`. Default home/playback logos, launchers, TV banner and splash share the selected image.
+- Evidence and exact prompt are in `docs/features/tv-cinema/icon-design.md` / `verification.md`. User explicitly authorized icon-only commit/push with “改完提交推送”; commit message `feat: apply jade cinema app identity`. Preserve unrelated working tree changes. No app installation, TV test, public release or ppm mutation.
+- User selected the jade icon. Added the original PNG plus seven XML brand overlays through the production manifest; updated leanback identity refs and the hard-coded playback badge in the reviewed patch. Initial signed ARMv7 build and original-signer/minSdk/ABI audit passed.
+- Rendered actual APK resources offscreen on existing API28 ARM64 emulator without installing/launching the app. Found scaling problems in fixed-dp banner/default-logo wrappers, corrected them with relative/full-bounds layers, and started the final rebuild. Visual source remains unchanged; target-TV acceptance is separate.
+- Read rules, feature context, launcher/vector assets and both previous icon proposals. Inspected the user's two reference sites through the existing Kimi browser connection.
+- Reused the existing planning-with-files plan and added a feature-local design record before generation. New concept: simplified interlocking jade frames with a meaningful widescreen negative space; exact built-in imagegen prompt saved in `icon-design.md`.
+- Initial inspection queried ppm read-only; no out-of-root ledger mutations. Subsequent visual selection authorized production integration, and the latest user instruction authorizes icon-only commit/push.
+
 ## Search-result cards — 2026-11-10
 - Requested: fixed visible source/rating metadata on posters and more complete, two-line titles. Read current production flow, holder/layout, model, title/rating tests and build integration.
 - Decision: isolate the change to ordinary search with a dedicated presenter/holder/layout. After user rejected side-by-side score/update text on small posters, source remains top-right and bottom metadata uses stacked full-width lines; title gets a stable two-line slot.

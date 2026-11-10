@@ -1,0 +1,7 @@
+<resources>
+    <style name="Cinema.Splash" parent="Theme.SplashScreen">
+        <item name="postSplashScreenTheme">@style/Theme.App</item>
+        <item name="windowSplashScreenBackground">#060F0C</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/cinema_icon_foreground</item>
+    </style>
+</resources>

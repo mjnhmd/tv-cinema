@@ -1,5 +1,13 @@
 # Findings
 
+## App icon exploration — 2026-11-10
+- Final package retains identical source RGB pixels after aapt2 compression. Actual API28 renders confirm proper proportional banner scaling and legibility in 48px launcher / 32px playback masks. Build and resource checks prove packaging, not target-TV acceptance.
+- User accepted the generated jade image; byte-exact master is now `distribution/overlay/cinema_icon.png` (1254² RGB, SHA256 `5e3d01fa…36890`). Leanback-specific launcher/banner/splash/default logo bindings preserve mobile and network logos.
+- Actual API28 archive-resource rendering caught non-scaling fixed-dp banner/logo layers; relative 21.875% horizontal banner insets and a zero-inset default-logo wrapper correct the geometry. Playback badge switches its hard-coded paper artwork to a cached shared drawable.
+- Current request is an original technological app icon informed by logosj.com and the supplied Canva article. Prior project context prefers rounded cinema/interlocking frames, a non-blue palette and no metallic reflections or generic play/letter mark.
+- Real-browser inspection completed on both supplied URLs. Canva's current article presents 30 examples and explicitly explains secondary meanings in negative spaces (Picasa/FedEx). Use that general principle in a widescreen-shaped central opening, not a copied mark.
+- Exact selected artwork/prompt/verification live in `docs/features/tv-cinema/icon-design.md`; retain previous moss/plum designs. Icon production resources are included; concurrent seek/source/danmaku changes are outside this task.
+
 ## Search-result metadata and titles — 2026-11-10
 - Ordinary search uses `CollectFragment` → `VodPresenter` → `VodRectHolder`. The holder hides its below-title metadata row on blur; `adapter_vod_rect.xml` limits titles to one 26dp line.
 - `VodRectHolder` is reused outside search. Use a search-specific presenter/holder/layout for this request, preserving other card surfaces.

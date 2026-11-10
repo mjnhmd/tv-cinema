@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Relative insets preserve a centered square at every 16:9 banner size. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/cinema_icon_background" />
+    <item>
+        <inset android:insetLeft="21.875%" android:insetRight="21.875%">
+            <bitmap android:src="@drawable/cinema_icon" android:gravity="fill" android:filter="true" />
+        </inset>
+    </item>
+</layer-list>

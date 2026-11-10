@@ -24,7 +24,8 @@
 - `build/ci/release/`: ignored, replaceable ARMv7 release staging using fixed APK/manifest filenames; no growing version history and no signing keys. CI keeps downloadable artifacts for seven days; public Releases are a separate explicitly authorized operation.
 - `distribution/`: production baseline lock, reviewed patch set and integration metadata. Build scripts materialize the pinned paired upstream in `build/reference/`, apply only the tracked patch and add the explicitly listed Cinema sources/assets.
 - The root `app/` is the preserved first UI experiment against FongMi's unmatched 5.8.7 interfaces. The shipping entry point is `scripts/cinema-build.sh`, not the legacy root Gradle application.
-- Use `cinema_` prefixes for new TV design resources. Reuse existing icon artwork.
+- Use `cinema_` prefixes for new TV design resources. The user selected the generated jade interlocking-screen icon on 2026-11-10; preserve its original artwork and colors for Cinema launcher, banner, splash and default in-app branding.
+- Keep the selected icon and its XML wrappers in `distribution/overlay/cinema_*`; declare leanback-only resource targets in `distribution/baseline.json`. Retain exploration images/prompts under the existing feature docs. Original generated artwork is the master; do not redraw or recolor it during packaging.
 - Keep evidence inside the feature directory; logs and downloaded build inputs stay ignored.
 - Do not delete user data, caches or unrelated files without permission.
 

@@ -27,6 +27,15 @@ Ship a native TV redesign and a verified signed ARMv7 APK for an Android 9 telev
 21. [completed] Fix MPV engine-switch SIGSEGV on Android 9.
 22. [completed] Publish 0.1.7 MPV crash fix.
 23. [completed] Keep search-result metadata visible on posters and allow two-line titles.
+24. [completed] Generate jade interlocking-screen icon; user selected it.
+25. [completed] Integrate selected artwork and verify actual APK resources on API28.
+
+## App icon delivery — 2026-11-10
+- User selected the generated jade artwork and explicitly authorized committing/pushing this increment with “改完提交推送”. Public release is separate.
+- Scope: original PNG, seven leanback brand wrappers, manifest identity bindings, shared playback badge artwork, matching production recipe/rules and focused icon documentation. Preserve unrelated seek/source work.
+- [completed] Signed local ARMv7 build, original-signer/package/minSdk/ABI checks, unchanged RGB pixel audit and eight actual API28 offscreen renders.
+- [in_progress] Review and stage icon-only changes, commit `feat: apply jade cinema app identity`, push `origin/fongmi` and verify the exact remote SHA.
+- Target television appearance and install/OTA remain not_tested.
 
 ## Search-result cards — 2026-11-10
 - Scope: ordinary search results only; preserve other poster cards, source selection, playback and existing dirty source/debug work. The user explicitly authorized committing and pushing this search increment on 2026-11-10; unrelated concurrent changes are excluded.
@@ -64,6 +73,11 @@ Ship a native TV redesign and a verified signed ARMv7 APK for an Android 9 telev
 ## Errors encountered
 | Error | Cause / resolution |
 | --- | --- |
+| Icon-reference localhost access blocked in sandbox | Approved read-only access reached the running WebBridge/ppm services; no service restart or ledger mutation. |
+| Gradle wrapper lock blocked by sandbox | Approved local build access uses the installed cache and signing inputs; no Git or release operation. |
+| Icon probe used nonexistent android-37 platform path | Read installed platforms and compile against android-28/android.jar. |
+| Icon probe process terminated before rendering | Replaced system-context initialization with direct AssetManager archive loading; six API28 resource renders passed. |
+| Fixed-dp brand layers did not scale with banner/logo bounds | API28 image inspection caught uncovered banner pixels / small-logo clipping; use relative banner insets and a zero-inset logo wrapper. |
 | Raw README requested from leanback branch returned 404 | Actual default branch is fongmi; read repository metadata first. |
 | Anonymous GitHub metadata returned 403 | Use authenticated gh API for metadata. |
 | zsh commands disappeared inside loop | `path` is a special zsh variable; use descriptive loop names. No state changed. |

@@ -1,5 +1,12 @@
 # TV Cinema: television redesign
 
+## Implemented — selected jade app icon — 2026-11-10
+- The user selected the newly generated jade interlocking-screen icon with “可以 就用这个”. It simplifies the earlier portal concept into two rounded bands around a widescreen-shaped negative space; preserve this exact artwork and color.
+- The direction reflects cinema/discovery and multiple viewing sources, with restrained technology, soft corners and no generic play/letter mark, gold or metallic reflections. Both user-supplied reference sites were inspected; use meaningful negative-space principles rather than copying an existing mark.
+- Production leanback integration is complete: adaptive/legacy launcher, TV banner, splash, default in-app logo and playback-info badge. Original PNG is `distribution/overlay/cinema_icon.png`; the build preserves every RGB pixel. `docs/features/tv-cinema/icon-design.md` records the original prompt, design decision and exact evidence. Earlier moss/plum proposals remain historical alternatives.
+- Verified final local ARMv7 `0.1.8-icon-local` / `217447200`: 91,915,944 bytes, SHA256 `a4a9ed0b2392def3ef728e2c4c0d997115ec2d4bf63532e8fbf41a7c84889fd9`; original signer, minSdk24 and ARMv7 payload checks pass. Eight actual API28 ARM64 offscreen resource renders cover circle/square/banner/splash/home/32px playback; a fixed-size layer scaling defect was caught and corrected before final verification.
+- Preserved concurrent source/player/danmaku work; the APK includes the shared working tree and is a local validation build. User explicitly authorized this icon increment's commit/push with “改完提交推送”; stage only icon assets/patch/copies/rules and focused evidence. Commit message: `feat: apply jade cinema app identity`. Actual TV launcher/splash/home/playback appearance remains not_tested; public release publication is separate.
+
 ## Implemented — search-result card readability — 2026-11-10
 - User requires source, score and other search-result metadata to remain visible before focus, moved away from below the title, and titles to show more text (two lines suggested).
 - Revised after user feedback: small posters cannot fit score and update text side by side. Source stays top-right; poster bottom uses stacked, full-width lines (score/year, then update or grouped source count) over a quiet gradient. Reserve two title lines outside the poster; focus must not resize the card or hide metadata. Empty metadata has no badge.
