@@ -12,7 +12,7 @@
     "directory": "build/reference/wobuhui-media"
   },
   "applicationId": "com.mjnhmd.tvcinema",
-  "cinemaPatchSha256": "ecea1dc4e48ddd3cfdc24b4ee28d5012b73c39bae6f5980438ef0efec4510e9a",
+  "cinemaPatchSha256": "b270db4f2d3e0767b82c80922636b95189135339511ec758566e99ee335188dd",
   "nativeArchives": {
     "third_party/mpv/mpv-android-ffmpeg9-native.zip": "d3f22c64ab90a1476b489c2b4f06de8296672497f2998161efb4d906f9a4a66c",
     "third_party/mpv/mpv-android-ffmpeg9-bridge.zip": "29b1ef4c8d0b48475c1b5dba464d46157d7ec2e13ce913a67fcca93e4b2c20d6"
@@ -105,6 +105,14 @@
     {
       "source": "distribution/overlay/SearchRelevanceAndroidCompatTest.java",
       "target": "app/src/androidTest/java/com/fongmi/android/tv/source/SearchRelevanceAndroidCompatTest.java"
+    },
+    {
+      "source": "distribution/overlay/MpvHwDecPolicy.java",
+      "target": "app/src/main/java/com/fongmi/android/tv/player/mpv/MpvHwDecPolicy.java"
+    },
+    {
+      "source": "distribution/overlay/MpvHwDecPolicyTest.java",
+      "target": "app/src/test/java/com/fongmi/android/tv/player/mpv/MpvHwDecPolicyTest.java"
     }
   ]
 }

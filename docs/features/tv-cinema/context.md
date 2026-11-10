@@ -1,5 +1,10 @@
 # TV Cinema: television redesign
 
+## Implemented — MPV Android 9 crash fix — 2026-11-10
+- User reports switching to MPV crashes immediately. Reproduced on API28 ARM64 with a loopback H.264 fixture: MPV hardware decode (`mediacodec,mediacodec-copy`) reaches playback and then dies with native `SIGSEGV` in `CCodecBufferChannel::setSurface` on `CodecLooper`. This is an Android 9 platform surface/MediaCodec crash, not a Java exception.
+- `MpvHwDecPolicy` selects `mediacodec-copy` on SDK <= 28 and the normal surface-first chain on newer systems. After the change the same playback + engine-switch test reaches `file-loaded`, advances beyond one second and exits cleanly; no surface is handed to MediaCodec in the Android 9 path. MPV may fall back to software decoding on this path, so smoothness is not guaranteed.
+- Local ARMv7 `0.1.7`/`217433204`: 91,128,921 bytes, SHA256 `742c45d1398c73214be2672a60506d174ce960a215893589382ee1e5c566a457`, same signer. `MpvHwDecPolicyTest` and the API28 playback probe pass. No user-TV ARMv7 run; the API28 emulator is ARM64.
+
 ## Implemented — navigation and playback preload — 2026-11-10
 - User asked to move `设置` out of `我的` and place it beside `我的` in the home top navigation. `HomeActivity` now adds a `home_setting` nav item immediately after `home_tab_my`, and `MyActivity` no longer renders or binds the settings card.
 - User continues to report playback stutter without specifying whether it is buffering or frame drops. As a low-risk mitigation, `CinemaProfile` now disables `preload_next` by default through a one-time `cinema_low_end_preload_v1` marker; this applies to existing installs whose `cinema_profile_initialized` was already set, and never overrides an explicitly stored value. Next-episode prefetch shared a 64MB buffer and network with foreground playback.

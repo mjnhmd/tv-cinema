@@ -1,5 +1,13 @@
 # Verification record — 2026-11-09
 
+## MPV engine switch crash — 0.1.7
+- API28 ARM64, loopback 720p H.264 fixture, `VideoActivity` playing on EXO then `PlayerManager.setEngine(MPV)`:
+  - Before: `Fatal signal 11 (SIGSEGV), code 2` in `CodecLooper`; backtrace `CCodecBufferChannel::setSurface` → `CCodec::configure` (`build/logs/cinema-mpv-playback-probe3.txt`).
+  - After `MpvHwDecPolicy` selects `mediacodec-copy` on SDK<=28: instrumented switch passes, `event: file-loaded`, position >1s, no SIGSEGV (`cinema-mpv-policy-probe2.txt`).
+- JVM `MpvHwDecPolicyTest`: 1 test, 0 failures.
+- Local ARMv7 `TV_VERSION_CODE=217433204 TV_VERSION_NAME=0.1.7` signed Release passes package/minSdk/ARMv7/original-signer checks; 91,128,921 bytes, SHA256 `742c45d1398c73214be2672a60506d174ce960a215893589382ee1e5c566a457`.
+- Not tested: user's 32-bit television, Amlogic hardware decode path, sustained MPV frame rate/memory, or public OTA for 0.1.7.
+
 ## Navigation and playback preload — 0.1.6
 - Focused JVM run covering `source.*`, `ui.home.*` and `model.*`: 18 suites / 216 tests / 0 failures (`cinema-016-compile.log`).
 - ARM64 debug build and API28 ARM64 sourceprobe on default Android9/API28 emulator: home nav renders `Home Library Live Search My TV Setting` in one row; tapping `My TV` shows `Keep`, `Watch history`, push, `Cast to this TV` and `Local files`, with no settings card. Screenshots `build/outputs/cinema-016-home-nav.png`, `cinema-016-my-page.png`.

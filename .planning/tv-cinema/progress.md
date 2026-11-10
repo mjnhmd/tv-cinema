@@ -1,5 +1,9 @@
 # Progress
 
+## MPV Android 9 crash fix — 2026-11-10
+- Reproduced EXO→MPV native SIGSEGV on API28. Added `MpvHwDecPolicy` (`mediacodec-copy` on SDK<=28); API28 probe now plays past one second without crashing.
+- JVM policy test passes; local ARMv7 0.1.7/217433204 built (91,128,921B, sha 742c45d1..., same signer). Publishing next.
+
 ## Navigation and playback preload — 2026-11-10
 - Moved `设置` beside `我的` in the home nav and removed the settings card from `我的`; verified on API28 with screenshots.
 - Disabled default next-episode preload for existing/new installs via one-time migration; verified persisted values in an isolated fresh install. Stutter cause remains unproven.

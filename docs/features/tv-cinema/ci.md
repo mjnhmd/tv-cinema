@@ -51,7 +51,7 @@ apksigner verify --print-certs build/outputs/tv-cinema-armv7.apk \
 - `docs/**` 和 `*.md` 的 push 不触发，避免文档改动消耗构建时间。
 - `workflow_dispatch`：
   - `version_code` / `version_name`：要么都填，要么都不填；都填时必须满足
-    `10001 <= version_code <= 2100000000`。不填时使用 `0.1.6+YYYYMMDD.HHMMSS` 和时间戳
+    `10001 <= version_code <= 2100000000`。不填时使用 `0.1.7+YYYYMMDD.HHMMSS` 和时间戳
     versionCode，保证默认递增。
   - `publish`：默认 `false`；只有 `true` 才创建 Release。
   - `release_notes`：留空使用当前提交 subject。
@@ -99,7 +99,7 @@ manifest 命令，因为它固定要求 `wobuhui666/TV` 和 ARM64+ARMv7 两个 a
 {
   "schema": 1,
   "code": 10003,
-  "name": "0.1.6",
+  "name": "0.1.7",
   "desc": "release notes",
   "packageName": "com.mjnhmd.tvcinema",
   "mode": "leanback",
@@ -117,7 +117,7 @@ manifest 命令，因为它固定要求 `wobuhui666/TV` 和 ARM64+ARMv7 两个 a
   `https://github.com/mjnhmd/tv-cinema/releases/latest/download/leanback-coexist.json`。
 - `UpdateManifest` 只需要被请求的 ABI；这里只提供 `armeabi_v7a`，不伪造 ARM64 资源。
 - asset URL 必须绑定不可变 tag，不能写 `latest`。CI 使用 `build-<run_id>[-<attempt>]`；
-  本地验证包可使用与 APK versionName 一致的 `v<version>`（本次 `v0.1.6`）。
+  本地验证包可使用与 APK versionName 一致的 `v<version>`（本次 `v0.1.7`）。
 - push/未发布 run 不生成 manifest，因此不会输出看似可用但实际不存在的下载 URL。
 
 ## Publishing and authorization

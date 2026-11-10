@@ -1,5 +1,9 @@
 # Findings
 
+## MPV Android 9 surface crash — 2026-11-10
+- Switching EXO→MPV during playback crashed on API28 inside `CCodecBufferChannel::setSurface` with SIGSEGV, not a Java exception. `mediacodec-copy` avoids passing a Surface and completes playback; `MpvHwDecPolicy` limits that path to SDK<=28 so newer devices keep surface-first decoding.
+- The copy path may fall back to software decode; it fixes the crash, not necessarily MPV performance.
+
 ## Navigation and playback preload — 2026-11-10
 - `HomeActivity.onNavClick` already handled `home_setting`; moving the entry required only a nav item plus removing the My-card bindings/layout. API28 UI confirms the new order and the absence of the My settings card.
 - `preload_next` defaults to true in the upstream player and shares a 64MB next-item preload buffer with foreground playback. CinemaProfile now writes false only when the key was never set, using a separate migration marker so existing 0.1.x installs receive it.
