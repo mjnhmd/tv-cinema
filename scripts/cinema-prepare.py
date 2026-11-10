@@ -267,53 +267,71 @@ def write_reference_properties(root_properties, reference_properties):
     return "Updated reference local.properties without printing secrets"
 
 
-def apply_cinema_patch(tv_directory, baseline):
-    patch = PROJECT_ROOT / "distribution" / "cinema.patch"
+CINEMA_PATCHES = (
+    ("cinema.patch", "cinemaPatchSha256"),
+    ("cinema-danmaku.patch", "cinemaDanmakuPatchSha256"),
+)
+
+
+def read_patch(relative_name, hash_key, baseline, required):
+    patch = PROJECT_ROOT / "distribution" / relative_name
     if not patch.is_file():
-        raise PrepareError(
-            "Missing distribution/cinema.patch. Generate and review the Cinema patch before building."
-        )
-    expected_hash = baseline.get("cinemaPatchSha256")
+        if required:
+            raise PrepareError(
+                f"Missing distribution/{relative_name}. Generate and review it before building."
+            )
+        return None
+    expected_hash = baseline.get(hash_key)
     if expected_hash and sha256(patch) != expected_hash:
         raise PrepareError(
-            f"distribution/cinema.patch hash mismatch; expected {expected_hash}"
+            f"distribution/{relative_name} hash mismatch; expected {expected_hash}"
         )
+    text = patch.read_text(encoding="utf-8")
     entries = re.findall(
         r"^diff --git a/(\S+) b/(\S+)\nindex ([0-9a-f]{40})\.\.([0-9a-f]{40}) 100644$",
-        patch.read_text(encoding="utf-8"), re.MULTILINE,
+        text, re.MULTILINE,
     )
-    if not entries or patch.read_text(encoding="utf-8").count("diff --git ") != len(entries):
-        raise PrepareError("Cinema patch must declare full original and modified blob IDs")
-    permitted = {original for original, modified, _, _ in entries if original == modified}
+    if not entries or text.count("diff --git ") != len(entries):
+        raise PrepareError(f"distribution/{relative_name} must declare full original and modified blob IDs")
+    return patch, entries
+
+
+def apply_cinema_patch(tv_directory, baseline):
+    patches = [read_patch(name, key, baseline, index == 0) for index, (name, key) in enumerate(CINEMA_PATCHES)]
+    patches = [patch for patch in patches if patch]
+    permitted = set()
+    for _, entries in patches:
+        permitted.update({name for name, target, _, _ in entries if name == target})
     changed = set(checked_git(tv_directory, "diff", "--name-only", "HEAD").splitlines())
     if changed - permitted:
         raise PrepareError("TV checkout has changes outside the reviewed Cinema patch")
-    states = []
-    for name, target_name, original_blob, modified_blob in entries:
-        if name != target_name or checked_git(tv_directory, "rev-parse", f"HEAD:{name}") != original_blob:
-            raise PrepareError(f"Cinema patch baseline mismatch: {name}")
-        actual = checked_git(tv_directory, "hash-object", "--no-filters", "--", name)
-        if actual not in (original_blob, modified_blob):
-            raise PrepareError(f"Cinema patch target has unexpected edits: {name}")
-        states.append(actual == modified_blob)
-    if any(states) and not all(states):
-        raise PrepareError("Cinema patch is partially applied; refusing to overwrite it")
-    forward = run_git(tv_directory, "apply", "--check", str(patch))
-    if forward.returncode == 0:
+    pending = []
+    for patch, entries in patches:
+        states = []
+        for name, target_name, original_blob, modified_blob in entries:
+            if name != target_name or checked_git(tv_directory, "rev-parse", f"HEAD:{name}") != original_blob:
+                raise PrepareError(f"{patch.name} baseline mismatch: {name}")
+            actual = checked_git(tv_directory, "hash-object", "--no-filters", "--", name)
+            if actual not in (original_blob, modified_blob):
+                raise PrepareError(f"{patch.name} target has unexpected edits: {name}")
+            states.append(actual == modified_blob)
+        if any(states) and not all(states):
+            raise PrepareError(f"{patch.name} is partially applied; refusing to overwrite it")
+        if not all(states):
+            pending.append(patch)
+    if not pending:
+        return "Cinema patches are already applied"
+    for patch in pending:
+        forward = run_git(tv_directory, "apply", "--check", str(patch))
+        if forward.returncode:
+            raise PrepareError(forward.stderr.strip() or f"{patch.name} does not apply")
         applied = run_git(tv_directory, "apply", str(patch))
         if applied.returncode:
-            raise PrepareError(applied.stderr.strip() or "Cinema patch application failed")
-        updated = set(checked_git(tv_directory, "diff", "--name-only", "HEAD").splitlines())
-        if updated - permitted:
-            raise PrepareError("Cinema patch modified paths outside its reviewed manifest")
-        return "Applied distribution/cinema.patch"
-    reverse = run_git(tv_directory, "apply", "--reverse", "--check", str(patch))
-    if reverse.returncode == 0:
-        return "distribution/cinema.patch is already applied"
-    raise PrepareError(
-        "Cinema patch does not match the pinned checkout and is not already applied. "
-        "Refusing to overwrite additional local changes."
-    )
+            raise PrepareError(applied.stderr.strip() or f"{patch.name} application failed")
+    updated = set(checked_git(tv_directory, "diff", "--name-only", "HEAD").splitlines())
+    if updated - permitted:
+        raise PrepareError("Cinema patches modified paths outside their reviewed manifests")
+    return "Applied " + ", ".join(f"distribution/{patch.name}" for patch in pending)
 
 
 def main():

@@ -12,12 +12,8 @@ public final class CinemaProfile {
     }
 
     public static void initialize() {
-        // Public LogVar instance: DanDanPlay-compatible search and XML comment endpoints.
         if (!Prefers.getPrefers().contains("cinema_danmaku_defaults_v1")) {
-            if (!Prefers.getPrefers().contains("danmaku_logvar_url")) {
-                DanmakuSetting.putLogvarUrl("https://dmfl.us.ci/87654321");
-            }
-            if (!Prefers.getPrefers().contains("danmaku_load")) DanmakuSetting.putLoad(true);
+            if (!Prefers.getPrefers().contains("danmaku_load")) Prefers.put("danmaku_load", true);
             if (!Prefers.getPrefers().contains("danmaku_auto")) DanmakuSetting.putAuto(true);
             Prefers.put("cinema_danmaku_defaults_v1", true);
         }

@@ -1,0 +1,396 @@
+diff --git a/app/src/main/java/com/fongmi/android/tv/api/LogvarApi.java b/app/src/main/java/com/fongmi/android/tv/api/LogvarApi.java
+index 936bb3cb6d42cfbd07cb6247b137b8051b963dde..8b436541ceaa06623fed419df6f1d20eb461dcce 100644
+--- a/app/src/main/java/com/fongmi/android/tv/api/LogvarApi.java
++++ b/app/src/main/java/com/fongmi/android/tv/api/LogvarApi.java
+@@ -43,7 +43,7 @@ public class LogvarApi {
+     private static final String TAG = LogvarApi.class.getSimpleName();
+     private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+     private static final Pattern TITLE_SEASON = Pattern.compile("(?i)(?<![a-z0-9])(?:season\\s*|s)[0-9]{1,3}(?![a-z0-9])|第\\s*[零〇一二两三四五六七八九十百千0-9]+\\s*季");
+-    private static final String PLATFORMS = "qq|tencent|qiyi|iqiyi|bilibili[0-9]*|bili|mgtv|mango|youku|renren|hanjutv|bahamut|baha|dandan(?:play)?|animeko|tmdb|local|hongguo|aiyifan|sohu|pptv|douyin|ixigua|letv|leshi|maiduidui|xigua|vod|unknown";
++    private static final String PLATFORMS = "360|qq|tencent|qiyi|iqiyi|bilibili[0-9]*|bili|mgtv|mango|youku|renren|hanjutv|bahamut|baha|dandan(?:play)?|animeko|tmdb|local|hongguo|aiyifan|sohu|pptv|douyin|ixigua|letv|leshi|maiduidui|xigua|vod|unknown";
+     private static final String PLATFORM_LIST = "(?:" + PLATFORMS + ")(?:[&＆](?:" + PLATFORMS + "))*";
+     private static final Pattern PLATFORM_PREFIX = Pattern.compile("(?i)^\\s*(?:【|\\[)" + PLATFORM_LIST + "(?:】|\\])\\s*");
+     private static final Pattern SOURCE_SUFFIX = Pattern.compile("(?i)\\s*from\\s*" + PLATFORM_LIST + "\\s*$");
+@@ -68,40 +68,21 @@ public class LogvarApi {
+     }
+ 
+     public static void searchAuto(String name, String episode, @Nullable Result result, boolean reliableEpisodeLabel, Listener listener) {
+-        searchAuto(DanmakuSetting.getEffectiveLogvarUrl(), name, episode, preferredVideoUrl(result), reliableEpisodeLabel,
++        searchAuto(DanmakuSetting.getEffectiveLogvarUrl(), name, episode, reliableEpisodeLabel,
+                 request -> OkHttp.client().newCall(request), App::post, listener);
+     }
+ 
+-    static void searchAuto(String serviceUrl, String name, String episode, String videoUrl, boolean reliableEpisodeLabel,
++    static void searchAuto(String serviceUrl, String name, String episode, boolean reliableEpisodeLabel,
+                            Function<Request, Call> calls, Consumer<Runnable> dispatch, Listener listener) {
+         String base = normalizeBase(serviceUrl);
+         if (base.isEmpty()) {
+             dispatch.accept(() -> listener.onSuccess(Collections.emptyList()));
+             return;
+         }
+-        if (isHttpUrl(videoUrl)) {
+-            HttpUrl commentUrl = HttpUrl.parse(buildCommentByUrlUrl(base, videoUrl));
+-            if (commentUrl == null) {
+-                searchByEpisode(base, name, episode, reliableEpisodeLabel, calls, dispatch, listener);
+-                return;
+-            }
+-            Request request = new Request.Builder().url(commentUrl).tag(TAG).build();
+-            requestAuto(request, calls, dispatch, text -> hasDanmakuXml(text)
+-                    ? Collections.singletonList(createDanmaku("Logvar URL", request.url().toString())) : Collections.emptyList(), new Listener() {
+-                @Override
+-                public void onSuccess(List<Danmaku> items) {
+-                    if (items.isEmpty()) searchByEpisode(base, name, episode, reliableEpisodeLabel, calls, dispatch, listener);
+-                    else listener.onSuccess(items);
+-                }
+-
+-                @Override
+-                public void onError(Exception e) {
+-                    searchByEpisode(base, name, episode, reliableEpisodeLabel, calls, dispatch, listener);
+-                }
+-            });
+-        } else {
+-            searchByEpisode(base, name, episode, reliableEpisodeLabel, calls, dispatch, listener);
+-        }
++        // A play URL carries no verified episode identity: the service can only guess, and that
++        // guess used to be bound as long as any comments came back. Always resolve the episode
++        // from the show title and the current episode label instead.
++        searchByEpisode(base, name, episode, reliableEpisodeLabel, calls, dispatch, listener);
+     }
+ 
+     public static void searchEpisodes(String name, String episode, Listener listener) {
+@@ -234,14 +215,6 @@ public class LogvarApi {
+         return !label.isVariety() && label.isApiSafe() ? String.valueOf(label.number()) : value;
+     }
+ 
+-    public static String preferredVideoUrl(@Nullable Result result) {
+-        if (result == null) return "";
+-        String raw = result.getUrl().v();
+-        if (isHttpUrl(raw)) return raw;
+-        String real = result.getRealUrl();
+-        return isHttpUrl(real) ? real : "";
+-    }
+-
+     public static boolean hasDanmakuXml(String text) {
+         return text != null && (text.contains("<d ") || text.contains("<d\t") || text.contains("<d\n"));
+     }
+diff --git a/app/src/main/java/com/fongmi/android/tv/api/DanmakuApi.java b/app/src/main/java/com/fongmi/android/tv/api/DanmakuApi.java
+index 4e3d10288162cbd3f87631121002db4547af7b28..7c392d5007d1b1e5d89d38a530a3088e73e3116e 100644
+--- a/app/src/main/java/com/fongmi/android/tv/api/DanmakuApi.java
++++ b/app/src/main/java/com/fongmi/android/tv/api/DanmakuApi.java
+@@ -16,7 +16,10 @@ import com.github.catvod.net.OkHttp;
+ import com.github.catvod.utils.Trans;
+ 
+ import java.text.Normalizer;
++import java.util.ArrayList;
+ import java.util.List;
++import java.util.Locale;
++import java.util.Objects;
+ import java.util.function.Consumer;
+ import java.util.regex.Pattern;
+ 
+@@ -62,7 +65,7 @@ public class DanmakuApi {
+         searchAuto(name, episode, result, reliableEpisodeLabel, new SearchCallback() {
+             @Override
+             public void onSuccess(List<Danmaku> items) {
+-                items.stream().findFirst().ifPresent(found);
++                selectExactEpisode(items, name, episode).stream().findFirst().ifPresent(found);
+             }
+ 
+             @Override
+@@ -71,6 +74,57 @@ public class DanmakuApi {
+         });
+     }
+ 
++    /**
++     * Legacy APIs return a plain list with no match confidence. Binding its first entry is how a
++     * neighbouring episode (or another show) ended up on screen. Keep only one candidate whose
++     * title and episode number both describe the requested episode; anything else stays unbound
++     * and remains available through the manual search dialog.
++     */
++    static List<Danmaku> selectExactEpisode(List<Danmaku> items, String name, String episode) {
++        if (items == null || items.isEmpty()) return List.of();
++        EpisodeLabel expected = EpisodeLabelParser.parse(episode);
++        String title = normalizeTitle(name);
++        if (!expected.isSingleEpisode() || expected.isVariety() || title.isEmpty()) return List.of();
++        List<Danmaku> matches = new ArrayList<>();
++        for (Danmaku item : items) {
++            if (item == null || item.isEmpty()) continue;
++            EpisodeLabel candidate = EpisodeLabelParser.parse(item.getName());
++            if (!candidate.isSingleEpisode() || candidate.isVariety() || !Objects.equals(candidate.number(), expected.number())) continue;
++            Integer expectedSeason = expected.season();
++            Integer candidateSeason = candidate.season();
++            if (expectedSeason != null && candidateSeason != null && !expectedSeason.equals(candidateSeason)) continue;
++            if (!titleOf(item.getName()).equals(title)) continue;
++            matches.add(item);
++            if (matches.size() > 1) return List.of();
++        }
++        return matches;
++    }
++
++    private static String normalizeTitle(String text) {
++        String value;
++        try {
++            value = Trans.t2s(false, text == null ? "" : text);
++        } catch (Throwable ignored) {
++            value = text == null ? "" : text;
++        }
++        return Normalizer.normalize(value, Normalizer.Form.NFKC).replaceAll("[^\\p{L}\\p{Nd}]", "").toLowerCase(Locale.ROOT);
++    }
++
++    private static String titleOf(String text) {
++        String value;
++        try {
++            value = Trans.t2s(false, text == null ? "" : text);
++        } catch (Throwable ignored) {
++            value = text == null ? "" : text;
++        }
++        value = Normalizer.normalize(value, Normalizer.Form.NFKC);
++        value = value.replaceAll("^\\s*(?:【[^】]*】|\\[[^\\]]*\\])\\s*", "");
++        value = value.replaceAll("(?i)\\s*(?:第\\s*)?[0-9]+\\s*[集话期回部]\\s*$", "");
++        value = value.replaceAll("(?i)\\s*S[0-9]{1,3}E[0-9]{1,3}\\s*$", "");
++        value = value.replaceAll("(?i)\\s*EP?\\.?\\s*[0-9]{1,3}\\s*$", "");
++        return value.replaceAll("[^\\p{L}\\p{Nd}]", "").toLowerCase(Locale.ROOT);
++    }
++
+     public static void searchAuto(String name, String episode, Result result, SearchCallback callback) {
+         searchAuto(name, episode, result, true, callback);
+     }
+diff --git a/app/src/main/java/com/fongmi/android/tv/setting/DanmakuSetting.java b/app/src/main/java/com/fongmi/android/tv/setting/DanmakuSetting.java
+index 1a79634711bb583e2ac1cf60faec36da61c01070..e0053f1abbbf473995c73deb304b6f29d1d9a6db 100644
+--- a/app/src/main/java/com/fongmi/android/tv/setting/DanmakuSetting.java
++++ b/app/src/main/java/com/fongmi/android/tv/setting/DanmakuSetting.java
+@@ -9,6 +9,7 @@ import com.github.catvod.utils.Prefers;
+ 
+ public class DanmakuSetting {
+ 
++    private static final String CINEMA_DEFAULT_LOGVAR = "https://dmfl.us.ci/87654321";
+     private static final float MIN_TEXT_SCALE = 0.5f;
+     private static final float MAX_TEXT_SCALE = 3.0f;
+     private static final float MIN_TRANSPARENCY = 0.0f;
+@@ -311,7 +312,18 @@ public class DanmakuSetting {
+     public static String getEffectiveLogvarUrl() {
+         String userUrl = getLogvarUrl();
+         if (!TextUtils.isEmpty(userUrl)) return userUrl;
+-        return VodConfig.get().getConfig().getLogvar();
++        String configuredUrl = VodConfig.get().getConfig().getLogvar();
++        if (!TextUtils.isEmpty(configuredUrl)) return configuredUrl;
++        if (Prefers.getPrefers().contains("danmaku_logvar_url")
++                || Prefers.getPrefers().contains("danmaku_logvr_url")
++                || !TextUtils.isEmpty(getEffectiveApiUrl())) return "";
++        return Prefers.getBoolean("cinema_danmaku_defaults_v1") ? CINEMA_DEFAULT_LOGVAR : "";
++    }
++
++    public static boolean isCinemaDefaultLogvar(String url) {
++        return CINEMA_DEFAULT_LOGVAR.equals(url)
++                && !Prefers.getPrefers().contains("danmaku_logvar_url")
++                && !Prefers.getPrefers().contains("danmaku_logvr_url");
+     }
+ 
+     public static boolean hasSearchApi() {
+diff --git a/app/src/main/java/com/fongmi/android/tv/player/media/PlaySpec.java b/app/src/main/java/com/fongmi/android/tv/player/media/PlaySpec.java
+index 690a83c85f0b93f8e6fee2414c5f0c3028052236..94edf6c12f0109e2bdb5da07b4995b55c0acb355 100644
+--- a/app/src/main/java/com/fongmi/android/tv/player/media/PlaySpec.java
++++ b/app/src/main/java/com/fongmi/android/tv/player/media/PlaySpec.java
+@@ -24,6 +24,7 @@ public class PlaySpec {
+ 
+     private Map<String, String> headers;
+     private List<Danmaku> danmakus;
++    private boolean danmakuSuppressed;
+     private MediaMetadata metadata;
+     private List<Sub> subs;
+     private String format;
+@@ -62,6 +63,7 @@ public class PlaySpec {
+     public PlaySpec withSource(String url, String format, Map<String, String> headers) {
+         PlaySpec result = new PlaySpec(key, url, headers, format, drm, subs, danmakus, metadata);
+         result.timeshift = timeshift;
++        result.danmakuSuppressed = danmakuSuppressed;
+         return result;
+     }
+ 
+@@ -151,10 +153,22 @@ public class PlaySpec {
+ 
+     public void setDanmaku(Danmaku item) {
+         if (danmakus == null) danmakus = new ArrayList<>();
++        if (item == null || item.isEmpty()) {
++            // Explicitly turning danmaku off must not fall back to the first list entry, which
++            // could still be a previous episode's comments.
++            danmakuSuppressed = true;
++            danmakus.forEach(danmaku -> danmaku.setSelected(false));
++            return;
++        }
++        danmakuSuppressed = false;
+         if (!item.isEmpty() && !danmakus.contains(item)) danmakus.add(0, item);
+         danmakus.forEach(danmaku -> danmaku.setSelected(danmaku.getUrl().equals(item.getUrl())));
+     }
+ 
++    public boolean isDanmakuSuppressed() {
++        return danmakuSuppressed;
++    }
++
+     public void addDanmaku(Danmaku item) {
+         if (danmakus == null) danmakus = new ArrayList<>();
+         if (item.isEmpty() || danmakus.contains(item)) return;
+diff --git a/app/src/main/java/com/fongmi/android/tv/player/PlayerManager.java b/app/src/main/java/com/fongmi/android/tv/player/PlayerManager.java
+index be88fdbc9c6ba98bb935f85982683dc8c64dc6e9..dfb99c3bf0f651ea3889b30a64cd3a93d6fafe36 100644
+--- a/app/src/main/java/com/fongmi/android/tv/player/PlayerManager.java
++++ b/app/src/main/java/com/fongmi/android/tv/player/PlayerManager.java
+@@ -880,6 +880,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
+     }
+ 
+     public Danmaku getSelectedDanmaku() {
++        if (spec != null && spec.isDanmakuSuppressed()) return Danmaku.empty();
+         return getSelectedDanmaku(getDanmakus());
+     }
+ 
+diff --git a/app/src/test/java/com/fongmi/android/tv/api/LogvarApiTest.java b/app/src/test/java/com/fongmi/android/tv/api/LogvarApiTest.java
+index be2c3700238a12ca04e6473b3bc7fb92f2c427ce..1bb01cbf0d98b12a0a98e8d1a20e56209ba2c2b0 100644
+--- a/app/src/test/java/com/fongmi/android/tv/api/LogvarApiTest.java
++++ b/app/src/test/java/com/fongmi/android/tv/api/LogvarApiTest.java
+@@ -154,6 +154,14 @@ public class LogvarApiTest {
+         assertEquals(1, LogvarApi.parseAutoEpisodes("http://host", episodes("【bilibili】Show(N/A)【动漫】from bilibili", "【bilibili1】 03", 33), "Show", "3").size());
+     }
+ 
++    @Test
++    public void shouldMatchAnEpisodeFromThe360AggregatorWithoutAcceptingUnrelatedTitles() {
++        String json = episodes("孤独摇滚！(2022)【动漫】from 360", "【bilibili1】 第1集", 10514);
++        assertEquals(1, LogvarApi.parseAutoEpisodes("http://host", json, "孤独摇滚", "第1集").size());
++        assertTrue(LogvarApi.parseAutoEpisodes("http://host", json, "孤独摇滚", "第2集").isEmpty());
++        assertTrue(LogvarApi.parseAutoEpisodes("http://host", json, "其他作品", "第1集").isEmpty());
++    }
++
+     @Test
+     public void shouldRequireManualChoiceForMultipleSeasonsOrReleaseYears() {
+         String seasons = episodes("Show 第一季(2023)【动漫】from bilibili", "【bilibili1】 03", 31,
+@@ -197,7 +205,7 @@ public class LogvarApiTest {
+     public void shouldRouteUnseasonedEpisodesToSearchWithoutInventingSeasonOne() throws Exception {
+         try (MockWebServer server = new MockWebServer()) {
+             server.enqueue(new MockResponse().setBody(episodes("Show 第二季(2024)【动漫】from bilibili&tencent", "【bilibili1&qq】 03", 31)));
+-            assertEquals(1, auto(server, "Show", "第3集", "", true).size());
++            assertEquals(1, auto(server, "Show", "第3集", true).size());
+             RecordedRequest request = server.takeRequest(1, TimeUnit.SECONDS);
+             assertEquals("GET", request.getMethod());
+             assertEquals("/api/v2/search/episodes", request.getRequestUrl().encodedPath());
+@@ -213,7 +221,7 @@ public class LogvarApiTest {
+         try (MockWebServer server = new MockWebServer()) {
+             server.enqueue(new MockResponse().setBody(matches("Show(2024)【电视剧】from tencent", "【qq】 第3集", 31)));
+             String filename = "[ANi] Show - 03 [1080p][WEB-DL].mkv";
+-            assertEquals(1, auto(server, "Show 第二季(2024)", filename, "", true).size());
++            assertEquals(1, auto(server, "Show 第二季(2024)", filename, true).size());
+             RecordedRequest request = server.takeRequest(1, TimeUnit.SECONDS);
+             assertEquals("POST", request.getMethod());
+             assertEquals("/api/v2/match", request.getRequestUrl().encodedPath());
+@@ -225,24 +233,20 @@ public class LogvarApiTest {
+     }
+ 
+     @Test
+-    public void shouldTryVideoUrlBeforeUnseasonedEpisodeSearch() throws Exception {
++    public void shouldNeverGuessTheEpisodeFromThePlayUrl() throws Exception {
+         try (MockWebServer server = new MockWebServer()) {
+-            server.enqueue(new MockResponse().setBody("<i/>"));
+             server.enqueue(new MockResponse().setBody(episodes("Show(2024)【电视剧】from tencent", "【qq】 第3集", 31)));
+-            assertEquals(1, auto(server, "Show", "第3集", "https://example.invalid/video/3", true).size());
+-            assertEquals("/api/v2/comment", server.takeRequest(1, TimeUnit.SECONDS).getRequestUrl().encodedPath());
++            assertEquals(1, auto(server, "Show", "第3集", true).size());
+             assertEquals("/api/v2/search/episodes", server.takeRequest(1, TimeUnit.SECONDS).getRequestUrl().encodedPath());
+-            assertEquals(2, server.getRequestCount());
++            assertEquals(1, server.getRequestCount());
+         }
+     }
+ 
+     @Test
+-    public void shouldAvoidGuessedEpisodeRequestsAfterGeneratedUrlFails() throws Exception {
++    public void shouldNotSearchWhenTheEpisodeLabelCannotBeTrusted() throws Exception {
+         try (MockWebServer server = new MockWebServer()) {
+-            server.enqueue(new MockResponse().setResponseCode(503));
+-            assertTrue(auto(server, "Show", "03", "https://example.invalid/video/3", false).isEmpty());
+-            assertEquals("/api/v2/comment", server.takeRequest(1, TimeUnit.SECONDS).getRequestUrl().encodedPath());
+-            assertEquals(1, server.getRequestCount());
++            assertTrue(auto(server, "Show", "03", false).isEmpty());
++            assertEquals(0, server.getRequestCount());
+         }
+     }
+ 
+@@ -311,7 +315,7 @@ public class LogvarApiTest {
+         try (MockWebServer server = new MockWebServer()) {
+             server.enqueue(new MockResponse().setBody(episodes("Show 第二季", "2026-10-05 第3期 下期 会员版", 31)));
+             String label = "20261005 第3期下 会员版";
+-            assertEquals(1, auto(server, "Show 第二季", label, "", true).size());
++            assertEquals(1, auto(server, "Show 第二季", label, true).size());
+             RecordedRequest request = server.takeRequest(1, TimeUnit.SECONDS);
+             assertEquals("GET", request.getMethod());
+             assertEquals("/api/v2/search/episodes", request.getRequestUrl().encodedPath());
+@@ -321,12 +325,10 @@ public class LogvarApiTest {
+     }
+ 
+     @Test
+-    public void shouldAllowActualVideoUrlXmlForUnreliableVarietyLabels() throws Exception {
++    public void shouldNotGuessVarietyEpisodesFromThePlayUrlEither() throws Exception {
+         try (MockWebServer server = new MockWebServer()) {
+-            server.enqueue(new MockResponse().setBody("<i><d p=\"1\">fixture</d></i>"));
+-            assertEquals(1, auto(server, "Show", "20261005预告", "https://example.invalid/watch/variety", false).size());
+-            assertEquals("/api/v2/comment", server.takeRequest(1, TimeUnit.SECONDS).getRequestUrl().encodedPath());
+-            assertEquals(1, server.getRequestCount());
++            assertTrue(auto(server, "Show", "20261005预告", false).isEmpty());
++            assertEquals(0, server.getRequestCount());
+         }
+     }
+ 
+@@ -356,13 +358,13 @@ public class LogvarApiTest {
+         return json.append("]}").toString();
+     }
+ 
+-    private List<Danmaku> auto(MockWebServer server, String name, String episode, String videoUrl, boolean reliable) throws Exception {
++    private List<Danmaku> auto(MockWebServer server, String name, String episode, boolean reliable) throws Exception {
+         OkHttpClient client = new OkHttpClient();
+         CountDownLatch done = new CountDownLatch(1);
+         AtomicReference<List<Danmaku>> items = new AtomicReference<>();
+         AtomicReference<Exception> error = new AtomicReference<>();
+         try {
+-            LogvarApi.searchAuto(server.url("/").toString(), name, episode, videoUrl, reliable, client::newCall, Runnable::run, new LogvarApi.Listener() {
++            LogvarApi.searchAuto(server.url("/").toString(), name, episode, reliable, client::newCall, Runnable::run, new LogvarApi.Listener() {
+                 @Override public void onSuccess(List<Danmaku> found) { items.set(found); done.countDown(); }
+                 @Override public void onError(Exception failure) { error.set(failure); done.countDown(); }
+             });
+diff --git a/app/src/test/java/com/fongmi/android/tv/api/DanmakuApiTest.java b/app/src/test/java/com/fongmi/android/tv/api/DanmakuApiTest.java
+index 3046ee3443f1956b12894b5c4aca2a24eac901af..7da6c3a6f56216f16b50697256b02065340819ab 100644
+--- a/app/src/test/java/com/fongmi/android/tv/api/DanmakuApiTest.java
++++ b/app/src/test/java/com/fongmi/android/tv/api/DanmakuApiTest.java
+@@ -1,7 +1,12 @@
+ package com.fongmi.android.tv.api;
+ 
++import com.fongmi.android.tv.bean.Danmaku;
++
++import java.util.List;
++
+ import org.junit.Test;
+ 
++import static org.junit.Assert.assertEquals;
+ import static org.junit.Assert.assertFalse;
+ import static org.junit.Assert.assertTrue;
+ 
+@@ -20,4 +25,25 @@ public class DanmakuApiTest {
+             assertTrue(label, DanmakuApi.canAutoSearchLegacy(label));
+         }
+     }
++
++    @Test
++    public void shouldNeverBindANeighbouringEpisodeFromALegacyList() {
++        List<Danmaku> neighbours = List.of(Danmaku.from("Show 第02集"), Danmaku.from("Show 第04集"));
++        assertTrue(DanmakuApi.selectExactEpisode(neighbours, "Show", "第3集").isEmpty());
++    }
++
++    @Test
++    public void shouldBindTheOnlyCandidateWithTheSameTitleAndEpisode() {
++        List<Danmaku> items = List.of(Danmaku.from("Show 第02集"), Danmaku.from("Show 第03集"));
++        assertEquals(1, DanmakuApi.selectExactEpisode(items, "Show", "第3集").size());
++        assertEquals("Show 第03集", DanmakuApi.selectExactEpisode(items, "Show", "第3集").get(0).getName());
++    }
++
++    @Test
++    public void shouldRefuseAmbiguousOrForeignCandidates() {
++        List<Danmaku> ambiguous = List.of(Danmaku.from("Show 第03集"), Danmaku.from("Show 第3集"));
++        assertTrue(DanmakuApi.selectExactEpisode(ambiguous, "Show", "第3集").isEmpty());
++        List<Danmaku> foreign = List.of(Danmaku.from("Other Show 第03集"));
++        assertTrue(DanmakuApi.selectExactEpisode(foreign, "Show", "第3集").isEmpty());
++    }
+ }

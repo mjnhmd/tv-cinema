@@ -96,22 +96,30 @@ def check_stub_link(reference_directory, tv_directory, failures):
 
 
 def check_patch(tv_directory, baseline, failures):
-    patch = PROJECT_ROOT / "distribution" / "cinema.patch"
-    if not patch.is_file():
-        failures.append("Missing distribution/cinema.patch")
-        return
-    expected_hash = baseline.get("cinemaPatchSha256")
-    if expected_hash and sha256(patch) != expected_hash:
-        failures.append(
-            f"distribution/cinema.patch hash mismatch; expected {expected_hash}"
-        )
-        return
-    forward = run_git(tv_directory, "apply", "--check", str(patch))
-    if forward.returncode == 0:
-        return
-    reverse = run_git(tv_directory, "apply", "--reverse", "--check", str(patch))
-    if reverse.returncode != 0:
-        failures.append("Cinema patch is neither applicable nor already applied")
+    patches = (
+        ("cinema.patch", "cinemaPatchSha256", True),
+        ("cinema-danmaku.patch", "cinemaDanmakuPatchSha256", False),
+    )
+    unchecked = []
+    for name, hash_key, required in patches:
+        patch = PROJECT_ROOT / "distribution" / name
+        if not patch.is_file():
+            if required:
+                failures.append(f"Missing distribution/{name}")
+            continue
+        expected_hash = baseline.get(hash_key)
+        if expected_hash and sha256(patch) != expected_hash:
+            failures.append(f"distribution/{name} hash mismatch; expected {expected_hash}")
+            continue
+        forward = run_git(tv_directory, "apply", "--check", str(patch))
+        if forward.returncode == 0:
+            continue
+        reverse = run_git(tv_directory, "apply", "--reverse", "--check", str(patch))
+        if reverse.returncode != 0:
+            failures.append(f"distribution/{name} is neither applicable nor already applied")
+            continue
+        unchecked.append(patch)
+    if failures or not unchecked:
         return
     module_spec = importlib.util.spec_from_file_location(
         "cinema_prepare_verifier", PROJECT_ROOT / "scripts" / "cinema-prepare.py"

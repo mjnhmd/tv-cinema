@@ -122,5 +122,6 @@
       "source": "distribution/overlay/MpvHwDecPolicyTest.java",
       "target": "app/src/test/java/com/fongmi/android/tv/player/mpv/MpvHwDecPolicyTest.java"
     }
-  ]
+  ],
+  "cinemaDanmakuPatchSha256": "85c20971c777131b698efd022982bfec7614a52c93cffdbb261ce866fc563adc"
 }
