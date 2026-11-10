@@ -17,6 +17,7 @@
 - CI release-tool unittest and YAML/contract validation.
 - Run all `scripts/tests/test_cinema_*.py`, including guarded upstream-removal checks. Production preparation removes the checksum-pinned speech-subtitle files; input verification requires their absence. Final APK must exclude Sherpa JNI and speech-subtitle classes/activities while retaining ordinary subtitle dependencies.
 - Adaptive updater gate: `com.fongmi.android.tv.update.*` tests cover prefix ranking, low-speed fallback/recovery, integrity and cancellation; verify R8 APK retains probe/meter/status entry points. API28 emulator evidence and real TV/mirror throughput are separate acceptance scopes.
+- Slim payload gate: SDK compatibility init pins NDK29. Generated requirements-only trim runs after Chaquopy archive creation and before asset hashing. `scripts/cinema-packaging.py` rejects debug/symbol sections, dependency test directories and stale Chaquopy hashes; CI rejects signed APKs above79,000,000 bytes. This gates the authorized approximately78.5MB target without removing runtime dependencies/fonts.
 - Build checks pinned source/patch/native hashes, package, requested version, API24 compatibility, non-debuggable, native ARM32 payloads and existing signer.
 - Current increment evidence: 78 update JVM tests, 25 CI/preparation tests, 54 retained audio/subtitle JVM tests, three API28 update dialog/network cases and two audio/SRT cases. Earlier episode/search evidence is recorded separately. Emulator results are not Android9 ARMv7 television acceptance.
 
@@ -41,3 +42,4 @@
 ## First-Time Setup Gaps
 - Existing five signing-secret names and historical successful cloud/public release are verified. Do not upload or replace secrets during ordinary releases.
 - 2026-11-10 user explicitly requested “提交推送发布新版”; this authorizes the current focused commit/push and 0.1.8 publication. Record exact run/source/asset verification in the feature context; historical authorizations remain scoped to their deliveries.
+- Superseding instruction: “等下 改到78.5 然后提交推送发新版” authorizes this additional packaging commit and revised publication. Old publish42794496346/artifact42794430961 cancelled; no old0.1.8 release published. Preservebc078403b history.

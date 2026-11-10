@@ -3,6 +3,8 @@ gradle.beforeProject { currentProject ->
         currentProject.pluginManager.withPlugin(pluginId) {
             currentProject.extensions.getByName('androidComponents').finalizeDsl { androidDsl ->
                 if (androidDsl.compileSdk == 37) androidDsl.compileSdkMinor = 0
+                // AGP's default r28 may be absent/incomplete and silently skip symbol stripping.
+                androidDsl.ndkVersion = '29.0.14206865'
             }
         }
     }

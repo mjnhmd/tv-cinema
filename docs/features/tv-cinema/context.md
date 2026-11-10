@@ -1,9 +1,18 @@
 # TV Cinema: television redesign
 
+## In progress — authorized 78.5 MB revision — 2026-11-10
+- User now explicitly requests the previously measured two safe packaging optimizations, then commit/push/publication. Scope: NDK29 native-symbol stripping plus generated Python dependency test-directory exclusion; preserve fonts and all runtime source/player/Python dependencies.
+- Old publish42794496346 is cancelled before publication; automatic build42794430961 cancellation requested. Latest public release remains0.1.7. Existing pushed `bc078403b` stays in history; apply a new focused packaging commit.
+- Trim after `generate*PythonRequirementsAssets` finishes and before Chaquopy hashes assets into build.json. Keep all remaining ZIP contents/metadata byte-identical and reject malformed archives; runtime import/WASM and native playback/QuickJS must pass before delivery. Exact final/cloud size may differ from78.5 MB estimate.
+- Implemented: NDK29 pin, generated-only Python test-directory trimming, final ELF/debug/test-directory/Chaquopy-hash guard and CI79MB ceiling. First local signed ARMv7 package78,397,553 bytes (78.40MB), saving5.53MB; all37 ELF runtime sections unchanged.
+- Verified:29 tooling tests,78 update JVM tests and4 API28 ARM64 real runtime checks (Python native extensions/NumPy/pywasm WASM, FFmpeg/MPV/QuickJS JNI, ordinary audio/SRT/DSP/seek). Final formal timestamp build and publication follow. Fonts/runtime dependencies remain intact; user ARMv7 TV remains not_tested.
+- Final local formal package: `0.1.8+20261110.101315` /217468795,78,397,589B, SHA256 `a706ac7062a771a46a7f4f42050429600112b488b77e1da4e37d70d96500aa6d`, `build/outputs/tv-cinema-armv7-slim.apk`; full build2m36s/901 tasks and exact package/original signer/minSdk24/ARMv7/native/Python-hash checks pass. Cloud publication must independently satisfy79MB gate and actual asset verification.
+
 ## In progress — release 0.1.8 — 2026-11-10
 - Current user explicitly requested “提交推送发布新版”, authorizing this delivery's commit, push and public release. Publish the tested speech-removal/adaptive-updater increment and previously committed 0.1.7→HEAD UI/seek changes using the existing package and signer; further native/Python/font size changes remain deferred.
 - Readback before delivery: origin/fongmi equals local `980d18b85a7d0e018f3ed859c12c11cc5233aa09`; latest public release remains 0.1.7 / build-42727947198-1, 91,125,793 bytes. Existing signing secret names are present. No credential upload/change needed.
 - Set CI base to 0.1.8 and preserve timestamp-monotonic codes above local217447202 and installed release217434694. Use the explicit publish workflow; record exact source SHA/run/tag/version and downloaded artifact validation before completion. Unrelated `cinema.xml` ordering and prior icon receipt remain local.
+- Current delivery: committed/pushed `bc078403b43ef7d448af3b7aad2ce859b0036024` with 27 selected source/config/evidence paths, remote SHA read back identical. Publish run42794496346 accepted, waiting on automatic artifact run42794430961 under existing concurrency group. Publication and public-download verification are still pending.
 
 ## Implemented — adaptive update downloads — 2026-11-10
 - User approved correcting fixed slow update route selection. On explicit download only, probe bounded APK prefixes across the existing three trusted routes, rank measured transfer rates, then download. No probing during metadata checks or app startup.

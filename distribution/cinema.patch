@@ -2545,3 +2545,29 @@ index a4ab5fc558d218a9f3f8bf85bc29eeb1477e8607..9e7f9e4648d54cf66a9ec59c261f8423
 +        android:textSize="14sp"
 +        android:visibility="gone" />
 +</androidx.appcompat.widget.LinearLayoutCompat>
+diff --git a/chaquo/build.gradle b/chaquo/build.gradle
+index b646583c1318023c47b3b71a360516f6d11ec7d3..9bcd6cdfe39ba940928d77fbae125bd0743cd8f4 100644
+--- a/chaquo/build.gradle
++++ b/chaquo/build.gradle
+@@ -56,3 +56,21 @@ dependencies {
+     androidTestImplementation "com.squareup.okhttp3:mockwebserver:5.5.0"
+     coreLibraryDesugaring libs.desugar
+ }
++
++// Transform generated archives before generate*PythonBuildAssets records their SHA-1 hashes.
++gradle.projectsEvaluated {
++    tasks.matching { it.name.matches('generate.*PythonRequirementsAssets') }.each { task ->
++        task.inputs.file(layout.projectDirectory.file('trim-python-tests.py'))
++        task.doLast {
++            def trim = providers.exec {
++                commandLine 'python3', project.file('trim-python-tests.py'), task.assetDir
++                ignoreExitValue = true
++            }
++            def output = trim.standardOutput.asText.get().trim()
++            if (!output.isEmpty()) logger.lifecycle(output)
++            if (trim.result.get().exitValue != 0) {
++                throw new GradleException(trim.standardError.asText.get().trim())
++            }
++        }
++    }
++}

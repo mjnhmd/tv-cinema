@@ -325,6 +325,7 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertNotIn("keytool -genkeypair", text)
         self.assertIn("--draft", text)
         self.assertIn("--draft=false --latest", text)
+        self.assertIn("cinema-packaging.py --apk build/outputs/tv-cinema-armv7.apk --max-bytes 79000000", text)
         for secret in CI.SIGNING_SECRETS:
             self.assertIn(secret, text)
 

@@ -81,10 +81,17 @@ Ship a native TV redesign and a verified signed ARMv7 APK for an Android 9 telev
 
 ## Release 0.1.8 — 2026-11-10
 - Current user explicitly authorizes “提交推送发布新版”. Include tested speech removal, guarded preparation, adaptive download/UI/tests, version base and delivery evidence; preserve unrelated string-order/icon-receipt WIP.
-- [in_progress] Review final selected inputs and version base; verify production/preparation/tool contracts and release notes.
-- [pending] Commit focused source/evidence, push existing fongmi branch and read back remote SHA.
-- [pending] Dispatch explicit publishing build for 0.1.8, follow CI through completion and verify actual public APK/OTA bytes, signer, package, ABI and version.
+- [completed] Review final selected inputs and version base; verify production/preparation/tool contracts and release notes.
+- [completed] Commit `bc078403b43ef7d448af3b7aad2ce859b0036024`, push existing fongmi branch and read back identical remote SHA; 27 explicit paths, unrelated two dirty files preserved.
+- [completed] Old publish42794496346 and artifact42794430961 cancelled after user's superseding78.5MB request; no old0.1.8 Release published. Continue with revised packaging below.
 - [pending] Record publication/CI evidence and deliver verified public links. User-TV/mainland end-to-end acceptance remains open.
+
+## Authorized 78.5 MB revision — 2026-11-10
+- User supersedes the earlier deferral with “等下 改到78.5 然后提交推送发新版”. Cancel old publication before implementing; preserve the already-pushed commit without rewriting history.
+- [completed] Cancel publish42794496346 and artifact42794430961; latest public release remains0.1.7.
+- [completed] Pin usable NDK29 for native stripping and trim only generated Python dependency `test`/`tests` directories before Chaquopy build.json hashes; add output guards/tests.
+- [completed] Signed ARMv7 `0.1.8+20261110.101315` /217468795 measures78,397,589B (78.40MB); original signer/package/minSdk24/ABI,37 stripped libs,2 test-free archives/hash guards pass. All37 ELF runtime sections unchanged;29 tools/78 update JVM/4 API28 Python/WASM/JNI/audio cases pass.
+- [pending] Commit/push this packaging increment and publish revised0.1.8; verify public asset/OTA size/hash/signature/source.
 
 ## Held seek release — 2026-11-10
 - Scope: production VOD remote seek input and focused regression tests; preserve unrelated work. The user explicitly authorized this fix's commit and push with “提交推送” on 2026-11-10; branch changes and public release are outside this authorization.

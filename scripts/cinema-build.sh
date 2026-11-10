@@ -170,6 +170,7 @@ if [ "$debug_build" != true ] && printf '%s\n' "$badging" | grep -q 'application
 fi
 
 "$build_tools/apksigner" verify --print-certs "$output" >/dev/null
+python3 "$project_dir/scripts/cinema-packaging.py" --apk "$output"
 
 printf 'PASS: %s\n' "$output"
 printf 'package=%s minSdk=%s abi=%s debug=%s\n' "$package_name" "$min_sdk" "$abi" "$debug_build"

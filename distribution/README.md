@@ -11,6 +11,7 @@ The upstream repositories retain their GPL/Apache/third-party notices.
 - Disposable checkouts, local signing configuration, downloads, logs and APKs stay under ignored `build/`.
 - Never reset a changed checkout. A mismatched revision or unexpected patch state must fail with an actionable error.
 - `scripts/cinema-build.sh` is the production build entry point; the root application is retained as an earlier design experiment.
+- `sdk-compat.init.gradle` pins installed NDK29 so release native symbols are stripped. `trim-python-tests.py` transforms generated dependency archives only, before Chaquopy's build manifest hashes them; runtime/wheel/source inputs are preserved. Final `scripts/cinema-packaging.py` verifies stripped ELF payloads, test-free requirements and asset hashes; CI caps the signed ARMv7 APK at79MB for this release.
 
 The paired upstream keeps its mpv/ASS/danmaku implementations. This integration
 does not claim that the separate, unpublished FongMi 5.8.7 API is binary-compatible.
