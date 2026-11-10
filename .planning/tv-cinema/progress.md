@@ -6,6 +6,24 @@
 - 31 JVM tests in `api.config.*` pass (6 new). Local ARMv7 `0.1.8`/`217435000` built and verified, SHA256 `164aadbc…45bf97`. Not tested on the user's television.
 - Concurrent-session note: another session edited `CinemaProfile.java`, `distribution/cinema.patch`, `distribution/baseline.json` and this feature's docs while this work ran. `cinema.patch` and `baseline.json` hashes were temporarily inconsistent, blocking `scripts/cinema-prepare.py`, so the local APK was built by invoking Gradle directly in the pinned checkout. Re-run `cinema-prepare.py` before any official or CI build.
 
+## FongMi player upstream investigation — 2026-11-10
+- Read project rules, production lock, current feature evidence, selected planning files and existing context diff. No application source changed.
+- Queried ppm read-only: service unavailable; approximate unfiltered history is not project evidence. Do not bypass with local database or write a ledger item for the moved checkout.
+- Verified upstream repository metadata through approved read-only GitHub API access. Comparing current pinned source and historical patches next.
+- Completed cross-fork ancestry review: production media contains all current FongMi media commits and only adds Matroska-before-MMT/TLV probing. Matched 13 relevant playback/diagnostic files by Git blob hash.
+- Identified existing EXO debug button toggling a boolean without invoking the inherited library overlay; recommended wiring it before stutter tuning. No runtime UI fix in this audit.
+- Confirmed new FongMi native lifecycle bridge is excluded from actual production inputs. Its asynchronous destroy return conflicts with current Java completion/cache ownership assumptions; recommend a bounded port, not a drop-in AAR/so swap.
+- Wrote `docs/features/tv-cinema/player-upstream-review.md` with pinned sources, already-inherited fixes, concrete gaps, priorities and not_tested device boundaries. Kept concurrently edited feature context and unrelated source/danmaku/icon work untouched.
+- Final verification: 13 Git blob matches and cross-fork ahead=2/behind=0 confirmed; targeted `git diff --check` passed. No Gradle build/test or device session, because no runtime source changed and the materialized checkout has concurrent work.
+- Secondary review corrected the root-AAR confusion and independently confirmed the actual bridge is still synchronous with 23 JNI exports. New asynchronous destroy would also invalidate the existing destroy-thread watchdog and release observers; migration requires a real teardown-completion contract.
+- The new report inherits upstream `/docs/` ignore; did not stage or edit ignore rules. Durable conclusions are also in tracked `.planning/tv-cinema/findings.md`. A future authorized commit must explicitly include the report, as with existing project docs.
+
+## EXO debug panel wiring — 2026-11-10
+- Applied the new `PlaybackActivity` hunk to the pinned checkout that already contained the reviewed patch, keeping the working state fully applied instead of partially applied.
+- Compile evidence: `:app:compileLeanbackArmeabi_v7aDebugJavaWithJavac` → BUILD SUCCESSFUL in 35s, 230 tasks; `cinema-verify-inputs.py` → PASS.
+- Regenerated and pinned `cinemaPatchSha256` (`b0b8ab69…`); added `cinema_debug_exo_only` to the shared overlay string file used by all three locales.
+- Not run: Gradle unit/instrumentation suites, R8 release build, APK install. No adb device was attached.
+
 ## MPV Android 9 crash fix — 2026-11-10
 - Reproduced EXO→MPV native SIGSEGV on API28. Added `MpvHwDecPolicy` (`mediacodec-copy` on SDK<=28); API28 probe now plays past one second without crashing.
 - JVM policy test passes; local ARMv7 0.1.7/217433204 built (91,128,921B, sha 742c45d1..., same signer). Published cloud 0.1.7 code 217434694 as `build-42727947198-1`; downloaded APK sha 75276eaf..., signature/ABI/manifest verified.

@@ -9,6 +9,13 @@
 - Official payloads carry whole-line `//` comments; the probe and discovery strip those lines before parsing while keeping `https://` inside string values intact.
 - Verification: 31 JVM tests in `api.config.*` (6 new probe cases) pass; local ARMv7 `0.1.8` / `217435000` builds and passes package/minSdk/ABI/signer checks (91,134,761 bytes, SHA256 `164aadbcb588cdce5d3a68e0b251452a5debd926be45ca058a174ed02545bf97`). Not tested: the user's television network, which endpoint wins there, and playback through the winner.
 
+## Implemented — EXO 调试面板接线 — 2026-11-10
+- 播放页“调试”按钮之前只翻转 Activity 自己的布尔值，没有显示任何内容。`distribution/cinema.patch` 现在让 `PlaybackActivity.toggleDebugView()` 直接切换 `PlayerView` 的统计面板，`hideDebugView()` 也会关闭已显示的面板；`isDebugViewVisible()` 读取真实视图状态，切内核时按钮高亮不会再和界面不一致。
+- 面板复用 Media3 已有实现：缓冲秒数、实际解码器与硬解标识、输入/解码后丢帧、帧处理偏移、帧率、码率、显示刷新率。只为定位卡顿使用，不做常驻刷新。
+- 当前 MPV 是自研 `MpvPlayer`，没有实现 Media3 的 MPV 统计契约，因此在该内核下不显示空白面板，改为提示“调试信息仅支持 EXO 内核”。新增字符串位于 `distribution/overlay/cinema.xml`，同步到 values / zh-rCN / zh-rTW。
+- 验证：修补后运行 `:app:compileLeanbackArmeabi_v7aDebugJavaWithJavac`，`BUILD SUCCESSFUL in 35s`（230 tasks）；`scripts/cinema-verify-inputs.py` 返回 PASS。`distribution/baseline.json` 的 `cinemaPatchSha256` 已更新为当前补丁摘要。
+- 未验证：`adb devices -l` 无设备，面板实际渲染、R8 Release 反射可用性、切内核/Back 后的关闭行为、Android9 ARMv7 电视均未测。下一步接真机确认后，再用面板数据区分缓冲不足与解码丢帧。
+
 ## Implemented — MPV Android 9 crash fix — 2026-11-10
 - User reports switching to MPV crashes immediately. Reproduced on API28 ARM64 with a loopback H.264 fixture: MPV hardware decode (`mediacodec,mediacodec-copy`) reaches playback and then dies with native `SIGSEGV` in `CCodecBufferChannel::setSurface` on `CodecLooper`. This is an Android 9 platform surface/MediaCodec crash, not a Java exception.
 - `MpvHwDecPolicy` selects `mediacodec-copy` on SDK <= 28 and the normal surface-first chain on newer systems. After the change the same playback + engine-switch test reaches `file-loaded`, advances beyond one second and exits cleanly; no surface is handed to MediaCodec in the Android 9 path. MPV may fall back to software decoding on this path, so smoothness is not guaranteed.

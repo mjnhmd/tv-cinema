@@ -894,3 +894,60 @@ index b26b08324955c25c40f0bfdae9f8a02cf9f888f7..4321dd181e0c90e73f2bba3fd0a5ec12
 -}
 \ No newline at end of file
 +}
+diff --git a/app/src/main/java/com/fongmi/android/tv/ui/activity/PlaybackActivity.java b/app/src/main/java/com/fongmi/android/tv/ui/activity/PlaybackActivity.java
+index 16c645264842b242524a12d2cb13fa7df2d93550..93e407364d70982bbab9aeac63c76392b180a767 100644
+--- a/app/src/main/java/com/fongmi/android/tv/ui/activity/PlaybackActivity.java
++++ b/app/src/main/java/com/fongmi/android/tv/ui/activity/PlaybackActivity.java
+@@ -26,6 +26,7 @@ import androidx.media3.common.MediaItem;
+ import androidx.media3.common.MediaMetadata;
+ import androidx.media3.common.Player;
+ import androidx.media3.common.VideoSize;
++import androidx.media3.exoplayer.ExoPlayer;
+ import androidx.media3.exoplayer.drm.FrameworkMediaDrm;
+ import androidx.media3.session.MediaController;
+ import androidx.media3.session.SessionToken;
+@@ -48,6 +49,7 @@ import com.fongmi.android.tv.setting.DanmakuSetting;
+ import com.fongmi.android.tv.setting.PlayerSetting;
+ import com.fongmi.android.tv.ui.base.BaseActivity;
+ import com.fongmi.android.tv.utils.MpvLogCollector;
++import com.fongmi.android.tv.utils.Notify;
+ import com.fongmi.android.tv.utils.ResUtil;
+ import com.fongmi.android.tv.utils.Util;
+ import com.github.catvod.net.OkHttp;
+@@ -71,7 +73,6 @@ public abstract class PlaybackActivity extends BaseActivity implements MediaCont
+     private boolean audioOnly;
+     private boolean scrubbing;
+     private boolean redirect;
+-    private boolean debugViewVisible;
+     private long localPlaybackRequest = -1;
+     private boolean bound;
+     private boolean stop;
+@@ -196,15 +197,25 @@ public abstract class PlaybackActivity extends BaseActivity implements MediaCont
+     }
+ 
+     public boolean isDebugViewVisible() {
+-        return debugViewVisible;
++        PlayerView view = getPlayerView();
++        return view != null && view.isDebugViewVisible();
+     }
+ 
+     public void toggleDebugView() {
+-        debugViewVisible = !debugViewVisible;
++        PlayerView view = getPlayerView();
++        if (view == null) return;
++        // The shared overlay reads ExoPlayer internals; the self-hosted MPV player does not
++        // implement that contract, so never show a permanently empty panel for it.
++        if (!view.isDebugViewVisible() && !(view.getPlayer() instanceof ExoPlayer)) {
++            Notify.show(R.string.cinema_debug_exo_only);
++            return;
++        }
++        view.toggleDebugView();
+     }
+ 
+     public void hideDebugView() {
+-        debugViewVisible = false;
++        PlayerView view = getPlayerView();
++        if (view != null && view.isDebugViewVisible()) view.toggleDebugView();
+     }
+ 
+     public void chooseOtherPlayer(CharSequence title) {

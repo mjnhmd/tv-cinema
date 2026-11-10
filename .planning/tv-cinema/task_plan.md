@@ -27,6 +27,26 @@ Ship a native TV redesign and a verified signed ARMv7 APK for an Android 9 telev
 21. [completed] Fix MPV engine-switch SIGSEGV on Android 9.
 22. [completed] Publish 0.1.7 MPV crash fix.
 
+## Current investigation — FongMi player upstreams — 2026-11-10
+- Scope: read-only code/history comparison of FongMi/media and FongMi/mpv-android with the actual pinned production pair; no player replacement, dependency update, build, commit or push.
+- [completed] Pin upstream revisions and compare production playback paths.
+- [completed] Separate already-integrated changes from transferable fixes and incompatible changes.
+- [completed] Record prioritized recommendations, evidence and device-verification gaps.
+- Current checkout is `/Users/mengjingnan/code/tv-cinema`, outside the user's four ppm project roots. Query historical records only; do not create or update ledger projects/items.
+- Initial ppm query reports server unavailable and non-project-filtered approximate history; those hits are not evidence for this project.
+- Initial sandboxed GitHub request failed; approved read-only GitHub API access succeeds.
+- Direct read-only ppm API succeeded after approval. Historical records remain untouched because this checkout is outside managed roots.
+- Validation: cross-fork compare plus Git blob checks on 13 playback/diagnostic files; no player behavior changes or runtime benchmark in this audit.
+- Outcome: wire the existing EXO debug action to real statistics first; separately evaluate MPV JNI Surface completion/lifecycle hardening, preserving the Android9 copy-mode workaround and existing extended JNI/cache ownership contracts. Full report is in the feature directory; key handoff facts also persist in tracked findings.
+
+## Current implementation — EXO debug panel wiring — 2026-11-10
+- [completed] Patch `PlaybackActivity` to drive the real `PlayerView` debug overlay.
+- [completed] Add the MPV-unsupported hint string in all three value folders.
+- [completed] Update `cinemaPatchSha256` and revalidate inputs.
+- [completed] Compile the patched pinned checkout.
+- [pending] Device/release verification when a television or emulator is attached.
+- The shared checkout already carried the earlier reviewed patch, so the new hunk was applied there deliberately to keep the state fully applied; `cinema-verify-inputs.py` passes.
+
 ## Verification rules
 - Validate before each commit; never exceed 100 changed lines without a targeted check.
 - Do not mistake a successful XML parse, compiler, emulator or upstream APK for real-TV acceptance.

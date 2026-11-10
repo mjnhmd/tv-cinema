@@ -9,6 +9,12 @@
 - Local ARMv7 `TV_VERSION_CODE=217435000 TV_VERSION_NAME=0.1.8` Release: `BUILD SUCCESSFUL in 3m 44s`, 900 tasks; `verify-apk` reports package `com.mjnhmd.tvcinema`, code `217435000`, minSdk24, `armeabi-v7a` only, signer `d405dcab…bdc5`; 91,134,761 bytes, SHA256 `164aadbcb588cdce5d3a68e0b251452a5debd926be45ca058a174ed02545bf97`. Packaged `assets/cinema/sources.json` carries the three endpoints.
 - Not tested: install on the 32-bit television, which endpoint wins on its network, latency of the spider/plugin download, and playback through the chosen endpoint. No Git or release operation was performed.
 
+## EXO debug panel wiring — 2026-11-10
+- Change: `PlaybackActivity.toggleDebugView()` / `hideDebugView()` / `isDebugViewVisible()` now delegate to `PlayerView` instead of an Activity-only flag; MPV shows the `cinema_debug_exo_only` hint.
+- `python3 scripts/cinema-verify-inputs.py`: `PASS: pinned checkouts, native hashes, patches, overlay copies and signing inputs are ready.`
+- `:app:compileLeanbackArmeabi_v7aDebugJavaWithJavac` on the patched pinned checkout: `BUILD SUCCESSFUL in 35s`, 230 actionable tasks (9 executed). Resource merge resolved the new string in values / values-zh-rCN / values-zh-rTW.
+- Not tested: `adb devices -l` returned no attached device, so panel rendering, R8 release/reflection behavior, engine switching, Back handling and the Android9 ARMv7 television remain not_tested.
+
 ## MPV engine switch crash — 0.1.7
 - API28 ARM64, loopback 720p H.264 fixture, `VideoActivity` playing on EXO then `PlayerManager.setEngine(MPV)`:
   - Before: `Fatal signal 11 (SIGSEGV), code 2` in `CodecLooper`; backtrace `CCodecBufferChannel::setSurface` → `CCodec::configure` (`build/logs/cinema-mpv-playback-probe3.txt`).
