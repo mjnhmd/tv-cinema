@@ -1,5 +1,13 @@
 # TV Cinema: television redesign
 
+## In progress — windowed playback green screen — 2026-11-11
+- User reports the detail-page video is solid green while audio plays, but fullscreen video works; the supplied photo shows the green preview for a 4K-labelled episode. The exact codec, active engine/render settings and target-TV logs are unknown, so the device-specific cause is not confirmed.
+- Code finding: `VideoActivity.applyWindowVideoStyle()` forced `TextureView` regardless of the selected renderer, while fullscreen used `getPlaybackRender()` (EXO defaults to `SurfaceView`, MPV remains `TextureView`). Thus default EXO changed video output on every window/fullscreen transition and the two modes followed different rendering paths.
+- Change: windowed playback now also uses `getPlaybackRender()`. EXO respects the existing render preference, MPV retains its established TextureView path, and the player instance, decoding settings and fullscreen controls are untouched. Parent rounding and focus treatment remain; their appearance passed the API28 emulator screenshot but has not been checked on the target TV.
+- Regression: Android9/API28 ARM64 emulator with a local synthetic H.264/AAC fixture passes four real-player tests covering initial window, fullscreen-to-window, return to fullscreen/Back, EXO Surface and explicit Texture, MPV Texture, retained player/output identity, advancing playback, EXO audio track selection and nonuniform/non-green video frames. The emulator was run without audio output. `verification.md` records commands and evidence.
+- Local signed ARMv7 test APK: `build/outputs/tv-cinema-armv7-window-fix.apk`, version `0.1.8+20261111.150113-window-fix` / `217572473`, 78,711,921 bytes, SHA256 `94c3c135c28d83e961be8c9a4494ca42961ec4105ac0fe5999446aa40c770b33`. Full build and original signer/package/version/minSdk/ARMv7 checks pass; no public release.
+- Remaining: verify this change with the actual television and affected 4K source. If green persists, collect the active player, render/decode setting, codec/format and whether it starts on first entry or after returning from fullscreen. Changes are local; no commit, push or public release is authorized.
+
 ## In progress — authorized 78.5 MB revision — 2026-11-10
 - User now explicitly requests the previously measured two safe packaging optimizations, then commit/push/publication. Scope: NDK29 native-symbol stripping plus generated Python dependency test-directory exclusion; preserve fonts and all runtime source/player/Python dependencies.
 - Old publish42794496346 is cancelled before publication; automatic build42794430961 cancellation requested. Latest public release remains0.1.7. Existing pushed `bc078403b` stays in history; apply a new focused packaging commit.

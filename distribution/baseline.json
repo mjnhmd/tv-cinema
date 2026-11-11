@@ -12,7 +12,7 @@
     "directory": "build/reference/wobuhui-media"
   },
   "applicationId": "com.mjnhmd.tvcinema",
-  "cinemaPatchSha256": "bebe9a926d8d3e5e7233bdb989b88be36a9a8008eb568a409bef605247d1b684",
+  "cinemaPatchSha256": "23dba37668f59c5d782ba09389fe86923937d586a20b81bb87de87f5c38c782d",
   "nativeArchives": {
     "third_party/mpv/mpv-android-ffmpeg9-native.zip": "d3f22c64ab90a1476b489c2b4f06de8296672497f2998161efb4d906f9a4a66c",
     "third_party/mpv/mpv-android-ffmpeg9-bridge.zip": "29b1ef4c8d0b48475c1b5dba464d46157d7ec2e13ce913a67fcca93e4b2c20d6"
@@ -193,6 +193,10 @@
     {
       "source": "distribution/overlay/VodSeekPlaybackAndroidTest.java",
       "target": "app/src/androidTest/java/com/fongmi/android/tv/ui/custom/VodSeekPlaybackAndroidTest.java"
+    },
+    {
+      "source": "distribution/overlay/CinemaWindowRenderAndroidTest.java",
+      "target": "app/src/androidTest/java/com/fongmi/android/tv/ui/custom/CinemaWindowRenderAndroidTest.java"
     },
     {
       "source": "distribution/overlay/CinemaSubtitleRemovalAndroidTest.java",

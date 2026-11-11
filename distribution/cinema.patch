@@ -1684,7 +1684,7 @@ index 790124a80aea6ff7feaed0079f77b20f4cdacc1d..b2ba171558fb28f839667cd4a1951eb5
      }
  
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/VideoActivity.java b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/VideoActivity.java
-index b181c843f13ab06b0daed7360f5954b7b594d37f..ba0624a9d5733a9a52af6413cd93537baa2029ae 100644
+index b181c843f13ab06b0daed7360f5954b7b594d37f..13c8159f86085b408f53f9af463d04c5b70f415b 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/VideoActivity.java
 +++ b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/VideoActivity.java
 @@ -38,7 +38,6 @@ import com.fongmi.android.tv.BuildConfig;
@@ -1704,6 +1704,15 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..ba0624a9d5733a9a52af6413cd93537b
          mBinding.control.action.speed.setUpListener(this::onSpeedAdd);
          mBinding.control.action.speed.setDownListener(this::onSpeedSub);
          mBinding.control.action.ending.setUpListener(this::onEndingAdd);
+@@ -1137,7 +1134,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+ 
+     private void applyWindowVideoStyle() {
+         if (isFullscreen()) return;
+-        mBinding.player.setRender(PlayerSetting.RENDER_TEXTURE);
++        mBinding.player.setRender(getPlaybackRender());
+         mBinding.video.setForeground(JetStreamVideoDecor.windowForeground(mBinding.video));
+         mBinding.video.setBackgroundResource(R.drawable.shape_video_window);
+         mBinding.video.setClipToOutline(true);
 @@ -2291,7 +2288,6 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
          super.onStart();
          if (mSpecs != null) mSpecs.setStarted(true);
