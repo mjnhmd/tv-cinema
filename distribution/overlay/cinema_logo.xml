@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Keep the drawable wrapper so existing default-logo inset behavior remains intact. -->
+<!-- Keep the drawable wrapper so existing default-logo inset behavior remains intact.
+     The toolbar logo uses the transparent mark; the launcher keeps the opaque artwork. -->
 <inset xmlns:android="http://schemas.android.com/apk/res/android" android:inset="0dp">
-    <bitmap android:src="@drawable/cinema_icon" android:gravity="fill" android:filter="true" />
+    <bitmap android:src="@drawable/cinema_icon_mark" android:gravity="fill" android:filter="true" />
 </inset>

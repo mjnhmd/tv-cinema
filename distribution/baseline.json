@@ -23,6 +23,10 @@
       "target": "app/src/leanback/res/drawable-xxxhdpi/cinema_icon.png"
     },
     {
+      "source": "distribution/overlay/cinema_icon_mark.png",
+      "target": "app/src/leanback/res/drawable-xxxhdpi/cinema_icon_mark.png"
+    },
+    {
       "source": "distribution/overlay/cinema_icon_background.xml",
       "target": "app/src/leanback/res/drawable/cinema_icon_background.xml"
     },
