@@ -23,6 +23,6 @@
     <string name="cinema_discover_busy">正在抓取，请稍候</string>
     <string name="cinema_source_probe_pick">饭太硬线路已选 %1$s（%2$d ms）</string>
     <string name="cinema_source_probe_none">饭太硬线路都不可用，已保留当前片源</string>
-    <string name="cinema_playlist_invalid">当前源返回了网站分类，不是剧集，请选择“换源”重试</string>
     <string name="cinema_debug_exo_only">调试信息仅支持 EXO 内核</string>
+    <string name="cinema_playlist_invalid">当前源返回了网站分类，不是剧集，请选择“换源”重试</string>
 </resources>
