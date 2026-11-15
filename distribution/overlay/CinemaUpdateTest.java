@@ -22,6 +22,34 @@ public class CinemaUpdateTest {
     }
 
     @Test
+    public void mobileUsesOwnManifestAndAcceptsBothMatchingAbis() throws Exception {
+        String url = "https://github.com/mjnhmd/tv-cinema/releases/latest/download/mobile-coexist.json";
+        assertEquals(UpdateSources.mirrors(url),
+                UpdateSources.manifests("mobile", UpdateSources.CINEMA_MOBILE_PACKAGE));
+        for (String abi : List.of("arm64_v8a", "armeabi_v7a")) {
+            String file = "mobile-" + abi + "-coexist.apk";
+            JSONObject asset = new JSONObject().put("url", RELEASE + file).put("size", 100000).put("sha256", SHA);
+            JSONObject manifest = new JSONObject().put("schema", 1).put("code", 10002).put("name", "0.1.0")
+                    .put("packageName", UpdateSources.CINEMA_MOBILE_PACKAGE).put("mode", "mobile")
+                    .put("assets", new JSONObject().put(abi, asset));
+            assertEquals(RELEASE + file, UpdateManifest.parse(manifest.toString(),
+                    UpdateSources.CINEMA_MOBILE_PACKAGE, "mobile", abi).asset.url);
+            assertEquals(RELEASE + file, UpdateManifest.parse(manifest.toString(),
+                    UpdateSources.CINEMA_PACKAGE, "mobile", abi).asset.url);
+            assertThrows(IOException.class, () -> UpdateManifest.parse(manifest.toString(),
+                    UpdateSources.CINEMA_MOBILE_PACKAGE, "leanback", abi));
+            for (String wrong : List.of(RELEASE + "leanback-" + abi + "-coexist.apk",
+                    RELEASE + "mobile-" + abi + ".apk",
+                    "https://github.com/wobuhui666/TV/releases/download/v0.2.0/" + file,
+                    RELEASE + file + "?download=1")) {
+                asset.put("url", wrong);
+                assertThrows(IOException.class, () -> UpdateManifest.parse(manifest.toString(),
+                        UpdateSources.CINEMA_MOBILE_PACKAGE, "mobile", abi));
+            }
+        }
+    }
+
+    @Test
     public void cinemaManifestRequiresOwnImmutableAsset() throws Exception {
         String file = "leanback-armeabi_v7a-coexist.apk";
         JSONObject asset = new JSONObject().put("url", RELEASE + file).put("size", 100000).put("sha256", SHA);

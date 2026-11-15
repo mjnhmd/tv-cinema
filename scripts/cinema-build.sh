@@ -2,11 +2,20 @@
 set -euo pipefail
 
 project_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-abi=armeabi-v7a
+mode=leanback
+abi=
 debug_build=false
 
 while [ "$#" -gt 0 ]; do
     case "$1" in
+        --mode)
+            if [ "$#" -lt 2 ]; then
+                printf '%s\n' 'Missing value for --mode' >&2
+                exit 2
+            fi
+            mode=$2
+            shift 2
+            ;;
         --abi)
             if [ "$#" -lt 2 ]; then
                 printf '%s\n' 'Missing value for --abi' >&2
@@ -25,6 +34,27 @@ while [ "$#" -gt 0 ]; do
             ;;
     esac
 done
+
+case "$mode" in
+    leanback)
+        mode_flavor=Leanback
+        application_id=com.mjnhmd.tvcinema
+        output_prefix=tv-cinema
+        abi=${abi:-armeabi-v7a}
+        log_name=cinema-build.log
+        ;;
+    mobile)
+        mode_flavor=Mobile
+        application_id=com.mjnhmd.tvcinema
+        output_prefix=cinema-mobile
+        abi=${abi:-arm64-v8a}
+        log_name=cinema-mobile-build.log
+        ;;
+    *)
+        printf 'Unsupported mode: %s\n' "$mode" >&2
+        exit 2
+        ;;
+esac
 
 case "$abi" in
     armeabi-v7a|armv7)
@@ -88,8 +118,8 @@ tv_dir=$project_dir/$(
 )
 mkdir -p build/logs build/outputs
 
-printf 'Building leanback %s %s version %s (%s) with MEDIA3_SOURCE_DIR=%s\n' \
-    "$abi" "$build_type" "$TV_VERSION_NAME" "$TV_VERSION_CODE" "$media_dir"
+printf 'Building %s %s %s version %s (%s) with MEDIA3_SOURCE_DIR=%s\n' \
+    "$mode" "$abi" "$build_type" "$TV_VERSION_NAME" "$TV_VERSION_CODE" "$media_dir"
 (
     cd "$tv_dir"
     JAVA_HOME="$java_home" \
@@ -97,25 +127,25 @@ printf 'Building leanback %s %s version %s (%s) with MEDIA3_SOURCE_DIR=%s\n' \
     PATH="$python_bin:$PATH" \
     ./gradlew \
         --init-script "$project_dir/distribution/sdk-compat.init.gradle" \
-        ":app:assembleLeanback${flavor}${build_type}" \
-        -PtvApplicationId=com.mjnhmd.tvcinema \
+        ":app:assemble${mode_flavor}${flavor}${build_type}" \
+        "-PtvApplicationId=$application_id" \
         --max-workers=2 \
         --console=plain
-) 2>&1 | tee "$project_dir/build/logs/cinema-build.log"
+) 2>&1 | tee "$project_dir/build/logs/$log_name"
 
-apk=$(python3 - "$tv_dir" "$flavor" "$build_type_lower" "$TV_VERSION_CODE" "$TV_VERSION_NAME" <<'PY'
+apk=$(python3 - "$tv_dir" "$mode" "$flavor" "$build_type_lower" "$TV_VERSION_CODE" "$TV_VERSION_NAME" "$application_id" <<'PY'
 from pathlib import Path
 import json
 import sys
 
-directory = Path(sys.argv[1]) / 'app/build/outputs/apk' / ('leanback' + sys.argv[2]) / sys.argv[3]
+directory = Path(sys.argv[1]) / 'app/build/outputs/apk' / (sys.argv[2] + sys.argv[3]) / sys.argv[4]
 metadata = json.loads((directory / 'output-metadata.json').read_text())
-assert metadata['applicationId'] == 'com.mjnhmd.tvcinema', 'Unexpected package metadata'
+assert metadata['applicationId'] == sys.argv[7], 'Unexpected package metadata'
 elements = metadata['elements']
 assert len(elements) == 1, 'Expected exactly one ABI-specific APK'
 element = elements[0]
-assert element['versionCode'] == int(sys.argv[4]), 'Stale APK version code'
-assert element['versionName'] == sys.argv[5], 'Stale APK version name'
+assert element['versionCode'] == int(sys.argv[5]), 'Stale APK version code'
+assert element['versionName'] == sys.argv[6], 'Stale APK version name'
 name = element['outputFile']
 assert Path(name).name == name, 'APK output escaped the variant directory'
 output = directory / name
@@ -124,11 +154,11 @@ print(output)
 PY
 )
 if [ -z "$apk" ]; then
-    printf 'BLOCKED: no leanback %s %s APK found\n' "$abi" "$build_type" >&2
+    printf 'BLOCKED: no %s %s %s APK found\n' "$mode" "$abi" "$build_type" >&2
     exit 2
 fi
 
-output="$project_dir/build/outputs/tv-cinema-${artifact}${suffix}.apk"
+output="$project_dir/build/outputs/${output_prefix}-${artifact}${suffix}.apk"
 cp "$apk" "$output"
 
 sdk_dir=$(sed -n 's/^sdk.dir=//p' local.properties | tail -1)
@@ -156,7 +186,7 @@ fi
 badging=$("$build_tools/aapt2" dump badging "$output")
 package_name=$(printf '%s\n' "$badging" | sed -n "s/^package: name='\([^']*\)'.*/\1/p")
 min_sdk=$(printf '%s\n' "$badging" | sed -n "s/^minSdkVersion:'\([0-9]*\)'.*/\1/p; s/^sdkVersion:'\([0-9]*\)'.*/\1/p")
-if [ "$package_name" != "com.mjnhmd.tvcinema" ]; then
+if [ "$package_name" != "$application_id" ]; then
     printf 'BLOCKED: unexpected package name %s\n' "$package_name" >&2
     exit 2
 fi

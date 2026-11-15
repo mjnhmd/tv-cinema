@@ -1,5 +1,13 @@
 # TV Cinema task plan
 
+## Current mobile increment — 2026-11-13
+- [completed] Confirm scope: retain the existing phone touch UI and add Cinema capabilities.
+- [completed] Make production mobile configuration/resources and build mode reproducible.
+- [completed] Wire mobile brand, preset catalog/manual discovery and guarded OTA routing.
+- [completed] Verify signed ARM64/ARMv7 APKs, controlled phone runtime and TV regression boundaries.
+- [completed] Record exact outputs/evidence and deliver local APK; physical-phone acceptance remains separate.
+- User's earlier commit/push authorization is consumed. Current development authorization does not authorize Git delivery or publication.
+
 ## Goal
 Ship a native TV redesign and a verified signed ARMv7 APK for an Android 9 television, preserving FongMi playback compatibility.
 

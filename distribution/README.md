@@ -11,6 +11,8 @@ The upstream repositories retain their GPL/Apache/third-party notices.
 - Disposable checkouts, local signing configuration, downloads, logs and APKs stay under ignored `build/`.
 - Never reset a changed checkout. A mismatched revision or unexpected patch state must fail with an actionable error.
 - `scripts/cinema-build.sh` is the production build entry point; the root application is retained as an earlier design experiment.
+- `--mode mobile` builds the existing phone touch UI with Cinema branding/catalog/discovery. It now ships under the same `com.mjnhmd.tvcinema` package as TV so one Bugly product receives both; OTA manifests and assets stay split by mode (`leanback-*` vs `mobile-*`) and by ABI. The default ARM64 mobile output is separate from TV; `--abi armeabi-v7a` explicitly selects the 32-bit phone variant.
+- The mobile runtime test init script selects only declared `cinemaMobileTest` copies for the disposable `.mobile.probe` package. It does not remove or reclassify the upstream TV tests.
 - `sdk-compat.init.gradle` pins installed NDK29 so release native symbols are stripped. `trim-python-tests.py` transforms generated dependency archives only, before Chaquopy's build manifest hashes them; runtime/wheel/source inputs are preserved. Final `scripts/cinema-packaging.py` verifies stripped ELF payloads, test-free requirements and asset hashes; CI caps the signed ARMv7 APK at79MB for this release.
 
 The paired upstream keeps its mpv/ASS/danmaku implementations. This integration

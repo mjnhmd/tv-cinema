@@ -51,6 +51,28 @@ bash scripts/cinema-build.sh --abi arm64-v8a
 默认版本 `0.1.0` / code `10000`，可通过 `TV_VERSION_NAME` / `TV_VERSION_CODE` 显式更新。
 脚本核对最终 APK 包名、minSdk、单一 ABI、非 debuggable 与签名；设备验收另行记录。
 
+## Android 手机版
+
+手机版保留底座已有的触控首页、搜索、详情和播放器，接入 Cinema 图标、预置片源、
+手动抓取和独立更新路由。包名与电视版一致（`com.mjnhmd.tvcinema`），两者共用同一个
+Bugly 产品和 OTA 签名；因此同一台设备上只能装其中一个，更新包仍按 ABI 和 `leanback`/`mobile`
+渠道分开。这样手机版的崩溃和日志会直接进电视版使用的 Bugly 产品。
+设置中的「内置片源」用于选择订阅；「手动抓取片源」仅在点击开始后抓取配置，
+合并结果需要另行选择才会启用，已有订阅不会被默认值覆盖。
+
+```sh
+bash scripts/cinema-build.sh --mode mobile
+bash scripts/cinema-build.sh --mode mobile --abi armeabi-v7a
+```
+
+默认构建 ARM64，输出 `build/outputs/cinema-mobile-arm64.apk`；ARMv7 输出
+`build/outputs/cinema-mobile-armv7.apk`。电视版默认命令和输出不变。两种手机包只选
+符合设备架构的一种安装，使用同一个 Cinema 签名。公开发布与 OTA 资源上传另行授权；
+本地 APK 构建不代表手机更新资源已经上线。
+
+验收与接手见 [手机版上下文](docs/features/tv-cinema/mobile-context.md)、
+[验证记录](docs/features/tv-cinema/mobile-verification.md)。
+
 ## 配对底座
 
 - TV：`wobuhui666/TV`，`17abcd7453a0ecbdbc9ed40a22f3fd3632158495`。

@@ -12,7 +12,7 @@
     "directory": "build/reference/wobuhui-media"
   },
   "applicationId": "com.mjnhmd.tvcinema",
-  "cinemaPatchSha256": "23dba37668f59c5d782ba09389fe86923937d586a20b81bb87de87f5c38c782d",
+  "cinemaPatchSha256": "9d931be6d1b7f87005644d212850adf38c89e3df67eb97ad1fa3a0fdcb788c74",
   "nativeArchives": {
     "third_party/mpv/mpv-android-ffmpeg9-native.zip": "d3f22c64ab90a1476b489c2b4f06de8296672497f2998161efb4d906f9a4a66c",
     "third_party/mpv/mpv-android-ffmpeg9-bridge.zip": "29b1ef4c8d0b48475c1b5dba464d46157d7ec2e13ce913a67fcca93e4b2c20d6"
@@ -249,6 +249,110 @@
     {
       "source": "distribution/overlay/CinemaSlimRuntimeAndroidTest.java",
       "target": "app/src/androidTest/java/com/fongmi/android/tv/update/CinemaSlimRuntimeAndroidTest.java"
+    },
+    {
+      "source": "distribution/overlay/CinemaMonitoring.java",
+      "target": "app/src/main/java/com/fongmi/android/tv/monitoring/CinemaMonitoring.java"
+    },
+    {
+      "source": "app/src/leanback/java/com/fongmi/android/tv/api/config/CinemaSources.java",
+      "target": "app/src/mobile/java/com/fongmi/android/tv/api/config/CinemaSources.java"
+    },
+    {
+      "source": "app/src/leanback/assets/cinema/sources.json",
+      "target": "app/src/mobile/assets/cinema/sources.json"
+    },
+    {
+      "source": "distribution/overlay/CinemaDiscovery.java",
+      "target": "app/src/mobile/java/com/fongmi/android/tv/api/config/CinemaDiscovery.java"
+    },
+    {
+      "source": "distribution/overlay/CinemaSourceProbe.java",
+      "target": "app/src/mobile/java/com/fongmi/android/tv/api/config/CinemaSourceProbe.java"
+    },
+    {
+      "source": "distribution/overlay/CinemaSourceMerger.java",
+      "target": "app/src/mobile/java/com/fongmi/android/tv/api/config/CinemaSourceMerger.java"
+    },
+    {
+      "source": "distribution/overlay/CinemaWallpaper.java",
+      "target": "app/src/mobile/java/com/fongmi/android/tv/api/config/CinemaWallpaper.java"
+    },
+    {
+      "source": "distribution/overlay/cinema.xml",
+      "target": "app/src/mobile/res/values/cinema.xml"
+    },
+    {
+      "source": "distribution/overlay/cinema.xml",
+      "target": "app/src/mobile/res/values-zh-rCN/cinema.xml"
+    },
+    {
+      "source": "distribution/overlay/cinema.xml",
+      "target": "app/src/mobile/res/values-zh-rTW/cinema.xml"
+    },
+    {
+      "source": "distribution/overlay/CinemaSourceDialog.java",
+      "target": "app/src/mobile/java/com/fongmi/android/tv/ui/dialog/CinemaSourceDialog.java"
+    },
+    {
+      "source": "distribution/overlay/cinema_icon.png",
+      "target": "app/src/mobile/res/drawable-xxxhdpi/cinema_icon.png"
+    },
+    {
+      "source": "distribution/overlay/cinema_icon_mark.png",
+      "target": "app/src/mobile/res/drawable-xxxhdpi/cinema_icon_mark.png"
+    },
+    {
+      "source": "distribution/overlay/cinema_icon_background.xml",
+      "target": "app/src/mobile/res/drawable/cinema_icon_background.xml"
+    },
+    {
+      "source": "distribution/overlay/cinema_icon_foreground.xml",
+      "target": "app/src/mobile/res/drawable/cinema_icon_foreground.xml"
+    },
+    {
+      "source": "distribution/overlay/cinema_launcher.xml",
+      "target": "app/src/mobile/res/mipmap/cinema_launcher.xml"
+    },
+    {
+      "source": "distribution/overlay/cinema_launcher_adaptive.xml",
+      "target": "app/src/mobile/res/mipmap-anydpi-v26/cinema_launcher.xml"
+    },
+    {
+      "source": "distribution/overlay/cinema_logo.xml",
+      "target": "app/src/mobile/res/drawable/ic_logo.xml"
+    },
+    {
+      "source": "distribution/overlay/cinema_brand.xml",
+      "target": "app/src/mobile/res/values/cinema_brand.xml"
+    },
+    {
+      "source": "distribution/overlay/CinemaMobileTestManifest.xml",
+      "target": "app/src/cinemaMobileTest/AndroidManifest.xml"
+    },
+    {
+      "source": "distribution/overlay/CinemaMobileTestSupport.java",
+      "target": "app/src/cinemaMobileTest/java/com/fongmi/android/tv/api/config/CinemaMobileTestSupport.java"
+    },
+    {
+      "source": "distribution/overlay/CinemaMobileUiAndroidTest.java",
+      "target": "app/src/cinemaMobileTest/java/com/fongmi/android/tv/api/config/CinemaMobileUiAndroidTest.java"
+    },
+    {
+      "source": "distribution/overlay/CinemaMobileDiscoveryAndroidTest.java",
+      "target": "app/src/cinemaMobileTest/java/com/fongmi/android/tv/api/config/CinemaMobileDiscoveryAndroidTest.java"
+    },
+    {
+      "source": "distribution/overlay/CinemaMobilePlaybackAndroidTest.java",
+      "target": "app/src/cinemaMobileTest/java/com/fongmi/android/tv/api/config/CinemaMobilePlaybackAndroidTest.java"
+    },
+    {
+      "source": "distribution/overlay/CinemaProfile.java",
+      "target": "app/src/mobile/java/com/fongmi/android/tv/utils/CinemaProfile.java"
+    },
+    {
+      "source": "distribution/overlay/CinemaMobileWallpaperAndroidTest.java",
+      "target": "app/src/cinemaMobileTest/java/com/fongmi/android/tv/api/config/CinemaMobileWallpaperAndroidTest.java"
     }
   ],
   "cinemaDanmakuPatchSha256": "85c20971c777131b698efd022982bfec7614a52c93cffdbb261ce866fc563adc",

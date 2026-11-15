@@ -14,6 +14,14 @@ node_modules/
 lib-*.aar
 /Release/
 /docs/
+!/docs/
+/docs/*
+!/docs/features/
+/docs/features/*
+!/docs/features/tv-cinema/
+/docs/features/tv-cinema/*
+!/docs/features/tv-cinema/mobile-context.md
+!/docs/features/tv-cinema/mobile-verification.md
 
 AGENTS.md
 AGENTS.*.md

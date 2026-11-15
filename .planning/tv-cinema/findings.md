@@ -1,5 +1,11 @@
 # Findings
 
+## Mobile edition — 2026-11-13
+- User selected existing phone touch UI plus Cinema capabilities. Shared `VodConfig`, `WallConfig`, `VodPlaybackController` and `PlaybackActivity` require currently leanback-only classes/strings; supply the same reviewed bytes through explicit mobile copy declarations.
+- Production mobile `HomeActivity`/`SettingFragment` differ materially from preserved root sources; changes must target the pinned production pair.
+- Mobile ships under the same `com.mjnhmd.tvcinema` package as TV so one Bugly product accepts both; the two cannot coexist on one device, and OTA stays split by mode/ABI. ARM64 is the phone default; ARMv7 remains an explicit supported build.
+- ppm read-only search works and returns old source snapshots; no writes because this checkout is outside managed roots.
+
 ## Authorized slim packaging — 2026-11-10
 - User supersedes deferral with optimize to approximately78.5 MB, then commit/push/release. Old publish42794496346 and automatic42794430961 are cancelled; latest remains0.1.7. Keep pushedbc078403b and add a packaging commit.
 - Pin NDK29 through the existing SDK compatibility init; 37 ARMv7 library outputs are stripped and every allocated runtime section matches the previous83.93MB APK byte-for-byte. Python trimmer touches generated requirements ZIPs only, drops exact `test`/`tests` directory entries, verifies every surviving payload and stages all outputs before replace. No source wheel/runtime module/font changes.

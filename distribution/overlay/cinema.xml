@@ -10,7 +10,7 @@
     <string name="cinema_sources_catalog">内置片源</string>
     <string name="cinema_update_install_permission">首次更新需要允许 TV Cinema 安装应用。授权后返回此处，再选择“检查更新”。</string>
     <string name="cinema_update_permission_open">去授权</string>
-    <string name="cinema_update_permission_failed">无法打开授权页面，请在电视系统设置中允许 TV Cinema 安装未知应用</string>
+    <string name="cinema_update_permission_failed">无法打开授权页面，请在系统设置中允许 TV Cinema 安装未知应用</string>
     <string name="cinema_discover_sources">手动抓取片源</string>
     <string name="cinema_discover_not_run">仅手动运行</string>
     <string name="cinema_discover_available">已加入内置片源，手动选择启用</string>
@@ -25,4 +25,7 @@
     <string name="cinema_source_probe_none">饭太硬线路都不可用，已保留当前片源</string>
     <string name="cinema_debug_exo_only">调试信息仅支持 EXO 内核</string>
     <string name="cinema_playlist_invalid">当前源返回了网站分类，不是剧集，请选择“换源”重试</string>
+    <string name="cinema_monitor_report">上报播放问题</string>
+    <string name="cinema_monitor_report_queued">已发起问题上报</string>
+    <string name="cinema_monitor_report_failed">问题上报失败，请稍后重试</string>
 </resources>

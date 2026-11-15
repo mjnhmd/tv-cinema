@@ -1,0 +1,12 @@
+gradle.beforeProject { currentProject ->
+    currentProject.pluginManager.withPlugin('com.android.application') {
+        currentProject.extensions.getByName('androidComponents').finalizeDsl { androidDsl ->
+            if (currentProject.findProperty('tvApplicationId') != 'com.mjnhmd.tvcinema.mobile.probe') {
+                throw new GradleException('Mobile runtime tests require the disposable Cinema probe package')
+            }
+            androidDsl.testBuildType = 'debug'
+            androidDsl.sourceSets.getByName('androidTest').java.setSrcDirs(['src/cinemaMobileTest/java'])
+            androidDsl.sourceSets.getByName('androidTest').manifest.srcFile 'src/cinemaMobileTest/AndroidManifest.xml'
+        }
+    }
+}
