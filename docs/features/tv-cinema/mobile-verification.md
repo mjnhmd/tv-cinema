@@ -55,7 +55,7 @@ Production patch SHA-256: `0a4b2005bda256e5be77048bcda7d5ba1c530708bc62f6a92d7a8
 - Run with `adb -s emulator-5556 shell am instrument -w -r -e class
   com.fongmi.android.tv.api.config.CinemaMobileUiAndroidTest,com.fongmi.android.tv.api.config.CinemaMobileDiscoveryAndroidTest,com.fongmi.android.tv.api.config.CinemaMobilePlaybackAndroidTest
   com.mjnhmd.tvcinema.mobile.probe.test/androidx.test.runner.AndroidJUnitRunner`.
-- Full phone suite including wallpaper: PASS,8 tests /30.279s; `build/logs/cinema-mobile-profile-runtime.log` (6 navigation/discovery/update/playback + 2 wallpaper).
+- Full phone suite including wallpaper on the committed-source state: PASS,8 tests /33.518s; `build/logs/cinema-mobile-commit-runtime.log` (earlier run 30.279s). `build/logs/cinema-mobile-profile-runtime.log` (6 navigation/discovery/update/playback + 2 wallpaper).
 - Wallpaper-focused offline run: PASS,2 tests /5.248s; `build/logs/cinema-mobile-wallpaper-runtime.log`.
 - Focused actual system Back verification: PASS,1 test /9.312s; `build/logs/cinema-mobile-real-back-runtime.log`. The current test uses UIAutomator Back with UI settling, asserts the detail Activity remains open and playback continues, and records playWhenReady reasons.
 - Final complete suite with this actual-system-Back test: PASS,6 tests /24.658s; `build/logs/cinema-mobile-release-runtime.log`.
@@ -99,8 +99,9 @@ Verified behaviors:
 - Review found no P1. A reported overlay/generated-test mismatch was from an intermediate snapshot; final prepare/verify and
   byte comparison reconcile the current test source. All added files are visible as local untracked source until a future authorized commit.
 - Physical phone/ARMv7 runtime, real third-party VOD/live/protocol compatibility, subjective phone UX and long playback: `not_tested`.
-- Actual public mobile OTA download/Android installer round trip: `not_tested`; no mobile manifest/APK has been published.
-  Future publication must keep both TV and mobile manifests/assets reachable; the current public workflow builds TV only.
+- Actual public mobile OTA download/Android installer round trip: `not_tested`; no mobile manifest/APK has been published yet.
+  The workflow now builds/stages/publishes TV and phone in one Release; a dressed-rehearsal `stage` with the real TV and
+  phone APKs produced both manifests (`leanback` + `mobile`) under one tag, and 23 CI helper tests pass.
 - No commit, push, branch, signing-secret change or public release was performed. All task changes remain local.
 - Task-owned emulator5556 was stopped after verification. Existing AVD data and the new AVD files remain intact.
 - Final mobile source fingerprint: `800edeb54205126c29a2e580978c3a5ca0c5e2c1243f27c414e64fbd5f7460b8`,

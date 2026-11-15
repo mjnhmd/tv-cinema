@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic Cinema ARMv7 CI helpers.
+"""Deterministic Cinema CI helpers for the television and phone editions.
 
 This module deliberately keeps CI-only orchestration out of the production
 build script. It never creates a signing key: the keystore must come from the
@@ -20,17 +20,55 @@ import sys
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import NamedTuple
 from zipfile import BadZipFile, ZipFile, is_zipfile
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CINEMA_PACKAGE = "com.mjnhmd.tvcinema"
+CINEMA_MOBILE_PACKAGE = "com.mjnhmd.tvcinema"
 CINEMA_REPOSITORY = "mjnhmd/tv-cinema"
-MODE = "leanback"
-ABI_KEY = "armeabi_v7a"
-ANDROID_ABI = "armeabi-v7a"
-APK_ASSET = "leanback-armeabi_v7a-coexist.apk"
-MANIFEST_ASSET = "leanback-coexist.json"
+
+
+class Variant(NamedTuple):
+    """One published edition: TV Leanback ARMv7 or phone ARM64."""
+
+    mode: str
+    abi_key: str
+    android_abi: str
+    elf_class: int
+    elf_machine: int
+
+    @property
+    def apk_asset(self):
+        return f"{self.mode}-{self.abi_key}-coexist.apk"
+
+    @property
+    def manifest_asset(self):
+        return f"{self.mode}-coexist.json"
+
+    @property
+    def package_name(self):
+        return CINEMA_MOBILE_PACKAGE if self.mode == "mobile" else CINEMA_PACKAGE
+
+
+TV_VARIANT = Variant("leanback", "armeabi_v7a", "armeabi-v7a", 1, 40)
+MOBILE_VARIANT = Variant("mobile", "arm64_v8a", "arm64-v8a", 2, 183)
+MOBILE_ARM_V7_VARIANT = Variant("mobile", "armeabi_v7a", "armeabi-v7a", 1, 40)
+VARIANTS = {"leanback": TV_VARIANT, "mobile": MOBILE_VARIANT}
+
+
+def variant_for(mode, abi_key=None):
+    if mode == "leanback":
+        variant = TV_VARIANT
+    elif mode == "mobile":
+        variant = MOBILE_ARM_V7_VARIANT if abi_key == "armeabi_v7a" else MOBILE_VARIANT
+    else:
+        fail(f"unsupported mode: {mode!r}")
+    if abi_key is not None and abi_key != variant.abi_key:
+        fail(f"unsupported ABI key for {mode}: {abi_key!r}")
+    return variant
+
 MIN_VERSION_CODE = 10_001
 MAX_VERSION_CODE = 2_100_000_000
 BASE_VERSION_NAME = "0.1.8"
@@ -139,21 +177,34 @@ def sha256_file(path):
     return digest.hexdigest()
 
 
-def verify_native_header(header, name):
+KNOWN_ELF = {(1, 40): "ELF32/EM_ARM", (2, 183): "ELF64/EM_AARCH64"}
+
+
+def verify_native_header(header, name, variant=TV_VARIANT, strict=True):
     if len(header) < 20:
         fail(f"APK native library is too short: {name}")
     if header[:4] != b"\x7fELF":
         fail(f"APK native library is not ELF: {name}")
-    if header[4] != 1:
-        fail(f"APK native library is not ELF32: {name}")
     if header[5] != 1:
         fail(f"APK native library is not little-endian: {name}")
+    elf_class = header[4]
     machine = int.from_bytes(header[18:20], "little")
-    if machine != 40:
-        fail(f"APK native library is not EM_ARM (machine={machine}): {name}")
+    if not strict:
+        # Vendor assets outside lib/ and the Python payload may target either phone ABI.
+        if (elf_class, machine) not in KNOWN_ELF:
+            fail(
+                "APK native asset is not a supported ELF class/machine "
+                f"({' or '.join(sorted(KNOWN_ELF.values()))}): {name}"
+            )
+        return
+    if elf_class != variant.elf_class:
+        fail(f"APK native library is not ELF{variant.elf_class * 32}: {name}")
+    if machine != variant.elf_machine:
+        expected = "EM_ARM" if variant.elf_machine == 40 else "EM_AARCH64"
+        fail(f"APK native library is not {expected} (machine={machine}): {name}")
 
 
-def inspect_apk_zip(path):
+def inspect_apk_zip(path, variant=TV_VARIANT):
     path = Path(path)
     if not path.is_file():
         fail(f"APK is missing: {path}")
@@ -175,7 +226,7 @@ def inspect_apk_zip(path):
             native = [name for name in names if name.startswith("lib/")]
             if not native:
                 fail(f"APK has no native libraries: {path.name}")
-            expected_prefix = f"lib/{ANDROID_ABI}/"
+            expected_prefix = f"lib/{variant.android_abi}/"
             unexpected = [
                 name
                 for name in native
@@ -190,7 +241,9 @@ def inspect_apk_zip(path):
             for name in names:
                 if name.endswith(".so"):
                     with archive.open(name) as stream:
-                        verify_native_header(stream.read(20), name)
+                        verify_native_header(
+                            stream.read(20), name, variant, strict=name.startswith("lib/")
+                        )
                     payload_count += 1
                 elif name.endswith(".imy"):
                     content = io.BytesIO(archive.read(name))
@@ -199,7 +252,9 @@ def inspect_apk_zip(path):
                             for member in nested.namelist():
                                 if member.endswith(".so"):
                                     with nested.open(member) as stream:
-                                        verify_native_header(stream.read(20), name + ":" + member)
+                                        verify_native_header(
+                                            stream.read(20), name + ":" + member, variant
+                                        )
                                     payload_count += 1
     except BadZipFile as error:
         fail(f"APK is not a ZIP archive: {path.name} ({error})")
@@ -247,15 +302,20 @@ def run_tool(arguments):
     return result.stdout
 
 
-def verify_apk(path, sdk, cert_sha256, expected_code=None, expected_name=None):
+def verify_apk(
+    path, sdk, cert_sha256, expected_code=None, expected_name=None, variant=TV_VARIANT
+):
     path = Path(path)
-    metadata = inspect_apk_zip(path)
+    metadata = inspect_apk_zip(path, variant)
     tools = build_tools(sdk)
     info = parse_badging(
         run_tool([tools / "aapt2", "dump", "badging", path])
     )
-    if info["package"] != CINEMA_PACKAGE:
-        fail(f"unexpected package name: {info['package']}")
+    if info["package"] != variant.package_name:
+        fail(
+            f"unexpected package name for {variant.mode}: {info['package']} "
+            f"(expected {variant.package_name})"
+        )
     if info["min_sdk"] > 28:
         fail(f"minSdk {info['min_sdk']} does not support Android 9")
     if info["debuggable"]:
@@ -280,11 +340,13 @@ def verify_apk(path, sdk, cert_sha256, expected_code=None, expected_name=None):
     return {
         **metadata,
         **info,
+        "mode": variant.mode,
+        "abi": variant.android_abi,
         "certificate_sha256": expected,
     }
 
 
-def manifest_payload(apk_metadata, repository, tag, description):
+def manifest_payload(apk_metadata, repository, tag, description, variant=TV_VARIANT):
     if repository != CINEMA_REPOSITORY:
         fail(
             "OTA manifest repository must be "
@@ -292,8 +354,9 @@ def manifest_payload(apk_metadata, repository, tag, description):
         )
     if not TAG_PATTERN.fullmatch(tag or ""):
         fail("OTA tag must be an immutable build-<run_id>[-<attempt>] or version tag")
-    if apk_metadata.get("package") != CINEMA_PACKAGE:
-        fail("OTA manifest package does not match Cinema")
+    expected_asset = variant.apk_asset
+    if apk_metadata.get("package") != variant.package_name:
+        fail(f"OTA manifest package does not match the {variant.mode} edition")
     code = apk_metadata.get("version_code")
     name = apk_metadata.get("version_name")
     validate_version(code, name)
@@ -304,13 +367,13 @@ def manifest_payload(apk_metadata, repository, tag, description):
         "code": code,
         "name": name,
         "desc": description or "",
-        "packageName": CINEMA_PACKAGE,
-        "mode": MODE,
+        "packageName": variant.package_name,
+        "mode": variant.mode,
         "assets": {
-            ABI_KEY: {
+            variant.abi_key: {
                 "url": (
                     f"https://github.com/{CINEMA_REPOSITORY}/releases/download/"
-                    f"{tag}/{APK_ASSET}"
+                    f"{tag}/{expected_asset}"
                 ),
                 "size": apk_metadata["size"],
                 "sha256": apk_metadata["sha256"],
@@ -390,6 +453,7 @@ def stage_release(
     expected_code=None,
     expected_name=None,
     include_manifest=False,
+    variant=TV_VARIANT,
 ):
     if (expected_code is None) != (expected_name is None):
         fail("expected version code and name must be provided together")
@@ -401,11 +465,12 @@ def stage_release(
         certificate_sha256,
         expected_code=expected_code,
         expected_name=expected_name,
+        variant=variant,
     )
     output_dir = Path(output_dir).resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
-    apk_target = output_dir / APK_ASSET
-    manifest_target = output_dir / MANIFEST_ASSET
+    apk_target = output_dir / variant.apk_asset
+    manifest_target = output_dir / variant.manifest_asset
     for target in (apk_target, manifest_target):
         if target.exists():
             target.unlink()
@@ -415,7 +480,7 @@ def stage_release(
 
     payload = None
     if include_manifest:
-        payload = manifest_payload(metadata, repository, tag, description)
+        payload = manifest_payload(metadata, repository, tag, description, variant)
         manifest_target.write_text(
             json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",
@@ -444,18 +509,18 @@ def command_verify(args):
         fail("--version-code and --version-name must be provided together")
     if args.version_code is not None:
         validate_version(args.version_code, args.version_name)
+    variant = variant_for(getattr(args, "mode", "leanback"), getattr(args, "abi_key", None))
     metadata = verify_apk(
         args.apk,
         sdk_directory(args.sdk),
         args.cert_sha256 or os.environ.get("CINEMA_CERT_SHA256"),
         expected_code=args.version_code,
         expected_name=args.version_name,
+        variant=variant,
     )
     print(
-        "PASS: package={package} code={version_code} name={version_name} "
-        "minSdk={min_sdk} abi={abi} certificate={certificate_sha256}".format(
-            abi=ANDROID_ABI, **metadata
-        )
+        "PASS: mode={mode} package={package} code={version_code} name={version_name} "
+        "minSdk={min_sdk} abi={abi} certificate={certificate_sha256}".format(**metadata)
     )
 
 
@@ -464,6 +529,7 @@ def command_stage(args):
         fail("--version-code and --version-name must be provided together")
     if args.version_code is not None:
         validate_version(args.version_code, args.version_name)
+    variant = variant_for(args.mode, args.abi_key)
     description = args.desc
     if args.desc_file is not None:
         try:
@@ -481,6 +547,7 @@ def command_stage(args):
         expected_code=args.version_code,
         expected_name=args.version_name,
         include_manifest=args.manifest,
+        variant=variant,
     )
     print(f"PASS: staged APK {apk}")
     if manifest is not None:
@@ -519,6 +586,8 @@ def build_parser():
     verify.add_argument("--cert-sha256")
     verify.add_argument("--version-code", type=int)
     verify.add_argument("--version-name")
+    verify.add_argument("--mode", default="leanback", choices=sorted(VARIANTS))
+    verify.add_argument("--abi-key", choices=("arm64_v8a", "armeabi_v7a"))
     verify.set_defaults(handler=command_verify)
 
     stage = commands.add_parser("stage", help="stage the APK and optional single-ABI OTA manifest")
@@ -534,6 +603,8 @@ def build_parser():
     stage.add_argument("--version-code", type=int)
     stage.add_argument("--version-name")
     stage.add_argument("--manifest", action="store_true")
+    stage.add_argument("--mode", default="leanback", choices=sorted(VARIANTS))
+    stage.add_argument("--abi-key", choices=("arm64_v8a", "armeabi_v7a"))
     stage.set_defaults(handler=command_stage)
     return parser
 

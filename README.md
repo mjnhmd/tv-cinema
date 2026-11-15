@@ -67,8 +67,13 @@ bash scripts/cinema-build.sh --mode mobile --abi armeabi-v7a
 
 默认构建 ARM64，输出 `build/outputs/cinema-mobile-arm64.apk`；ARMv7 输出
 `build/outputs/cinema-mobile-armv7.apk`。电视版默认命令和输出不变。两种手机包只选
-符合设备架构的一种安装，使用同一个 Cinema 签名。公开发布与 OTA 资源上传另行授权；
-本地 APK 构建不代表手机更新资源已经上线。
+符合设备架构的一种安装，使用同一个 Cinema 签名。
+
+发布由 `.github/workflows/cinema-armv7.yml` 一次完成：电视 ARMv7 与手机 ARM64 同属
+一个 GitHub Release（`leanback-*` / `mobile-*` 两套 APK 与 manifest）。因为 GitHub 的
+`latest` 是仓库级的，分开两个 Release 会让另一端的更新地址 404。发布仍只在小帅当次
+授权后执行；本地 APK 构建不代表手机更新资源已经上线。手机包与电视版共用
+`com.mjnhmd.tvcinema` 包名，同一台设备只能装其中一个。
 
 验收与接手见 [手机版上下文](docs/features/tv-cinema/mobile-context.md)、
 [验证记录](docs/features/tv-cinema/mobile-verification.md)。

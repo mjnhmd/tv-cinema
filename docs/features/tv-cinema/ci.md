@@ -1,11 +1,13 @@
-# TV Cinema ARMv7 CI
+# TV Cinema CI (TV ARMv7 + phone ARM64)
 
 ## Status
 
 `fongmi` push 只构建并保留 7 天 Actions artifact，不创建 Release、不生成可用的更新 URL。
 公开仓库的 artifact 仍要求下载者登录 GitHub；它不是公开 APK 直链。
 `workflow_dispatch` 可以手动指定版本号；只有明确把 `publish` 设为 `true` 才会创建
-`com.mjnhmd.tvcinema` 的 GitHub Release，并上传 APK 与 OTA manifest。
+`com.mjnhmd.tvcinema` 的 GitHub Release，并同时上传电视版和手机版的 APK 与 OTA manifest。
+两者必须进同一个 Release：`latest` 是仓库级别的，分开发布会让另一端的
+`latest/download/…json` 变成 404。
 
 2026-11-09 用户已明确授权本次提交推送、配置签名和发布。五个签名 secrets 已配置；
 首次 workflow push、云端运行和公开 Release 正在交付，完成结果以 `verification.md` 为准。
@@ -46,7 +48,7 @@ apksigner verify --print-certs build/outputs/tv-cinema-armv7.apk \
 
 ## Triggers and manual versioning
 
-- push `fongmi`：自动构建 ARMv7 signed Release APK，上传 7 天 Actions artifact；
+- push `fongmi`：自动构建 TV ARMv7 与手机 ARM64 signed Release APK，上传 7 天 Actions artifact；
   下载需要 GitHub 登录，不是公开 APK 直链；不发布。
 - `docs/**` 和 `*.md` 的 push 不触发，避免文档改动消耗构建时间。
 - `workflow_dispatch`：
@@ -76,10 +78,17 @@ workflow 复用生产 recipe，不另建一套 Gradle 逻辑：
 7. `bash scripts/cinema-build.sh --abi armeabi-v7a`：
    `com.mjnhmd.tvcinema`、debuggable=false、minSdk<=28、只含 `armeabi-v7a`，
    并用 `apksigner` 验证签名
-8. `scripts/cinema-ci.py stage`：再次校验 APK ZIP、binary manifest、dex、
+8. `bash scripts/cinema-build.sh --mode mobile`：手机版 ARM64，
+   `com.mjnhmd.tvcinema`、debuggable=false、只含 `arm64-v8a`；
+   与电视版共用版本号和签名
+9. `scripts/cinema-ci.py stage --mode leanback`：再次校验 APK ZIP、binary manifest、dex、
    package、version、单一 ABI、每个 `.so` 的 ELF32 little-endian `e_machine=40`
-   （EM_ARM）、signer fingerprint；复制成
-   `leanback-armeabi_v7a-coexist.apk`
+   （EM_ARM）、signer fingerprint；复制成 `leanback-armeabi_v7a-coexist.apk`
+10. `scripts/cinema-ci.py stage --mode mobile`：同一组校验，但要求
+   `arm64-v8a` 且每个 `.so` 为 ELF64 little-endian `e_machine=183`（EM_AARCH64）；
+   复制成 `mobile-arm64_v8a-coexist.apk`
+11. `scripts/cinema-packaging.py`：两个 APK 分别通过去符号/去测试目录/79 MB（电视）与
+   80 MB（手机）上限
 
 py3.10 是 pinned Chaquopy baseline 的要求；JDK 21 是 Gradle/Java 编译要求；
 NDK/CMake 是 pinned quickjs 原生模块要求。Linux runner 上不使用 macOS 的 Android
@@ -87,13 +96,16 @@ Studio JBR 路径。
 
 ## OTA manifest
 
-只有 `publish=true` 才生成并上传 `leanback-coexist.json`。它必须满足本仓库与
+只有 `publish=true` 才生成并上传两个 manifest：
+`leanback-coexist.json`（`mode=leanback`，asset 为
+`leanback-armeabi_v7a-coexist.apk`）和 `mobile-coexist.json`（`mode=mobile`，
+asset 为 `mobile-arm64_v8a-coexist.apk`）。它们必须满足本仓库与
 `com.mjnhmd.tvcinema` 的读取契约：
 
 上游 `tools/ota-release.py` 的版本公式与 ZIP/ABI 校验被这里复用；不能直接调用它的
 manifest 命令，因为它固定要求 `wobuhui666/TV` 和 ARM64+ARMv7 两个 asset。当前 CI
-只发布一个 Cinema ARMv7 asset，因此由 `scripts/cinema-ci.py` 生成同一读取契约下的
-单 ABI manifest。
+每个 edition 只发布一个 ABI，因此由 `scripts/cinema-ci.py` 分别生成同一读取契约下的
+单 ABI manifest，并在发布前断言两个 manifest 的 versionCode/versionName 一致。
 
 ```json
 {
@@ -102,10 +114,10 @@ manifest 命令，因为它固定要求 `wobuhui666/TV` 和 ARM64+ARMv7 两个 a
   "name": "0.1.7",
   "desc": "release notes",
   "packageName": "com.mjnhmd.tvcinema",
-  "mode": "leanback",
+  "mode": "mobile",
   "assets": {
-    "armeabi_v7a": {
-      "url": "https://github.com/mjnhmd/tv-cinema/releases/download/<tag>/leanback-armeabi_v7a-coexist.apk",
+    "arm64_v8a": {
+      "url": "https://github.com/mjnhmd/tv-cinema/releases/download/<tag>/mobile-arm64_v8a-coexist.apk",
       "size": 123,
       "sha256": "64-hex"
     }
@@ -113,9 +125,10 @@ manifest 命令，因为它固定要求 `wobuhui666/TV` 和 ARM64+ARMv7 两个 a
 }
 ```
 
-- `UpdateSources` 对 `com.mjnhmd.tvcinema` 读取
-  `https://github.com/mjnhmd/tv-cinema/releases/latest/download/leanback-coexist.json`。
-- `UpdateManifest` 只需要被请求的 ABI；这里只提供 `armeabi_v7a`，不伪造 ARM64 资源。
+- `UpdateSources` 对 `com.mjnhmd.tvcinema` 按模式读取
+  `latest/download/leanback-coexist.json` 或 `latest/download/mobile-coexist.json`。
+- `UpdateManifest` 同时校验 packageName、mode、ABI key 和 asset 文件名；
+  电视端不会接受手机资产，手机端也不会接受电视资产。
 - asset URL 必须绑定不可变 tag，不能写 `latest`。CI 使用 `build-<run_id>[-<attempt>]`；
   本地验证包可使用与 APK versionName 一致的 `v<version>`（本次 `v0.1.7`）。
 - push/未发布 run 不生成 manifest，因此不会输出看似可用但实际不存在的下载 URL。
@@ -130,8 +143,9 @@ manifest 命令，因为它固定要求 `wobuhui666/TV` 和 ARM64+ARMv7 两个 a
    versionCode、minSdk、ABI、signature 和实际安装。
 4. 当次明确授权 `publish=true` 后，workflow 才执行 `gh release create` 并输出真实
    Release URL；下载可以用于电视验收，不能把发布成功描述为 Android9 ARMv7 播放或性能已通过。
-5. Release 后应用读取 `leanback-coexist.json` 和
-   `leanback-armeabi_v7a-coexist.apk`；在此之前不得把 artifact 描述为公开下载或已发布版本。
+5. Release 后电视读取 `leanback-coexist.json` / `leanback-armeabi_v7a-coexist.apk`，
+   手机读取 `mobile-coexist.json` / `mobile-arm64_v8a-coexist.apk`；四个文件必须同属一个
+   Release。在此之前不得把 artifact 描述为公开下载或已发布版本。
    artifact 即使来自 public repository 也需要 GitHub 登录，且 7 天后过期。
 
 ## Verification boundary
@@ -142,7 +156,8 @@ CI 子任务未运行 GitHub runner、未设置 secret、未 push 或发布。�
 - `python3.10 -m unittest discover -s scripts/tests -p 'test_cinema_ci.py' -v`
 - Ruby YAML 解析 workflow
 
-初次发布增加了同版号版本 tag 和完整 draft 发布门控，CI helper 的 20 项测试通过；
+初次发布增加了同版号版本 tag 和完整 draft 发布门控；加入手机版后 CI helper 的 23 项测试通过
+（含 phone ARM64 载荷、手机 manifest 命名和变体选择拒绝用例）；
 已用本地实际 `0.1.3` / `10003` ARMv7 APK 执行
 `verify-apk` / `stage` 校验包名、API24、单一 ARMv7/ELF32 载荷和既有签名。SDK37 的
 `V2 Signer:` 输出与经典 `Signer #1` 均已覆盖，额外不同证书会拒绝。原生 assets 和

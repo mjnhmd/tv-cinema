@@ -1,4 +1,4 @@
-name: Cinema ARMv7 signed build
+name: Cinema signed builds (TV ARMv7 + phone ARM64)
 
 on:
   push:
@@ -17,7 +17,7 @@ on:
         required: false
         type: string
       publish:
-        description: "Create a real GitHub Release and upload the APK plus leanback-coexist.json"
+        description: "Create a real GitHub Release with the TV APK/manifest and the phone APK/manifest"
         required: false
         default: false
         type: boolean
@@ -148,14 +148,21 @@ jobs:
           test -f build/reference/wobuhui-media/settings.gradle.kts
           grep -q 'media3-stubs' build/reference/wobuhui-media/settings.gradle.kts
 
-      - name: Build signed ARMv7 release
+      - name: Build signed TV ARMv7 release
         env:
           TV_VERSION_CODE: ${{ steps.version.outputs.code }}
           TV_VERSION_NAME: ${{ steps.version.outputs.name }}
         run: |
           bash scripts/cinema-build.sh --abi armeabi-v7a
 
-      - name: Stage signed APK and OTA payload
+      - name: Build signed phone ARM64 release
+        env:
+          TV_VERSION_CODE: ${{ steps.version.outputs.code }}
+          TV_VERSION_NAME: ${{ steps.version.outputs.name }}
+        run: |
+          bash scripts/cinema-build.sh --mode mobile
+
+      - name: Stage TV APK and OTA payload
         env:
           CINEMA_CERT_SHA256: ${{ secrets.CINEMA_CERT_SHA256 }}
         run: |
@@ -171,20 +178,46 @@ jobs:
             --desc-file "$RUNNER_TEMP/cinema-release-notes.txt"
             --version-code "$TV_VERSION_CODE"
             --version-name "$TV_VERSION_NAME"
+            --mode leanback
           )
           if [ "$PUBLISH" = "true" ]; then
             args+=(--manifest)
           fi
           python3 scripts/cinema-ci.py "${args[@]}"
 
-      - name: Enforce slim release payload
-        run: python3 scripts/cinema-packaging.py --apk build/outputs/tv-cinema-armv7.apk --max-bytes 79000000
+      - name: Stage phone APK and OTA payload
+        env:
+          CINEMA_CERT_SHA256: ${{ secrets.CINEMA_CERT_SHA256 }}
+        run: |
+          set -euo pipefail
+          args=(
+            stage
+            --apk build/outputs/cinema-mobile-arm64.apk
+            --output-dir build/ci/release
+            --sdk "${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+            --cert-sha256 "$CINEMA_CERT_SHA256"
+            --repository "$GITHUB_REPOSITORY"
+            --tag "$RELEASE_TAG"
+            --desc-file "$RUNNER_TEMP/cinema-release-notes.txt"
+            --version-code "$TV_VERSION_CODE"
+            --version-name "$TV_VERSION_NAME"
+            --mode mobile
+          )
+          if [ "$PUBLISH" = "true" ]; then
+            args+=(--manifest)
+          fi
+          python3 scripts/cinema-ci.py "${args[@]}"
+
+      - name: Enforce slim release payloads
+        run: |
+          python3 scripts/cinema-packaging.py --apk build/outputs/tv-cinema-armv7.apk --max-bytes 79000000
+          python3 scripts/cinema-packaging.py --apk build/outputs/cinema-mobile-arm64.apk --max-bytes 80000000
 
       - name: Upload 7-day artifact
         uses: actions/upload-artifact@v4
         with:
           name: cinema-armv7-${{ github.run_id }}-${{ github.run_attempt }}
-          path: build/ci/release/leanback-*
+          path: build/ci/release/*-coexist.*
           retention-days: 7
           if-no-files-found: error
 
@@ -192,7 +225,7 @@ jobs:
         if: success()
         run: |
           if [ "$PUBLISH" = "true" ]; then
-            echo "Staged signed ARMv7 APK and OTA manifest for release $RELEASE_TAG. Publication is handled by the publish job." >> "$GITHUB_STEP_SUMMARY"
+            echo "Staged the signed TV ARMv7 and phone ARM64 APKs with both OTA manifests for release $RELEASE_TAG. Publication is handled by the publish job." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "Artifact-only build. No GitHub Release, OTA manifest, or public download URL was produced." >> "$GITHUB_STEP_SUMMARY"
             echo "The signed APK is retained as a GitHub Actions artifact for 7 days; downloading it requires a GitHub login and it is not a public APK direct link." >> "$GITHUB_STEP_SUMMARY"
@@ -227,14 +260,22 @@ jobs:
           set -euo pipefail
           test -f release/leanback-armeabi_v7a-coexist.apk
           test -f release/leanback-coexist.json
+          test -f release/mobile-arm64_v8a-coexist.apk
+          test -f release/mobile-coexist.json
           python3 - <<'PY'
           import json
           from pathlib import Path
-          data = json.loads(Path("release/leanback-coexist.json").read_text())
-          assert data["packageName"] == "com.mjnhmd.tvcinema"
-          assert data["mode"] == "leanback"
-          assert set(data["assets"]) == {"armeabi_v7a"}
-          assert data["assets"]["armeabi_v7a"]["url"].endswith("/leanback-armeabi_v7a-coexist.apk")
+          tv = json.loads(Path("release/leanback-coexist.json").read_text())
+          phone = json.loads(Path("release/mobile-coexist.json").read_text())
+          for data, mode, key, asset in (
+                  (tv, "leanback", "armeabi_v7a", "leanback-armeabi_v7a-coexist.apk"),
+                  (phone, "mobile", "arm64_v8a", "mobile-arm64_v8a-coexist.apk")):
+              assert data["packageName"] == "com.mjnhmd.tvcinema", data["packageName"]
+              assert data["mode"] == mode, data["mode"]
+              assert set(data["assets"]) == {key}, data["assets"]
+              assert data["assets"][key]["url"].endswith("/" + asset), data["assets"][key]["url"]
+          assert tv["code"] == phone["code"], (tv["code"], phone["code"])
+          assert tv["name"] == phone["name"], (tv["name"], phone["name"])
           PY
 
       - name: Create GitHub Release
@@ -249,6 +290,8 @@ jobs:
           gh release create "$RELEASE_TAG" \
             release/leanback-armeabi_v7a-coexist.apk \
             release/leanback-coexist.json \
+            release/mobile-arm64_v8a-coexist.apk \
+            release/mobile-coexist.json \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
             --title "TV Cinema $name" \

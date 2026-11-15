@@ -1,6 +1,7 @@
 # Progress
 
 ## Mobile edition — 2026-11-13
+- 2026-11-15: current-source probe rebuilt and 8 phone tests pass33.518s (`cinema-mobile-commit-runtime.log`). Added dual-edition CI: workflow builds TV ARMv7 + phone ARM64, stages both manifests, publishes one Release; helper23 tests pass and a real-APK dress rehearsal produced both manifests.
 - Wallpaper/profile completion: 2 wallpaper tests pass5.248s; combined8 tests pass30.279s. Signed ARM64 cold start1651ms; fresh install seeds 饭太硬 VOD/live, amber accent visible, both source rows and wallpaper refresh present. Final ARM64 75,213,759B/SHA256`525991ef…a296`; ARMv7 72,404,975B/`499d2e44…34c9`; patch`0a4b2005…f88e`.
 - User reported incomplete migration. Actual gaps confirmed: mobile never called `CinemaWallpaper` (no six-provider online wallpaper rotation/fallback) and never ran `CinemaProfile` (amber theme, danmaku defaults, preload-off). Leanback hero caching, remote search cards and natural-width episode grid are TV-only components and are not portable to the touch UI.
 - Ported both: mobile `CinemaProfile` copy + startup initialisation, mobile wall refresh wired to `CinemaWallpaper.load`, and an offline regression proving provider recognition plus preserving the current wallpaper/snapshot when all providers fail.

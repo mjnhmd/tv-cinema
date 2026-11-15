@@ -30,7 +30,7 @@
 - Actual signed ARM64 APK installed, cold-started in1854ms and exposed both Cinema settings rows in an offline emulator smoke. Task-owned emulator stopped; no existing AVD data removed.
 - Paired production sources under `build/reference/wobuhui-tv` differ from the preserved root `app/`; edit the production patch/overlays, not the root mobile classes.
 - Before this increment, shared `VodConfig`, `WallConfig` and playback code referenced Cinema classes/strings copied only to leanback. Explicit mobile copies fix that compilation failure without changing TV UI.
-- The production wrapper now builds either mode with distinct outputs. The public CI recipe still builds TV only; mobile public publication remains a separate authorized operation.
+- The production wrapper builds either mode with distinct outputs. CI now builds TV ARMv7 and phone ARM64, stages both manifests and publishes them in one Release, so neither edition's `latest` URL breaks. Actual cloud publication still requires explicit authorization.
 - ppm read-only search succeeded; historical source snapshots date to 2026-11-09. This checkout is outside the four managed project roots, so no project/item writes.
 - No Android device connected at start. Physical-phone testing remains `not_tested`.
 

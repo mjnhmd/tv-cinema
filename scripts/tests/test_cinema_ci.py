@@ -209,6 +209,26 @@ class ApkInspectionTest(unittest.TestCase):
         self.assertFalse(info["debuggable"])
         self.assertTrue(CI.parse_badging(text + "application-debuggable\n")["debuggable"])
 
+    def test_phone_variant_accepts_only_arm64_payloads(self):
+        phone = self.write_apk("phone.apk", abi="arm64-v8a",
+                               native=self.elf_header(elf_class=2, machine=183))
+        result = CI.inspect_apk_zip(phone, CI.MOBILE_VARIANT)
+        self.assertEqual(result["size"], phone.stat().st_size)
+        with self.assertRaisesRegex(CI.CinemaCiError, "ELF64"):
+            CI.inspect_apk_zip(self.write_apk("phone-arm32.apk", abi="arm64-v8a"),
+                               CI.MOBILE_VARIANT)
+        with self.assertRaisesRegex(CI.CinemaCiError, "native paths"):
+            CI.inspect_apk_zip(self.write_apk("tv-in-phone.apk", abi="armeabi-v7a"),
+                               CI.MOBILE_VARIANT)
+
+    def test_variant_selection_rejects_unsupported_combinations(self):
+        self.assertEqual(CI.MOBILE_VARIANT, CI.variant_for("mobile"))
+        self.assertEqual(CI.MOBILE_ARM_V7_VARIANT, CI.variant_for("mobile", "armeabi_v7a"))
+        self.assertEqual(CI.TV_VARIANT, CI.variant_for("leanback", "armeabi_v7a"))
+        for mode, abi in (("watch", None), ("leanback", "arm64_v8a"), (None, None)):
+            with self.subTest(mode=mode, abi=abi), self.assertRaises(CI.CinemaCiError):
+                CI.variant_for(mode, abi)
+
 
 class ManifestTest(unittest.TestCase):
     def metadata(self, **overrides):
@@ -269,6 +289,23 @@ class ManifestTest(unittest.TestCase):
             CI.manifest_payload(self.metadata(version_code=10003, version_name="0.1.3"),
                                 CI.CINEMA_REPOSITORY, "v0.1.4", "")
 
+    def test_phone_manifest_keeps_its_own_mode_and_asset_name(self):
+        result = CI.manifest_payload(
+            self.metadata(),
+            CI.CINEMA_REPOSITORY,
+            "build-37500000000-1",
+            "手机版",
+            variant=CI.MOBILE_VARIANT,
+        )
+        self.assertEqual("mobile", result["mode"])
+        self.assertEqual({"arm64_v8a"}, set(result["assets"]))
+        self.assertEqual(
+            "https://github.com/mjnhmd/tv-cinema/releases/download/"
+            "build-37500000000-1/mobile-arm64_v8a-coexist.apk",
+            result["assets"]["arm64_v8a"]["url"],
+        )
+        self.assertEqual("com.mjnhmd.tvcinema", result["packageName"])
+
     def test_stage_cli_uses_a_notes_file_instead_of_multiline_env(self):
         parser = CI.build_parser()
         args = parser.parse_args(
@@ -282,9 +319,12 @@ class ManifestTest(unittest.TestCase):
                 "build-1-1",
                 "--desc-file",
                 "notes.txt",
+                "--mode",
+                "mobile",
             ]
         )
         self.assertEqual(Path("notes.txt"), args.desc_file)
+        self.assertEqual("mobile", args.mode)
         with contextlib.redirect_stderr(io.StringIO()):
             with self.assertRaises(SystemExit):
                 parser.parse_args(
@@ -305,7 +345,7 @@ class ManifestTest(unittest.TestCase):
 
 
 class WorkflowContractTest(unittest.TestCase):
-    def test_workflow_is_armv7_only_explicitly_signed_and_non_publishing_on_push(self):
+    def test_workflow_publishes_tv_and_phone_variants_with_one_release(self):
         text = (ROOT / ".github" / "workflows" / "cinema-armv7.yml").read_text()
         self.assertIn("branches: [fongmi]", text)
         self.assertIn("workflow_dispatch:", text)
@@ -317,6 +357,16 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertIn("build/outputs/tv-cinema-armv7.apk", text)
         self.assertIn("leanback-coexist.json", text)
         self.assertIn("leanback-armeabi_v7a-coexist.apk", text)
+        self.assertIn("cinema-build.sh --mode mobile", text)
+        self.assertIn("build/outputs/cinema-mobile-arm64.apk", text)
+        self.assertIn("mobile-coexist.json", text)
+        self.assertIn("mobile-arm64_v8a-coexist.apk", text)
+        self.assertEqual(3, text.count("python3 scripts/cinema-ci.py \"${args[@]}\""))
+        self.assertIn("--mode mobile", text)
+        self.assertIn("--mode leanback", text)
+        self.assertIn("release/mobile-coexist.json", text)
+        self.assertIn("release/mobile-arm64_v8a-coexist.apk", text)
+        self.assertIn('assert tv["code"] == phone["code"]', text)
         self.assertIn("packages: >-", text)
         self.assertNotIn("packages: |", text)
         self.assertIn("--desc-file", text)

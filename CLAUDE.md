@@ -20,7 +20,7 @@
 - `.planning/tv-cinema/`: task_plan.md, findings.md and progress.md for this task.
 - `scripts/`: reproducible build, artifact verification and existing runtime utilities.
 - `scripts/tests/`: focused stdlib Python tests for Cinema CI setup, metadata and artifact staging; `test_cinema_*.py` only, no generated APKs or credentials.
-- `.github/workflows/cinema-armv7.yml`: ARMv7-only CI. Keep signing material in GitHub Actions secrets; do not publish on every source push. Ordinary CI artifacts must not be described as public download links or tested television releases.
+- `.github/workflows/cinema-armv7.yml`: builds the TV ARMv7 and phone ARM64 editions (file name kept for history). One Release carries both APKs and both manifests, because GitHub `latest` is repository-wide and splitting editions would break the other side's OTA URL. Keep signing material in GitHub Actions secrets; do not publish on every source push. Ordinary CI artifacts must not be described as public download links or tested device releases.
 - `.omc/RELEASE_RULE.md`: project release-rule cache derived from the CI recipe; refresh when workflow/version rules change. No credentials or generated APKs. Feature context and verification records remain the delivery truth.
 - `app/build/outputs/`: disposable build products; never source assets.
 - `build/reference/`: ignored, pinned third-party checkouts for isolated baseline verification; do not mix their source into the application without an integration decision and provenance.
@@ -56,7 +56,7 @@
 ## Verification and evidence
 - Verify each independently useful increment before its commit/push.
 - Run focused checks before changing more than 100 lines without verification.
-- TV release artifacts must be leanback, contain only armeabi-v7a native code and support API 28. Mobile artifacts must use the mobile launcher/package, one declared ARM ABI and the pinned minimum SDK.
+- TV release artifacts must be leanback, contain only armeabi-v7a native code and support API 28. Mobile artifacts must use the mobile launcher/package, one declared ARM ABI and the pinned minimum SDK. `lib/` and Python payload ELF class/machine must match the variant; inherited vendor assets outside `lib/` may be either supported ARM class.
 - Inspect the final manifest, signature and native payload rather than trusting the filename.
 - Build success does not prove playback, navigation or performance on the user's TV.
 - Record emulator API/ABI separately; never describe an ARM64 emulator as ARMv7 acceptance.
