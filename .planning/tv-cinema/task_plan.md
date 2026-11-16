@@ -3,8 +3,9 @@
 ## Bugly performance diagnostics and Git delivery — 2026-11-16
 - [completed] Verify Bugly SDK capabilities, existing playback/UI lifecycles and remote branch; define bounded diagnostic events.
 - [completed] Implement and verify automatic stall, playback startup/buffering/drop/error reporting without adding media URLs to structured fields or continuous log uploads.
-- [in_progress] Regress TV/mobile builds, preserve prior performance evidence, commit authorized changes and push the existing `fongmi` branch; verify remote commit.
+- [completed] Regress TV/mobile builds, preserve prior performance evidence, commit authorized changes and push the existing `fongmi` branch; verify remote commit.
 - User explicitly authorized commit and push in this turn. Publication, release and device installation are not authorized; console receipt and real TV performance remain separate verification items.
+- Source delivery: `f025e60f830fd26000993c817f536a7860125675` pushed to origin/fongmi, identical remote SHA read back. 33 scoped source/test/rule/evidence files; no generated APK, mapping or signing inputs committed. Final delivery-record update is documentation only.
 
 ## Responsiveness and playback optimization — 2026-11-16
 - [completed] Establish performance scope, production inputs and baseline; audit UI/playback/loading and compare relevant upstream behavior.

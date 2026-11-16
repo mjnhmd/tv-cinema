@@ -6,6 +6,7 @@
 - 32 tool + 35 targeted JVM checks pass; TV debug/test APK assembly and mobile ARM64 compilation pass. API28 ARM64 isolated app passes 16 runtime tests, including 3 monitoring cases and 4 real EXO/MPV playback cases. Isolated app never initializes production Bugly; injected debug sink handles synthetic faults.
 - Detailed thresholds, evidence and target-device plan are in `performance.md`. Production Bugly console receipt, actual ARMv7 TV improvements and same-content OK影视 comparison remain not_tested.
 - Current local signed ARMv7 test artifact includes diagnostics: `build/outputs/tv-cinema-armv7-performance-monitor.apk`, 0.1.9-performance-monitor-local /217988972,78,930,556B; complete Release/R8, original signer, minSdk24, ABI and slim payload checks pass. Emulator stopped. Exact SHA and input fingerprint are in `performance.md`; public Release/OTA remains unchanged.
+- Git delivery: scoped33 files committed as `f025e60f830fd26000993c817f536a7860125675` (`perf: reduce TV UI work and add bounded Bugly diagnostics`), pushed to `origin/fongmi` and identical remote SHA verified. Final documentation closeout records that verified source delivery; APK/mapping/signing outputs remain ignored.
 
 ## Performance and gugaart-inspired improvements — 2026-11-16
 - User authorizes direct optimization and reports worse UI/playback/loading than their original OK影视. Detailed current scope, causes, evidence, APK and next-device plan: `performance.md`.

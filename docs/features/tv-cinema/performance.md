@@ -18,7 +18,7 @@
 | 界面持续慢帧 | FrameMetrics 本地聚合 5 秒窗口；至少 10 帧、其中至少 8 帧 ≥50ms 且占比 ≥25% 时提交计数、最慢帧和 input/layout/draw/sync 中测得耗时最大的阶段。缺失回调单独计数；该阶段是线索，不直接作为根因 |
 | 页面恢复首帧慢 | resume 到实际 FrameMetrics 回调 ≥8 秒时提交 `slow_ui_draw`；并非冷启动总耗时 |
 | 片源地址获取 | `SiteViewModel.playerContent` 开始/结束，≥8 秒提交 `slow_source`；失败提交 `source_error`，切源/退出取消不报；只附 source type |
-| 起播和播放中缓冲 | 解析/prepare/first_frame 总等待 ≥8 秒提交 `slow_start`，音频流以 READY 完成；用户暂停不算等待。完成起播后缓冲 ≥5 秒提交 `slow_buffer`，标记最近是否 seek，结束后不重复提交 |
+| 起播和播放中缓冲 | 解析/prepare/first_frame 总等待 ≥8 秒提交 `slow_start`，音频流以 READY 完成；prepare/first_frame 阶段扣除用户暂停，解析阶段见下方覆盖边界。完成起播后缓冲 ≥5 秒提交 `slow_buffer`，标记最近是否 seek，结束后不重复提交 |
 | 播放错误与解码 | 播放/解析失败和原有起播 timeout 提交事件码；EXO 附实际解码器名称、格式、分辨率，单次回调丢 ≥20 帧且平均 ≥2 帧/秒提交 `video_dropped`；MPV 首帧附 `hwdec-current` 和 codec。设置的 decode 偏好不等于实际硬解状态 |
 
 所有自动异常使用 Bugly caught exception，交给独立后台队列；同一事件类型 10 分钟最多一次、每进程最多 20 次。正常阶段用有限 breadcrumb，缓冲/起播结束后无待诊断工作便停止轮询；没有逐帧网络上传、截图/视频采集或遥控按键日志。阈值是排查严重问题的初始策略，不代表流畅度合格线。手机共用这些监控，通过既有 `leanback`/`mobile` channel 区分。
@@ -37,6 +37,10 @@
 - `TV_VERSION_CODE=217988972 TV_VERSION_NAME=0.1.9-performance-monitor-local bash scripts/cinema-build.sh`：ARMv7 签名 Release 完整成功，R8/资源缩减开启（3m1s /901 tasks）。实际包名 `com.mjnhmd.tvcinema`、minSdk24、非 debug、ARMv7-only、与上轮测试包同签名；38 个裁剪后 native libraries、两个精简依赖归档与其 hashes 通过，满足现有 79,000,000B 上限。
 - 完整证据在 `build/logs/cinema-bugly-armv7-release.log`、`cinema-bugly-final-apk.json`，本轮所有 patch/overlay/build 输入指纹 `cinema-bugly-final-inputs.sha256`。SDK 和监控代码均存在于最终 Release 的 R8 mapping 中；为日后解读混淆栈，已将本包 mapping 单独保留为 `build/outputs/tv-cinema-armv7-performance-monitor-mapping.txt`（不入库）。专用 emulator-5590 已停止，未改连接手机、既有模拟器或用户电视数据。
 - 此包取代下文“本地交付包”的早期无监控包作为当前测试交付；两者不混用。没有创建 GitHub Release，也没有更新公共 OTA 或安装到用户设备。
+
+### Git 交付结果
+
+已按本次授权，将33个明确范围内的性能、监控、测试、构建声明及调研/验证文档提交为 `f025e60f830fd26000993c817f536a7860125675`（`perf: reduce TV UI work and add bounded Bugly diagnostics`），推送到既有 `origin/fongmi`；`git ls-remote origin refs/heads/fongmi` 读回同一 SHA。交付前 recipe、输入指纹和 `git diff --check` 均通过；没有提交APK、mapping、凭据或签名材料。随后仅补充交付记录，不改本包运行时输入。普通 push 可能触发既有 artifact-only CI，不等于公共 Release/OTA 发布。
 
 ## 目标与授权
 
