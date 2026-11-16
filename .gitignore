@@ -22,6 +22,8 @@ lib-*.aar
 /docs/features/tv-cinema/*
 !/docs/features/tv-cinema/mobile-context.md
 !/docs/features/tv-cinema/mobile-verification.md
+!/docs/features/tv-cinema/gugaart-review.md
+!/docs/features/tv-cinema/performance.md
 
 AGENTS.md
 AGENTS.*.md

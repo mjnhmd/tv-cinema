@@ -1,5 +1,21 @@
 # Progress
 
+## Bugly diagnostics verification — 2026-11-16
+- Existing source/patch/overlay lifecycle inspection and Bugly 4.1.9.7 AAR verification establish that caught exceptions request asynchronous SDK reporting; normal Logcat is not a real-time cloud log stream.
+- Implemented bounded UI stalls/live stacks/slow frames, source/parse/startup/rebuffer/error events and EXO decoder/drop + MPV hwdec breadcrumbs. Added active-pause exclusion and debug-only fake report sink; non-production packages never initialize Bugly.
+- 32 tools and 35 focused JVM checks pass; TV debug/test assembly and mobile ARM64 compile pass. API28 ARM64 emulator-5590 isolated package passes 16 runtime cases in 21.463s, including real EXO/MPV rendering and blocked-thread capture before recovery. First invocation had a wrong performance-test package; corrected invocation passes all 16.
+- Final signed ARMv7 build with monitoring passes in 3m1s/901 tasks: 0.1.9-performance-monitor-local /217988972,78,930,556B, original signer/minSdk24/ARMv7/R8/packaging audited; exact SHA and inputs in performance.md and ignored evidence logs. Task emulator stopped. User authorized commit and push on existing fongmi; no Release or real-device install. Before delivery origin/fongmi still equals starting a925babf7. Target-TV/real-source A/B and Bugly console receipt remain not_tested. No ppm writes for this excluded checkout.
+
+## Responsiveness and playback — 2026-11-16
+- User authorized direct development and performance investigation after the gugaart review. Read current rules, production recipe/context/tests/diff; queried ppm (partial historical scope, no ledger write outside allowed roots). Used Android docs and two read-only audits; no personal device touched.
+- Reproduced unneeded focus-image8 requests and2 video readbacks in1s on isolated API28 ARM64; guarded both in lightweight mode and verified0/0 with metadata retained. Compose motion now matches native lightweight policy; playback clock reads are localized to visible progress, equal commands skipped.
+- Compact home now requests7 relevant sections instead of12, with3 section tasks in parallel,160ms subsequent result batching, per-section24s tag cancellation and queue release; default discovery retains12. Review caught and fixed global-deadline starvation, classification snapshot overwrite and local-search focus preservation. Added actual loopback concurrency/cancel/timeout/discovery regressions.
+- Added stable Chinese subtitle ordering without selection changes, subtitle/audio current-value labels and background local history/keep pinyin suggestions via platform ICU (bounded300 names/12 results). Android9 real search works offline and retains the focused title after suggestion reorder.
+- Validation:32 tooling tests;14 targeted JVM checks across home/subtitle/track status; ARMv7 Debug Java/Kotlin and Mobile ARM64 Java compile. Final API28 ARM64 isolated runtime13 tests PASS16.064s, including real EXO/MPV Surface/Texture window/fullscreen/back and local audio/video fixture. Logs prefixed cinema-performance- under build/logs.
+- Legacy preview6 tests produce3 failures (home-return navigation, empty snapshot hero, timeshift touch→D-pad); same3 reproduce with earlier versions of all three relevant UI files, same device/package. Recorded separately; no full-suite pass claimed or unrelated code changed.
+- Final signed local TV ARMv7 Release `0.1.9-performance-local`/217986333:78,922,828B, sha2568fb5a0648791703ba5763143087c9130841632d689d8dd1fcb90dbbd5c5244b6. Complete build3m45s/901 tasks, minSdk24, package, ABI, original signer and38 stripped native libs/two dependency archive hashes pass. Deliver build/outputs/tv-cinema-armv7-performance.apk. No Git commit/push/release/OTA.
+- Final runtime sources match frozen Release inputs; only a later test-only focus assertion differs and passed in the final runtime. Stopped only task-owned emulator5590, preserving AVD/data and existing emulator5554/phone. Target ARMv7 TV performance and same-source OK影视 A/B remain not_tested; next investigation and exact limitations in docs/features/tv-cinema/performance.md.
+
 ## Mobile edition — 2026-11-13
 - 2026-11-15: current-source probe rebuilt and 8 phone tests pass33.518s (`cinema-mobile-commit-runtime.log`). Added dual-edition CI: workflow builds TV ARMv7 + phone ARM64, stages both manifests, publishes one Release; helper23 tests pass and a real-APK dress rehearsal produced both manifests.
 - Wallpaper/profile completion: 2 wallpaper tests pass5.248s; combined8 tests pass30.279s. Signed ARM64 cold start1651ms; fresh install seeds 饭太硬 VOD/live, amber accent visible, both source rows and wallpaper refresh present. Final ARM64 75,213,759B/SHA256`525991ef…a296`; ARMv7 72,404,975B/`499d2e44…34c9`; patch`0a4b2005…f88e`.
@@ -241,3 +257,11 @@
 - Focused five policy suites passed26tests; patch guard passed9tests; MPV bridge symbol checks passed bothABIs.
 - Hardened recipe exact-patch blob/path guards, fresh checkout handling, signature-config0600 and exact Gradlemetadata version/output selection; parser/idempotence/rejection checks passed.
 - Final ARMv7 wrapper with version-aware output selection passed11s; signing secrets and generated artifacts remain ignored.
+
+## Gugaart suitability review — 2026-11-16
+- Completed static review and inspected supplied screenshots; recorded the assessment/source URLs in `docs/features/tv-cinema/gugaart-review.md` and added a context index.
+- Confirmed Cinema already persists/restores track choices and has WebDAV sync; avoid presenting those as missing. Subtitle menu ranking and visible choice provenance, local pinyin matching and restrained TV focus/panels are specific borrowing candidates.
+- No application/runtime/dependency change, build, APK install, Git write or ppm write. Gugaart standalone builds are unavailable from this snapshot; its APK compatibility/performance remain untested.
+- Read rules, current recipe, feature/mobile context and existing plan; initial root worktree clean at `a925babf7023274906590a34cdb60332a1e6a26c`.
+- Queried ppm read-only; no gugaart hit. Fetched public GitHub metadata/README/tree and pinned review to `60f3cff782f2cc23e32be6512b7e1cf8dc97dbb5`.
+- Assigned a read-only worker to compare Cinema's actual production functionality. Main agent owns public-source/design inspection and review notes; no application or Git writes.

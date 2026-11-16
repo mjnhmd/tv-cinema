@@ -231,10 +231,99 @@ index 690a83c85f0b93f8e6fee2414c5f0c3028052236..94edf6c12f0109e2bdb5da07b4995b55
          if (danmakus == null) danmakus = new ArrayList<>();
          if (item.isEmpty() || danmakus.contains(item)) return;
 diff --git a/app/src/main/java/com/fongmi/android/tv/player/PlayerManager.java b/app/src/main/java/com/fongmi/android/tv/player/PlayerManager.java
-index be88fdbc9c6ba98bb935f85982683dc8c64dc6e9..dfb99c3bf0f651ea3889b30a64cd3a93d6fafe36 100644
+index be88fdbc9c6ba98bb935f85982683dc8c64dc6e9..07361e6873f2a78c6ab72b979522623bee0718f8 100644
 --- a/app/src/main/java/com/fongmi/android/tv/player/PlayerManager.java
 +++ b/app/src/main/java/com/fongmi/android/tv/player/PlayerManager.java
-@@ -880,6 +880,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
+@@ -31,6 +31,7 @@ import com.fongmi.android.tv.impl.ParseCallback;
+ import com.fongmi.android.tv.player.engine.PlayerEngine;
+ import com.fongmi.android.tv.player.engine.PlayerEngineFactory;
+ import com.fongmi.android.tv.player.audio.AudioTrackRecovery;
++import com.fongmi.android.tv.monitoring.CinemaPlaybackProbe;
+ import com.fongmi.android.tv.player.media.MediaUrlGuard;
+ import com.fongmi.android.tv.player.media.MediaItemFactory;
+ import com.fongmi.android.tv.player.media.PlaySpec;
+@@ -60,6 +61,8 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
+     private ParseJob parseJob;
+     private PlaySpec spec;
+     private Player player;
++    private final CinemaPlaybackProbe cinemaProbe = new CinemaPlaybackProbe(this::performanceDetails,
++            () -> player != null && player.getPlayWhenReady());
+     private Sub pendingPrimarySubtitle;
+     private Format pendingSecondarySubtitle;
+ 
+@@ -99,6 +102,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
+     }
+ 
+     public void release() {
++        cinemaProbe.stop();
+         timeshift.clear();
+         stopParse();
+         App.removeCallbacks(runnable);
+@@ -472,6 +476,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
+     }
+ 
+     public void stop() {
++        cinemaProbe.stop();
+         pendingTimeshiftRebuild = false;
+         timeshift.clear();
+         App.removeCallbacks(runnable);
+@@ -480,6 +485,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
+     }
+ 
+     public void clearMediaItems() {
++        cinemaProbe.stop();
+         timeshift.clear();
+         player.clearMediaItems();
+     }
+@@ -526,6 +532,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
+     }
+ 
+     public void clear() {
++        cinemaProbe.stop();
+         pendingPrimarySubtitle = null;
+         pendingSecondarySubtitle = null;
+         pendingTimeshiftRebuild = false;
+@@ -656,6 +663,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
+     }
+ 
+     private void onPlayTimeout() {
++        cinemaProbe.error(-1);
+         if (retryWithSoftwareEngine()) return;
+         stop();
+         callback.onError(ResUtil.getString(R.string.error_play_timeout));
+@@ -769,6 +777,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
+         audioRecoveryKey = null;
+         retry = 0;
+         this.spec = spec;
++        cinemaProbe.begin(false);
+         pendingTimeshiftRebuild = false;
+         timeshift.start(spec);
+         setMediaItem(timeout, timeshift.isActive() ? C.TIME_UNSET : startPositionMs);
+@@ -789,6 +798,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
+         pendingTimeshiftRebuild = false;
+         timeshift.clear();
+         spec = PlaySpec.fromParse(result, key, metadata);
++        cinemaProbe.begin(true);
+         parseJob = ParseJob.create(this).start(result, useParse);
+     }
+ 
+@@ -805,6 +815,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
+             return;
+         }
+         ensureEngine(spec.checkUa());
++        cinemaProbe.mediaStarted();
+         engine.start(spec, startPositionMs);
+         setDanmakus(spec.getDanmakus());
+         App.post(runnable, timeout);
+@@ -813,6 +824,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
+     }
+ 
+     private void rejectMediaItem(PlaySpec spec) {
++        cinemaProbe.stop();
+         App.removeCallbacks(runnable);
+         engine.stop();
+         stopParse();
+@@ -880,6 +892,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
      }
  
      public Danmaku getSelectedDanmaku() {
@@ -242,6 +331,66 @@ index be88fdbc9c6ba98bb935f85982683dc8c64dc6e9..dfb99c3bf0f651ea3889b30a64cd3a93
          return getSelectedDanmaku(getDanmakus());
      }
  
+@@ -918,6 +931,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
+     @Override
+     public void onParseError() {
+         DiagnosticLog.record("parse", "failed");
++        cinemaProbe.parseError();
+         pendingStartPositionMs = C.TIME_UNSET;
+         callback.onError(ResUtil.getString(R.string.error_play_parse));
+     }
+@@ -952,6 +966,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
+ 
+         @Override
+         public void onPlaybackStateChanged(int state) {
++            cinemaProbe.stateChanged(state, player != null && player.getPlayWhenReady(), CinemaPlaybackProbe.hasSelectedVideo(player));
+             DiagnosticLog.record("playback", "state=" + state + " engine=" + (engine == null ? "none" : engine.getType()));
+             if (state == Player.STATE_READY || state == Player.STATE_ENDED) App.removeCallbacks(runnable);
+             if (state == Player.STATE_READY) {
+@@ -964,6 +979,19 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
+             }
+         }
+ 
++        @Override public void onPlayWhenReadyChanged(boolean playWhenReady, int reason) {
++            cinemaProbe.requested(playWhenReady);
++        }
++
++        @Override public void onRenderedFirstFrame() {
++            cinemaProbe.firstFrame();
++        }
++
++        @Override public void onPositionDiscontinuity(@NonNull Player.PositionInfo oldPosition,
++                                                       @NonNull Player.PositionInfo newPosition, int reason) {
++            cinemaProbe.seek(reason);
++        }
++
+         @Override
+         public void onTracksChanged(@NonNull Tracks tracks) {
+             if (tracks.isEmpty()) return;
+@@ -994,6 +1022,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
+             DiagnosticLog.record("playback", "errorCode=" + e.errorCode);
+             DiagnosticLog.record("playback", e);
+             if (spec == null) return;
++            cinemaProbe.error(e.errorCode);
+             PlayerEngine.ErrorAction action = engine.handleError(e);
+             if (action != PlayerEngine.ErrorAction.RECOVERED) App.removeCallbacks(runnable);
+             switch (action) {
+@@ -1006,4 +1035,15 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
+         }
+     };
+ 
++    private String performanceDetails() {
++        Player current = player;
++        if (current == null) return "engine=none";
++        androidx.media3.common.VideoSize size = current.getVideoSize();
++        return "engine=" + (engine == null ? "none" : engine.getType())
++                + " decode=" + (decode == PlayerEngine.HARD ? "hard" : "soft")
++                + " width=" + size.width + " height=" + size.height
++                + " buffered_ms=" + Math.max(0, current.getTotalBufferedDuration())
++                + " state=" + current.getPlaybackState();
++    }
++
+ }
 diff --git a/app/src/test/java/com/fongmi/android/tv/api/LogvarApiTest.java b/app/src/test/java/com/fongmi/android/tv/api/LogvarApiTest.java
 index be2c3700238a12ca04e6473b3bc7fb92f2c427ce..1bb01cbf0d98b12a0a98e8d1a20e56209ba2c2b0 100644
 --- a/app/src/test/java/com/fongmi/android/tv/api/LogvarApiTest.java

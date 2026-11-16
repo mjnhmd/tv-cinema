@@ -1,5 +1,23 @@
 # TV Cinema task plan
 
+## Bugly performance diagnostics and Git delivery — 2026-11-16
+- [completed] Verify Bugly SDK capabilities, existing playback/UI lifecycles and remote branch; define bounded diagnostic events.
+- [completed] Implement and verify automatic stall, playback startup/buffering/drop/error reporting without adding media URLs to structured fields or continuous log uploads.
+- [in_progress] Regress TV/mobile builds, preserve prior performance evidence, commit authorized changes and push the existing `fongmi` branch; verify remote commit.
+- User explicitly authorized commit and push in this turn. Publication, release and device installation are not authorized; console receipt and real TV performance remain separate verification items.
+
+## Responsiveness and playback optimization — 2026-11-16
+- [completed] Establish performance scope, production inputs and baseline; audit UI/playback/loading and compare relevant upstream behavior.
+- [completed] Implement and verify independently useful overhead reductions and subtitle clarity without changing playback compatibility.
+- [completed] Measure controlled before/after behavior, verify build/recipe/ABI and record target-device gaps and remaining proposals.
+- Initial authorization was local development and investigation; the Bugly/Git increment above supersedes its Git restriction. Durable context: `docs/features/tv-cinema/performance.md`.
+
+## Gugaart suitability review — 2026-11-16
+- [completed] Read project rules/current production recipe and query ppm read-only; checkout is outside managed roots, so no ledger write.
+- [completed] Inspect pinned public gugaart source, licensing, platform requirements and design evidence; compare with current Cinema production capabilities.
+- [completed] Record a concise reuse/borrow/avoid assessment with source pointers and explicit untested limits in `docs/features/tv-cinema/gugaart-review.md`.
+- Consultation only: no application changes, dependency integration, build, Git write or publication is authorized.
+
 ## Current mobile increment — 2026-11-13
 - [completed] Confirm scope: retain the existing phone touch UI and add Cinema capabilities.
 - [completed] Make production mobile configuration/resources and build mode reproducible.

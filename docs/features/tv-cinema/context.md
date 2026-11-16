@@ -1,5 +1,23 @@
 # TV Cinema: television redesign
 
+## Automatic performance diagnostics and authorized Git delivery — 2026-11-16
+- User explicitly requested commit/push of the preceding improvements and automatic real-use diagnostics through Bugly. Existing `fongmi` branch only; public Release and user-device installation remain outside this increment.
+- Added foreground UI watchdog/live blocked-thread stack capture, aggregated slow frames, source/parse/startup/rebuffer/error timing and EXO decoder/drop/MPV hwdec breadcrumbs. Same event type is limited to once per 10 minutes, with 20 automatic incidents per process. Structured fields exclude media URLs/headers/credentials; earlier raw Logcat policy remains as selected.
+- 32 tool + 35 targeted JVM checks pass; TV debug/test APK assembly and mobile ARM64 compilation pass. API28 ARM64 isolated app passes 16 runtime tests, including 3 monitoring cases and 4 real EXO/MPV playback cases. Isolated app never initializes production Bugly; injected debug sink handles synthetic faults.
+- Detailed thresholds, evidence and target-device plan are in `performance.md`. Production Bugly console receipt, actual ARMv7 TV improvements and same-content OK影视 comparison remain not_tested.
+- Current local signed ARMv7 test artifact includes diagnostics: `build/outputs/tv-cinema-armv7-performance-monitor.apk`, 0.1.9-performance-monitor-local /217988972,78,930,556B; complete Release/R8, original signer, minSdk24, ABI and slim payload checks pass. Emulator stopped. Exact SHA and input fingerprint are in `performance.md`; public Release/OTA remains unchanged.
+
+## Performance and gugaart-inspired improvements — 2026-11-16
+- User authorizes direct optimization and reports worse UI/playback/loading than their original OK影视. Detailed current scope, causes, evidence, APK and next-device plan: `performance.md`.
+- Implemented lightweight ambient/readback suppression, Compose motion parity, category-based compact feed scheduling with per-section timeout/cancel, progress-only polling, stable Chinese subtitle sorting/status and background local initials search. Existing paired decoder/render/source contracts retained.
+- Controlled before/after: ambient HTTP 8→0 and one-second video decoration readbacks 2→0; targeted JVM/tool checks and API28 ARM64 isolated tests pass. Three existing preview expectations reproduce with baseline files too; exact limitations recorded separately. These are not target-TV frame/latency results.
+- Earlier local signed ARMv7 `0.1.9-performance-local` /217986333, 78,922,828B, original signer/minSdk24/ABI/package/packaging audited; it predates automatic diagnostics above. Current delivery and exact APK evidence are in `performance.md`. User-TV A/B and real-provider playback remain not_tested.
+
+## Reference review — Gugaart — 2026-11-16
+- User asks whether `camille3344520/gugaart` can be used in this project and what to borrow. Reviewed fixed public commit `60f3cff782f2cc23e32be6512b7e1cf8dc97dbb5` against the current Cinema production pair, recipe and overlays.
+- Assessment: useful UI/strategy reference, not an independently buildable replacement. README/build settings confirm dependencies on unpublished native modules. Prioritize subtitle menu/status clarity, local initials search and restrained focus/layout ideas; retain Cinema's playback/source/update/sync implementations.
+- Details and source evidence: `gugaart-review.md`. The review itself is static: no Gugaart build/APK runtime or target-TV performance validation. The subsequent approved Cinema adaptations are tracked above and in `performance.md`.
+
 ## In progress — Bugly monitoring — 2026-11-13
 - User chose Bugly for the private Android TV and explicitly requested direct startup initialization, no consent prompt, no log interception, and retention of original SDK/logcat data. This configuration is not suitable for a public multi-user release without a privacy review.
 - The Bugly Android product `TVCinema` was created in the user's account. The production TV input now uses Bugly Android SDK `4.1.9.7`, App ID `c06d8f73d2`, initializes in the main process from `Application.onCreate()`, and adds a maintenance action to submit a playback problem as a caught exception.

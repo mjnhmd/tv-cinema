@@ -359,6 +359,96 @@ index e2706e7aee0a13c3f1e90e884f2c7cf40f28b838..70825d9a7efa6b89e894f2ff352bb33d
          if (savedInstanceState == null) binding.keep.requestFocus();
      }
  
+diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SearchActivity.java b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SearchActivity.java
+index ad651bdc80c512a182286e9f8c8a253c8d374d62..439301d4be8da1cf56867b3989d81ca4451130a5 100644
+--- a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SearchActivity.java
++++ b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SearchActivity.java
+@@ -16,6 +16,10 @@ import androidx.viewbinding.ViewBinding;
+ import com.fongmi.android.tv.App;
+ import com.fongmi.android.tv.R;
+ import com.fongmi.android.tv.bean.Word;
++import com.fongmi.android.tv.api.config.VodConfig;
++import com.fongmi.android.tv.db.AppDatabase;
++import com.fongmi.android.tv.utils.CinemaLocalSearch;
++import com.fongmi.android.tv.utils.Task;
+ import com.fongmi.android.tv.databinding.ActivitySearchBinding;
+ import com.fongmi.android.tv.impl.Callback;
+ import com.fongmi.android.tv.setting.Setting;
+@@ -51,6 +55,8 @@ public class SearchActivity extends BaseActivity implements WordAdapter.OnClickL
+     private final SearchFocusGuard focus = new SearchFocusGuard(this);
+     private long resumeFocusGeneration;
+     private boolean restoreAfterResume;
++    private CinemaLocalSearch localSearch;
++    private java.util.concurrent.Future<?> localSearchTask;
+ 
+     public static void start(Activity activity) {
+         activity.startActivity(new Intent(activity, SearchActivity.class));
+@@ -81,6 +87,15 @@ public class SearchActivity extends BaseActivity implements WordAdapter.OnClickL
+         CustomKeyboard.init(this, mBinding);
+         setRecyclerView();
+         checkKeyword();
++        int sourceId = VodConfig.getCid();
++        localSearchTask = Task.executor().submit(() -> {
++            CinemaLocalSearch loaded = new CinemaLocalSearch(AppDatabase.get().getHistoryDao().getLocalSearchTitles(sourceId));
++            App.post(() -> {
++                if (isFinishing() || isDestroyed() || sourceId != VodConfig.getCid()) return;
++                localSearch = loaded;
++                if (!empty()) setWords(mergeLocal(mBinding.keyword.getText().toString(), mWordAdapter.getItems()));
++            });
++        });
+     }
+ 
+     @Override
+@@ -132,7 +147,7 @@ public class SearchActivity extends BaseActivity implements WordAdapter.OnClickL
+         if (suggestionCall != null) suggestionCall.cancel();
+         mBinding.word.setText(text.isEmpty() ? R.string.search_hot : R.string.search_suggest);
+         if (text.isEmpty()) mWordAdapter.setItems(Word.objectFrom(Setting.getHot()).getData());
+-        else mWordAdapter.setItems(java.util.List.of());
++        else mWordAdapter.setItems(mergeLocal(text, java.util.List.of()));
+         suggestionRequest = () -> {
+             if (isFinishing() || isDestroyed() || generation != suggestionGeneration) return;
+             String url = text.isEmpty() ? "https://hot.api.coolmarket.eu.org/api/douban-hot-mixed"
+@@ -163,12 +178,31 @@ public class SearchActivity extends BaseActivity implements WordAdapter.OnClickL
+     private void setAdapter(String result, boolean save) {
+         if (!save && empty()) return;
+         if (save) Setting.putHot(result);
++        setWords(mergeLocal(mBinding.keyword.getText().toString(), Word.objectFrom(result).getData()));
++    }
++
++    private void setWords(java.util.List<Word.Data> words) {
+         View current = getCurrentFocus();
+         View item = current == null ? null : mBinding.wordRecycler.findContainingItemView(current);
+         boolean restoreFocus = current == mBinding.wordRecycler || item != null;
+         int position = item == null ? 0 : mBinding.wordRecycler.getChildAdapterPosition(item);
++        if (position >= 0 && position < mWordAdapter.getItemCount()) {
++            String selected = mWordAdapter.getItem(position).getTitle();
++            for (int index = 0; index < words.size(); index++) if (selected.equals(words.get(index).getTitle())) {
++                position = index;
++                break;
++            }
++        }
++        int targetPosition = position;
+         long generation = focus.snapshot();
+-        mWordAdapter.setItems(Word.objectFrom(result).getData(), () -> restoreWordFocus(restoreFocus, position, generation));
++        mWordAdapter.setItems(words, () -> restoreWordFocus(restoreFocus, targetPosition, generation));
++    }
++
++    private java.util.List<Word.Data> mergeLocal(String query, java.util.List<Word.Data> remote) {
++        java.util.LinkedHashMap<String, Word.Data> words = new java.util.LinkedHashMap<>();
++        if (localSearch != null) for (String title : localSearch.find(query)) words.put(title, Word.Data.create(title));
++        for (Word.Data word : remote) words.putIfAbsent(word.getTitle(), word);
++        return new java.util.ArrayList<>(words.values());
+     }
+ 
+     @Override
+@@ -455,6 +489,7 @@ public class SearchActivity extends BaseActivity implements WordAdapter.OnClickL
+         if (suggestionRequest != null) App.removeCallbacks(suggestionRequest);
+         if (suggestionCall != null) suggestionCall.cancel();
+         mBinding.mic.destroy();
++        if (localSearchTask != null) localSearchTask.cancel(true);
+         super.onDestroy();
+     }
+ }
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java
 index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..54acab0c1a818c3415abc89d70b39438c0d5f75b 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java
@@ -518,7 +608,7 @@ index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..54acab0c1a818c3415abc89d70b39438
      }
  
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/VideoActivity.java b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/VideoActivity.java
-index b181c843f13ab06b0daed7360f5954b7b594d37f..13c8159f86085b408f53f9af463d04c5b70f415b 100644
+index b181c843f13ab06b0daed7360f5954b7b594d37f..6d9f2b01fee2d6bb5dc4a9b92e1ea83a46f8f63c 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/VideoActivity.java
 +++ b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/VideoActivity.java
 @@ -38,7 +38,6 @@ import com.fongmi.android.tv.BuildConfig;
@@ -547,7 +637,27 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..13c8159f86085b408f53f9af463d04c5
          mBinding.video.setForeground(JetStreamVideoDecor.windowForeground(mBinding.video));
          mBinding.video.setBackgroundResource(R.drawable.shape_video_window);
          mBinding.video.setClipToOutline(true);
-@@ -2291,7 +2288,6 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+@@ -1650,8 +1647,17 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+         setJetStreamCommand("replay", mBinding.control.action.replay, true);
+         setJetStreamCommand("reset", mBinding.control.action.reset, true);
+         setJetStreamCommand("subtitle", getString(R.string.play_subtitle), true, false);
+-        setJetStreamCommand("text", mBinding.control.action.text, isVisible(mBinding.control.action.text));
+-        setJetStreamCommand("audio", mBinding.control.action.audio, isVisible(mBinding.control.action.audio));
++        if (service() != null && isOwner()) {
++            mBinding.control.jetstream.setCommand("text", getString(R.string.play_track_text),
++                    com.fongmi.android.tv.playback.CinemaTrackStatus.selected(player().getCurrentTracks(),
++                            C.TRACK_TYPE_TEXT, getString(R.string.setting_off)), isVisible(mBinding.control.action.text), false);
++            mBinding.control.jetstream.setCommand("audio", getString(R.string.play_track_audio),
++                    com.fongmi.android.tv.playback.CinemaTrackStatus.selected(player().getCurrentTracks(),
++                            C.TRACK_TYPE_AUDIO, getString(R.string.play_track_audio)), isVisible(mBinding.control.action.audio), false);
++        } else {
++            setJetStreamCommand("text", mBinding.control.action.text, isVisible(mBinding.control.action.text));
++            setJetStreamCommand("audio", mBinding.control.action.audio, isVisible(mBinding.control.action.audio));
++        }
+         setJetStreamCommand("video", mBinding.control.action.video, isVisible(mBinding.control.action.video));
+         setJetStreamCommand("danmaku", mBinding.control.action.danmaku, DanmakuSetting.isLoad());
+         setJetStreamCommand("speed", mBinding.control.action.speed, true);
+@@ -2291,7 +2297,6 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
          super.onStart();
          if (mSpecs != null) mSpecs.setStarted(true);
          SyncplaySession.get().observe(mSyncplayObserver);
@@ -875,6 +985,122 @@ index ac39ff77cc54b8eb290ba1652389ad8cb4495129..ec53525ed0625cc8fa779e9f6013361e
          const val KEY_COMMUNITY_SKIP = "community_skip"
          const val KEY_AV3A = "av3a"
          const val KEY_DOLBY = "dolby"
+diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamVodControlView.kt b/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamVodControlView.kt
+index 56d17c6f81eb0da4e4121c2082816f30887d39a8..0821bf1ff5940ad070f66d8d0815470b27949c1e 100644
+--- a/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamVodControlView.kt
++++ b/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamVodControlView.kt
+@@ -294,7 +294,9 @@ class JetStreamVodControlView @JvmOverloads constructor(
+     }
+ 
+     fun setCommand(key: String, title: CharSequence?, label: CharSequence?, visible: Boolean, selected: Boolean) {
+-        commands[key] = CommandState(title?.toString().orEmpty(), label?.toString().orEmpty(), visible, selected)
++        val next = CommandState(title?.toString().orEmpty(), label?.toString().orEmpty(), visible, selected)
++        if (commands[key] == next) return
++        commands[key] = next
+         validateActiveGroup()
+     }
+ 
+@@ -327,22 +329,6 @@ class JetStreamVodControlView @JvmOverloads constructor(
+ 
+     @Composable
+     private fun JetStreamControls() {
+-        val player = mediaPlayer
+-        var positionMs by remember(player) { mutableLongStateOf(normalize(player?.currentPosition)) }
+-        var durationMs by remember(player) { mutableLongStateOf(normalize(player?.duration)) }
+-        var polledPlaying by remember(player, playing) { mutableStateOf(playing) }
+-
+-        // 仅在控制条或信息层可见时轮询，隐藏后停表避免常驻唤醒
+-        LaunchedEffect(player, controlPanelVisible, topInfoVisible, centerInfoVisible) {
+-            if (!controlPanelVisible && !isInfoVisible()) return@LaunchedEffect
+-            while (isActive) {
+-                positionMs = normalize(player?.currentPosition)
+-                durationMs = normalize(player?.duration)
+-                polledPlaying = player?.isPlaying ?: playing
+-                delay(300)
+-            }
+-        }
+-
+         JetStreamTheme {
+             Box(Modifier.fillMaxSize()) {
+                 AnimatedVisibility(
+@@ -358,7 +344,7 @@ class JetStreamVodControlView @JvmOverloads constructor(
+                 ) {
+                     JetStreamControlScrim(modifier = Modifier.fillMaxSize()) {
+                         InfoOverlay()
+-                        ControlPanel(polledPlaying, positionMs, durationMs)
++                        ControlPanel()
+                     }
+                 }
+                 AnimatedVisibility(
+@@ -382,7 +368,7 @@ class JetStreamVodControlView @JvmOverloads constructor(
+     }
+ 
+     @Composable
+-    private fun BoxScope.ControlPanel(isPlaying: Boolean, positionMs: Long, durationMs: Long) {
++    private fun BoxScope.ControlPanel() {
+         Column(
+             modifier = Modifier
+                 .align(Alignment.BottomCenter)
+@@ -392,14 +378,28 @@ class JetStreamVodControlView @JvmOverloads constructor(
+         ) {
+             MediaTitle(Modifier.fillMaxWidth())
+             Spacer(Modifier.height(16.dp))
+-            SeekerRow(
+-                isPlaying = isPlaying,
+-                positionMs = positionMs,
+-                durationMs = durationMs
+-            )
++            PlaybackSeeker()
+             Spacer(Modifier.height(8.dp))
+-            HeaderRow(isPlaying)
++            HeaderRow(playing)
++        }
++    }
++
++    @Composable
++    private fun PlaybackSeeker() {
++        val player = mediaPlayer
++        var positionMs by remember(player) { mutableLongStateOf(normalize(player?.currentPosition)) }
++        var durationMs by remember(player) { mutableLongStateOf(normalize(player?.duration)) }
++        var polledPlaying by remember(player, playing) { mutableStateOf(playing) }
++        LaunchedEffect(player, controlPanelVisible) {
++            if (!controlPanelVisible) return@LaunchedEffect
++            while (isActive) {
++                positionMs = normalize(player?.currentPosition)
++                durationMs = normalize(player?.duration)
++                polledPlaying = player?.isPlaying ?: playing
++                delay(300)
++            }
+         }
++        SeekerRow(polledPlaying, positionMs, durationMs)
+     }
+ 
+     @Composable
+diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/custom/PlaybackSpecsBackdrop.java b/app/src/leanback/java/com/fongmi/android/tv/ui/custom/PlaybackSpecsBackdrop.java
+index bacd13317ea932850dc35bcefc4cae15d5fbb0a4..9208a7b43df9cefa42eef6b7100896bd742fa364 100644
+--- a/app/src/leanback/java/com/fongmi/android/tv/ui/custom/PlaybackSpecsBackdrop.java
++++ b/app/src/leanback/java/com/fongmi/android/tv/ui/custom/PlaybackSpecsBackdrop.java
+@@ -14,6 +14,8 @@ import android.view.View;
+ 
+ import androidx.media3.ui.PlayerView;
+ 
++import com.fongmi.android.tv.utils.CinemaProfile;
++
+ import java.util.concurrent.ExecutorService;
+ import java.util.concurrent.Executors;
+ 
+@@ -47,9 +49,10 @@ public final class PlaybackSpecsBackdrop {
+ 
+     public void start() {
+         stop();
+-        running = true;
+         samples = 0;
+         failures = 0;
++        if (CinemaProfile.isLightweight()) return;
++        running = true;
+         main.postDelayed(capture, 120);
+     }
+ 
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/custom/PosterTitleMarquee.java b/app/src/leanback/java/com/fongmi/android/tv/ui/custom/PosterTitleMarquee.java
 index 9efb10ec1f459e563248ad97ca000281111054ca..6713d2212c034cd956f13db549bc50f16e29b4a4 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/custom/PosterTitleMarquee.java
@@ -1028,7 +1254,7 @@ index 70f11e7cf201555993edbaa3bd95677bb3596fae..25a7e13048cab0d40c177404aac22a95
              mLast = new ArrayObjectAdapter(presenter);
              mLast.addAll(0, part);
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/home/PosterHomeController.java b/app/src/leanback/java/com/fongmi/android/tv/ui/home/PosterHomeController.java
-index 75399bb4fc44ee4f6126476b41e94cacc546bc16..d27d8a73403e37637ea35efd8633e75dd5766c25 100644
+index 75399bb4fc44ee4f6126476b41e94cacc546bc16..6345048048ca7df599b649712adef2583bfb41db 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/home/PosterHomeController.java
 +++ b/app/src/leanback/java/com/fongmi/android/tv/ui/home/PosterHomeController.java
 @@ -86,6 +86,7 @@ public final class PosterHomeController implements VodPresenter.OnClickListener
@@ -1064,16 +1290,20 @@ index 75399bb4fc44ee4f6126476b41e94cacc546bc16..d27d8a73403e37637ea35efd8633e75d
      }
  
      public void register(CustomSelector selector) {
-@@ -263,6 +275,8 @@ public final class PosterHomeController implements VodPresenter.OnClickListener
+@@ -263,8 +275,12 @@ public final class PosterHomeController implements VodPresenter.OnClickListener
      private void selectCategory(int value) {
          if (category == value) return;
          category = value;
++        if (compact) compactFeeds.clear();
 +        heroFromSnapshot = loadSnapshot();
 +        if (!heroFromSnapshot) hero.value.replace(List.of());
          notifyRow(categories);
          render();
++        if (compact) refreshRex();
      }
-@@ -273,10 +287,15 @@ public final class PosterHomeController implements VodPresenter.OnClickListener
+ 
+     private void render() {
+@@ -273,10 +289,15 @@ public final class PosterHomeController implements VodPresenter.OnClickListener
              return;
          }
          List<Vod> heroItems = PosterHomeCatalog.hero(content, category);
@@ -1090,7 +1320,16 @@ index 75399bb4fc44ee4f6126476b41e94cacc546bc16..d27d8a73403e37637ea35efd8633e75d
          boolean any = false;
          for (Shelf shelf : shelves) {
              List<Vod> items = PosterHomeCatalog.visible(shelf.row, category)
-@@ -393,10 +412,15 @@ public final class PosterHomeController implements VodPresenter.OnClickListener
+@@ -326,7 +347,7 @@ public final class PosterHomeController implements VodPresenter.OnClickListener
+     }
+ 
+     private void refreshRex() {
+-        rexLoader.load(RexSections.home(), results -> {
++        rexLoader.load(compact ? CinemaHomeFeedPlan.sections(category) : RexSections.home(), results -> {
+             if (closed || rexSpotlightAdapter == null) return;
+             applyRexResults(results);
+         });
+@@ -393,9 +414,12 @@ public final class PosterHomeController implements VodPresenter.OnClickListener
      private void renderCompact() {
          List<RexFeedResult> feeds = new ArrayList<>(compactFeeds.values());
          List<Vod> heroItems = PosterHomeCatalog.compactHero(feeds, category);
@@ -1100,13 +1339,10 @@ index 75399bb4fc44ee4f6126476b41e94cacc546bc16..d27d8a73403e37637ea35efd8633e75d
 +        } else if (!RexFeedResult.sameItems(hero.value.getItems(), heroItems)) {
              hero.value.replace(heroItems);
              notifyRow(hero);
++            if (!heroItems.isEmpty()) CinemaHeroSnapshot.write(category, heroItems);
          }
-+        if (!heroItems.isEmpty()) {
-+            CinemaHeroSnapshot.write(category, heroItems);
-+        }
          List<String> keys = PosterHomeCatalog.compactKeys(category);
          for (Shelf shelf : shelves) {
-             RexFeedResult feed = compactFeeds.get(shelf.key);
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/presenter/DiscoverHeroPresenter.java b/app/src/leanback/java/com/fongmi/android/tv/ui/presenter/DiscoverHeroPresenter.java
 index c16e0d0d85841626d91ea0e2ef18b426ca16aa0b..0824c0b0904730831e6289be2c32339b295f3b63 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/presenter/DiscoverHeroPresenter.java
@@ -1269,6 +1505,287 @@ index c16e0d0d85841626d91ea0e2ef18b426ca16aa0b..0824c0b0904730831e6289be2c32339b
          }
  
          private void attach() {
+diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/rex/RexFeedLoader.java b/app/src/leanback/java/com/fongmi/android/tv/ui/rex/RexFeedLoader.java
+index c93025056db1de657369505d5bd68e8ccb41fe43..0de9b72f82629bf273b1b209d6ae423905148d4f 100644
+--- a/app/src/leanback/java/com/fongmi/android/tv/ui/rex/RexFeedLoader.java
++++ b/app/src/leanback/java/com/fongmi/android/tv/ui/rex/RexFeedLoader.java
+@@ -16,9 +16,12 @@ import com.fongmi.android.tv.bean.Vod;
+ import com.fongmi.android.tv.setting.Setting;
+ 
+ import java.util.ArrayList;
++import java.util.ArrayDeque;
++import java.util.HashSet;
+ import java.util.LinkedHashMap;
+ import java.util.List;
+ import java.util.Map;
++import java.util.Set;
+ import java.util.concurrent.ConcurrentHashMap;
+ 
+ /**
+@@ -32,6 +35,7 @@ public final class RexFeedLoader {
+ 
+     public static final long DEADLINE_MS = 24_000;
+     private static final long CACHE_TTL = 30 * 60 * 1000L;
++    private static final long DELIVERY_BATCH_MS = 160;
+     private static final Map<String, CacheEntry> CACHE = new ConcurrentHashMap<>();
+ 
+     public interface Listener {
+@@ -42,6 +46,10 @@ public final class RexFeedLoader {
+     private final Handler handler = new Handler(Looper.getMainLooper());
+     private final Object tag = new Object();
+     private final Map<String, List<Vod>> merged = new LinkedHashMap<>();
++    private final ArrayDeque<RexSection> queued = new ArrayDeque<>();
++    private final Set<String> inFlight = new HashSet<>();
++    private final Map<String, Object> requestTags = new LinkedHashMap<>();
++    private final Map<String, Runnable> timeouts = new LinkedHashMap<>();
+     private List<RexSection> sections = List.of();
+     private Listener listener;
+     private Runnable deadline;
+@@ -50,7 +58,10 @@ public final class RexFeedLoader {
+     private int generation;
+     private boolean done;
+     private boolean closed;
++    private boolean draining;
++    private boolean delivered;
+     private final boolean directDoubanFallback;
++    private final int maxConcurrent;
+ 
+     public RexFeedLoader() {
+         this(false);
+@@ -58,6 +69,7 @@ public final class RexFeedLoader {
+ 
+     public RexFeedLoader(boolean directDoubanFallback) {
+         this.directDoubanFallback = directDoubanFallback;
++        maxConcurrent = directDoubanFallback ? 3 : 12;
+     }
+ 
+     public boolean isLoading() { return !closed && !done && pending > 0; }
+@@ -67,6 +79,9 @@ public final class RexFeedLoader {
+         int request = ++generation;
+         cancelCalls();
+         cancelDelivery();
++        queued.clear();
++        inFlight.clear();
++        delivered = false;
+         this.sections = sections;
+         this.listener = listener;
+         done = false;
+@@ -97,10 +112,36 @@ public final class RexFeedLoader {
+             done = true;
+             cancelCalls();
+             cancelDelivery();
++            queued.clear();
++            inFlight.clear();
+             deliver(request);
+         };
+-        handler.postDelayed(deadline, DEADLINE_MS);
+-        for (RexSection section : missing) fetch(section, request);
++        handler.postDelayed(deadline, DEADLINE_MS * ((missing.size() + maxConcurrent - 1) / maxConcurrent));
++        queued.addAll(missing);
++        drain(request);
++    }
++
++    private void drain(int request) {
++        if (draining) return;
++        draining = true;
++        try {
++            while (isCurrent(request) && inFlight.size() < maxConcurrent && !queued.isEmpty()) {
++                RexSection section = queued.removeFirst();
++                if (!inFlight.add(section.getKey())) continue;
++                Object sectionTag = new Object();
++                requestTags.put(section.getKey(), sectionTag);
++                Runnable timeout = () -> {
++                    cancelTag(sectionTag);
++                    accept(section, List.of(), request);
++                };
++                timeouts.put(section.getKey(), timeout);
++                handler.postDelayed(timeout, DEADLINE_MS);
++                fetch(section, request);
++            }
++        } finally {
++            draining = false;
++            if (request != generation && !closed) drain(generation);
++        }
+     }
+ 
+     public void close() {
+@@ -109,6 +150,8 @@ public final class RexFeedLoader {
+         cancelDeadline();
+         cancelDelivery();
+         cancelCalls();
++        queued.clear();
++        inFlight.clear();
+     }
+ 
+     public static void clearCache() {
+@@ -116,6 +159,7 @@ public final class RexFeedLoader {
+     }
+ 
+     private void fetch(RexSection section, int request) {
++        Object tag = requestTags.get(section.getKey());
+         RexNowClient.ItemsListener feedListener = new RexNowClient.ItemsListener() {
+             @Override
+             public void onSuccess(List<Vod> items) {
+@@ -164,6 +208,8 @@ public final class RexFeedLoader {
+ 
+     /** 云桥：sk 为空或 401/失败时回退 rexnow 豆瓣 feed（按栏目媒体类型过滤）。 */
+     private void fetchBridge(RexSection section, int request) {
++        if (!isCurrent(request) || !inFlight.contains(section.getKey())) return;
++        Object tag = requestTags.get(section.getKey());
+         String sk = Setting.getBridgeSk();
+         if (sk == null || sk.trim().isEmpty()) {
+             fetchDoubanFallback(section, request);
+@@ -189,6 +235,8 @@ public final class RexFeedLoader {
+     }
+ 
+     private void fetchDoubanFallback(RexSection section, int request) {
++        if (!isCurrent(request) || !inFlight.contains(section.getKey())) return;
++        Object tag = requestTags.get(section.getKey());
+         if (!isCurrent(request)) return;
+         String category = section.getFeedCategory().isEmpty() ? "trending" : section.getFeedCategory();
+         String mediaType = section.getCollectionId().startsWith("movie") ? DiscoverMediaKey.MOVIE : DiscoverMediaKey.TV;
+@@ -214,7 +262,8 @@ public final class RexFeedLoader {
+     }
+ 
+     private void fetchDirectDouban(RexSection section, int request) {
+-        if (!isCurrent(request)) return;
++        if (!isCurrent(request) || !inFlight.contains(section.getKey())) return;
++        Object tag = requestTags.get(section.getKey());
+         DiscoverApi.Row row = section.getCollectionId().startsWith("movie")
+                 ? DiscoverApi.Row.DOUBAN_HOT_MOVIE : DiscoverApi.Row.DOUBAN_HOT_TV;
+         DiscoverApi.fetch(row, BuildConfig.TMDB_API_KEY, tag, new DiscoverApi.Listener() {
+@@ -233,6 +282,10 @@ public final class RexFeedLoader {
+             return;
+         }
+         if (closed || done || request != generation) return;
++        if (!inFlight.remove(section.getKey())) return;
++        Runnable timeout = timeouts.remove(section.getKey());
++        if (timeout != null) handler.removeCallbacks(timeout);
++        requestTags.remove(section.getKey());
+         List<Vod> capped = items.isEmpty()
+                 ? List.of()
+                 : new ArrayList<>(items.subList(0, Math.min(items.size(), section.getLimit())));
+@@ -250,12 +303,14 @@ public final class RexFeedLoader {
+                 delivery = null;
+                 if (!done) deliver(request);
+             };
+-            handler.postDelayed(delivery, 32);
++            handler.postDelayed(delivery, delivered ? DELIVERY_BATCH_MS : 0);
+         }
++        drain(request);
+     }
+ 
+     private void deliver(int request) {
+         if (closed || request != generation) return;
++        delivered = true;
+         List<RexFeedResult> results = new ArrayList<>();
+         for (RexSection section : sections) {
+             List<Vod> items = merged.get(section.getKey());
+@@ -275,6 +330,14 @@ public final class RexFeedLoader {
+     }
+ 
+     private void cancelCalls() {
++        for (Runnable timeout : timeouts.values()) handler.removeCallbacks(timeout);
++        timeouts.clear();
++        for (Object sectionTag : requestTags.values()) cancelTag(sectionTag);
++        requestTags.clear();
++        cancelTag(tag);
++    }
++
++    private void cancelTag(Object tag) {
+         RexTmdbClient.cancel(tag);
+         RexNowClient.cancel(tag);
+         DoubanBridgeClient.cancel(tag);
+diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/theme/JetStreamAmbient.kt b/app/src/leanback/java/com/fongmi/android/tv/ui/theme/JetStreamAmbient.kt
+index 04178ae9235de571ac7c81d18441021b65e24d77..78cadc4deccfc5aceedb377a8786e94549fe0469 100644
+--- a/app/src/leanback/java/com/fongmi/android/tv/ui/theme/JetStreamAmbient.kt
++++ b/app/src/leanback/java/com/fongmi/android/tv/ui/theme/JetStreamAmbient.kt
+@@ -8,6 +8,7 @@ import com.bumptech.glide.request.transition.Transition
+ import com.fongmi.android.tv.App
+ import com.fongmi.android.tv.impl.CustomTarget
+ import com.fongmi.android.tv.utils.ImgUtil
++import com.fongmi.android.tv.utils.CinemaProfile
+ 
+ /**
+  * 内容氛围总线：由当前浏览内容的海报驱动页面背景的辉光颜色与模糊底图。
+@@ -26,6 +27,7 @@ object JetStreamAmbient {
+ 
+     @JvmStatic
+     fun push(url: String?) {
++        if (CinemaProfile.isLightweight()) return
+         if (url.isNullOrEmpty() || url == currentUrl) return
+         currentUrl = url
+         pending?.let { Glide.with(App.get()).clear(it) }
+diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/theme/JetStreamAnimations.kt b/app/src/leanback/java/com/fongmi/android/tv/ui/theme/JetStreamAnimations.kt
+index af515571d1536d2ff0d3cd85157010c43bc3d532..c10d8234d9b34308a99cbb73c71b2080b302b7ab 100644
+--- a/app/src/leanback/java/com/fongmi/android/tv/ui/theme/JetStreamAnimations.kt
++++ b/app/src/leanback/java/com/fongmi/android/tv/ui/theme/JetStreamAnimations.kt
+@@ -2,6 +2,7 @@ package com.fongmi.android.tv.ui.theme
+ 
+ import androidx.compose.animation.core.AnimationSpec
+ import androidx.compose.animation.core.tween
++import com.fongmi.android.tv.utils.CinemaProfile
+ 
+ /**
+  * JetStream Animation System
+@@ -9,42 +10,42 @@ import androidx.compose.animation.core.tween
+  */
+ object JetStreamAnimations {
+     // Duration constants
+-    const val DurationShort = 180
+-    const val DurationMedium = 300
+-    const val DurationLong = 500
+-    const val DurationPanel = 220
+-    const val DurationExit = 160
+-    const val DurationFocus = 120
++    val DurationShort get() = if (CinemaProfile.isLightweight()) 0 else 180
++    val DurationMedium get() = if (CinemaProfile.isLightweight()) 0 else 300
++    val DurationLong get() = if (CinemaProfile.isLightweight()) 0 else 500
++    val DurationPanel get() = if (CinemaProfile.isLightweight()) 0 else 220
++    val DurationExit get() = if (CinemaProfile.isLightweight()) 0 else 160
++    val DurationFocus get() = if (CinemaProfile.isLightweight()) 0 else 120
+ 
+     // Scale animations - 缩放动画
+-    val ScaleSpring: AnimationSpec<Float> = tween(durationMillis = DurationFocus)
++    val ScaleSpring: AnimationSpec<Float> get() = tween(durationMillis = DurationFocus)
+ 
+-    val ScaleTween: AnimationSpec<Float> = tween(
++    val ScaleTween: AnimationSpec<Float> get() = tween(
+         durationMillis = DurationMedium
+     )
+ 
+     // Color animations - 颜色动画
+-    val ColorTween = tween<androidx.compose.ui.graphics.Color>(
++    val ColorTween get() = tween<androidx.compose.ui.graphics.Color>(
+         durationMillis = DurationFocus
+     )
+ 
+     // Size animations - 尺寸动画
+-    val SizeTween = tween<androidx.compose.ui.unit.Dp>(
++    val SizeTween get() = tween<androidx.compose.ui.unit.Dp>(
+         durationMillis = DurationMedium
+     )
+ 
+     // Float animations - 浮点数动画
+-    val FloatTween = tween<Float>(
++    val FloatTween get() = tween<Float>(
+         durationMillis = DurationMedium
+     )
+ 
+     // Focus scale values - 聚焦缩放值
+-    const val FocusScaleSmall = 1.02f
+-    const val FocusScaleMedium = 1.04f
+-    const val FocusScaleLarge = 1.04f
++    val FocusScaleSmall get() = if (CinemaProfile.isLightweight()) 1f else 1.02f
++    val FocusScaleMedium get() = if (CinemaProfile.isLightweight()) 1f else 1.04f
++    val FocusScaleLarge get() = if (CinemaProfile.isLightweight()) 1f else 1.04f
+ 
+     // Pressed scale values - 按下缩放值
+-    const val PressedScale = 0.96f
++    val PressedScale get() = if (CinemaProfile.isLightweight()) 1f else 0.96f
+ }
+ 
+ /**
 diff --git a/app/src/leanback/res/layout/activity_my.xml b/app/src/leanback/res/layout/activity_my.xml
 index d28e5a0bae5ded4d78fe81f4fda72dd286b3f814..784aa678ecac70bfb2399f321faf0c35a9d76029 100644
 --- a/app/src/leanback/res/layout/activity_my.xml
@@ -1386,7 +1903,7 @@ index 86665409aff456027f1a751bc482e79a2d09b9f4..b5df922b9985a9662d2d8aabf1275bf7
              android:name=".receiver.ActionReceiver"
              android:exported="false">
 diff --git a/app/src/main/java/com/fongmi/android/tv/App.java b/app/src/main/java/com/fongmi/android/tv/App.java
-index 8e5e1447c9755675ac905401dfedcc4cd1779e8e..455715486b4ae95dab926704cfd09ca095b6f8ce 100644
+index 8e5e1447c9755675ac905401dfedcc4cd1779e8e..e8fe51e732423347cf98b9bc9ceec1f9cacc1407 100644
 --- a/app/src/main/java/com/fongmi/android/tv/App.java
 +++ b/app/src/main/java/com/fongmi/android/tv/App.java
 @@ -14,6 +14,7 @@ import androidx.core.os.HandlerCompat;
@@ -1405,6 +1922,20 @@ index 8e5e1447c9755675ac905401dfedcc4cd1779e8e..455715486b4ae95dab926704cfd09ca0
          com.fongmi.android.tv.player.skip.LegacySkipMigration.clearPreferences();
          // Only schedules Pine when toast filter is already enabled in settings.
          ToastFilter.install();
+@@ -119,11 +121,13 @@ public class App extends Application implements Application.ActivityLifecycleCal
+     @Override
+     public void onActivityResumed(@NonNull Activity activity) {
+         if (activity != activity()) this.activity = activity;
++        CinemaMonitoring.onResumed(activity);
+     }
+ 
+     @Override
+     public void onActivityPaused(@NonNull Activity activity) {
+         if (activity == activity()) this.activity = null;
++        CinemaMonitoring.onPaused(activity);
+     }
+ 
+     @Override
 diff --git a/app/src/main/java/com/fongmi/android/tv/Updater.java b/app/src/main/java/com/fongmi/android/tv/Updater.java
 index 84f4027e40034ca59cb7844fe9e73354c7e6bfa2..0c447d4a6e9e8da745e0cc0c5399cb8eaeb98720 100644
 --- a/app/src/main/java/com/fongmi/android/tv/Updater.java
@@ -1572,6 +2103,96 @@ index ff0a2341b6bd9100fd816bacbc6badfe7c5be193..3cf8a33125ca5bddbb116b6ba6b650cd
 +        }
 +    }
  }
+diff --git a/app/src/main/java/com/fongmi/android/tv/bean/Word.java b/app/src/main/java/com/fongmi/android/tv/bean/Word.java
+index 89c0c304e00bd9e40918d0c33f07ce327733604f..508a7392a3982575e8627de59eef37eaa8b9fb23 100644
+--- a/app/src/main/java/com/fongmi/android/tv/bean/Word.java
++++ b/app/src/main/java/com/fongmi/android/tv/bean/Word.java
+@@ -39,6 +39,12 @@ public class Word {
+         @SerializedName(value = "title", alternate = "name")
+         private String title;
+ 
++        public static Data create(String title) {
++            Data item = new Data();
++            item.title = title;
++            return item;
++        }
++
+         public String getTitle() {
+             return TextUtils.isEmpty(title) ? "" : title;
+         }
+diff --git a/app/src/main/java/com/fongmi/android/tv/db/dao/HistoryDao.java b/app/src/main/java/com/fongmi/android/tv/db/dao/HistoryDao.java
+index 9e132119ac599edfd9113aa376135bb96af889f1..b92a28cc291b9eacdd22920680a3d98931285ce3 100644
+--- a/app/src/main/java/com/fongmi/android/tv/db/dao/HistoryDao.java
++++ b/app/src/main/java/com/fongmi/android/tv/db/dao/HistoryDao.java
+@@ -16,6 +16,11 @@ public abstract class HistoryDao extends BaseDao<History> {
+     @Query("SELECT * FROM History WHERE cid = :cid ORDER BY createTime DESC")
+     public abstract List<History> findAll(int cid);
+ 
++    @Query("SELECT vodName FROM (SELECT vodName, createTime FROM History WHERE cid = :cid " +
++            "UNION ALL SELECT vodName, createTime FROM Keep WHERE type = 2 OR (type = 0 AND cid = :cid)) " +
++            "WHERE vodName IS NOT NULL AND vodName != '' GROUP BY vodName ORDER BY MAX(createTime) DESC LIMIT 300")
++    public abstract List<String> getLocalSearchTitles(int cid);
++
+     @Query("SELECT * FROM History WHERE cid = :cid AND createTime >= :createTime ORDER BY createTime DESC LIMIT 60")
+     public abstract List<History> find(int cid, long createTime);
+ 
+diff --git a/app/src/main/java/com/fongmi/android/tv/model/SiteViewModel.java b/app/src/main/java/com/fongmi/android/tv/model/SiteViewModel.java
+index 76e56be285a881d6f24571a65120f9e456ba93c5..93d7e62be86787c161a0adb4eaf04b109707ee9e 100644
+--- a/app/src/main/java/com/fongmi/android/tv/model/SiteViewModel.java
++++ b/app/src/main/java/com/fongmi/android/tv/model/SiteViewModel.java
+@@ -10,6 +10,7 @@ import com.fongmi.android.tv.api.config.VodConfig;
+ import com.fongmi.android.tv.bean.Result;
+ import com.fongmi.android.tv.bean.Site;
+ import com.fongmi.android.tv.exception.ExtractException;
++import com.fongmi.android.tv.monitoring.CinemaSourceSpan;
+ import com.fongmi.android.tv.player.extractor.Source;
+ import com.fongmi.android.tv.source.health.SourceHealthManager;
+ import com.github.catvod.utils.Trans;
+@@ -28,6 +29,7 @@ public class SiteViewModel extends ViewModel {
+ 
+     private final ViewModelTaskRunner<TaskType> tasks;
+     private final ViewModelSearchRunner searches;
++    private CinemaSourceSpan playerSpan;
+ 
+     public SiteViewModel() {
+         result = new MutableLiveData<>();
+@@ -57,6 +59,7 @@ public class SiteViewModel extends ViewModel {
+     public SiteViewModel init() {
+         searches.stop();
+         tasks.cancelAll();
++        if (playerSpan != null) playerSpan.cancel();
+         search.setValue(null);
+         result.setValue(null);
+         player.setValue(null);
+@@ -89,7 +92,19 @@ public class SiteViewModel extends ViewModel {
+ 
+     public void playerContent(String key, String flag, String id) {
+         Source.ResolveRequest request = Source.get().beginResolve();
+-        execute(TaskType.PLAYER, player, () -> SiteApi.playerContent(request, key, flag, id));
++        if (playerSpan != null) playerSpan.cancel();
++        CinemaSourceSpan span = new CinemaSourceSpan(VodConfig.get().getSite(key).getType());
++        playerSpan = span;
++        tasks.execute(TaskType.PLAYER, Constant.TIMEOUT_VOD, () -> SiteApi.playerContent(request, key, flag, id),
++                value -> {
++                    span.finish(value != null && !value.hasMsg() && !value.getRealUrl().isEmpty());
++                    player.setValue(value);
++                }, error -> {
++                    span.finish(false);
++                    if (error instanceof ExtractException) player.setValue(Result.error(error.getMessage()));
++                    else player.setValue(Result.empty());
++                    error.printStackTrace();
++                });
+     }
+ 
+     public void searchContent(Site site, String keyword, boolean quick, String page) {
+@@ -146,6 +161,7 @@ public class SiteViewModel extends ViewModel {
+     protected void onCleared() {
+         stopSearch();
+         tasks.cancelAll();
++        if (playerSpan != null) playerSpan.cancel();
+     }
+ 
+     private record SearchTask(Site site, String keyword, boolean quick, String page) implements Callable<Result> {
 diff --git a/app/src/main/java/com/fongmi/android/tv/playback/vod/VodPlaybackController.java b/app/src/main/java/com/fongmi/android/tv/playback/vod/VodPlaybackController.java
 index 2630565a1e845bdde107a260794ab634740f771f..2f25e918abc5aaa79ebc32a8d0280bdd97d20fff 100644
 --- a/app/src/main/java/com/fongmi/android/tv/playback/vod/VodPlaybackController.java
@@ -1639,7 +2260,7 @@ index 32586fa3bad81039372ded585da046fcdc51608a..f6efa8fd349bd98e32a0bd6f85ed2629
          subtitles.clear();
          player.stop();
 diff --git a/app/src/main/java/com/fongmi/android/tv/player/exo/ExoUtil.java b/app/src/main/java/com/fongmi/android/tv/player/exo/ExoUtil.java
-index 5c21b02e8646a8e4ced46912887d53d69d09e668..ed5451cb41051122f781893d79e244e44698f3eb 100644
+index 5c21b02e8646a8e4ced46912887d53d69d09e668..7dd9c6160e411505e5986a92a79a04789ac8b27d 100644
 --- a/app/src/main/java/com/fongmi/android/tv/player/exo/ExoUtil.java
 +++ b/app/src/main/java/com/fongmi/android/tv/player/exo/ExoUtil.java
 @@ -42,11 +42,6 @@ import androidx.media3.exoplayer.util.EventLogger;
@@ -1654,7 +2275,7 @@ index 5c21b02e8646a8e4ced46912887d53d69d09e668..ed5451cb41051122f781893d79e244e4
  import com.fongmi.android.tv.player.engine.PlayerEngine;
  import com.fongmi.android.tv.player.track.LangUtil;
  import com.fongmi.android.tv.setting.PlayerSetting;
-@@ -69,7 +64,7 @@ public class ExoUtil {
+@@ -69,9 +64,10 @@ public class ExoUtil {
                  .setRenderersFactory(buildPlaybackRenderersFactory(decode))
                  .setMediaSourceFactory(buildMediaSourceFactory())
                  // Sony's Dolby Vision OMX stack regularly needs >500 ms to flush/release. The
@@ -1662,8 +2283,11 @@ index 5c21b02e8646a8e4ced46912887d53d69d09e668..ed5451cb41051122f781893d79e244e4
 +                // Media3 default can report a false fatal timeout during renderer release.
                  .setReleaseTimeoutMs(3_000L);
          ExoPlayer player = preloader == null ? builder.build() : preloader.buildExoPlayer(builder);
++        player.addAnalyticsListener(new com.fongmi.android.tv.monitoring.CinemaExoAnalytics(player));
          if (BuildConfig.DEBUG) player.addAnalyticsListener(new EventLogger());
-@@ -224,28 +219,14 @@ public class ExoUtil {
+         player.setAudioAttributes(AudioAttributes.DEFAULT, true);
+         player.setHandleAudioBecomingNoisy(true);
+@@ -224,28 +220,14 @@ public class ExoUtil {
      }
  
      private static AudioSink buildAudioSink(Context context, boolean enableFloatOutput, boolean enableAudioOutputPlaybackParams, boolean softwareOnly) {
@@ -1707,6 +2331,20 @@ index 40603a26916ebaa9e3a3ef5add60ee18165dfb24..496b86afedcfcf665f0412e05fb686f3
      }
  
      /**
+diff --git a/app/src/main/java/com/fongmi/android/tv/player/mpv/MpvPlayer.java b/app/src/main/java/com/fongmi/android/tv/player/mpv/MpvPlayer.java
+index 0d12eed636e1b628b78a16eee0d4cea48b98e42f..92ed8e8858d67e475950c2da09d43accd3de8cf1 100644
+--- a/app/src/main/java/com/fongmi/android/tv/player/mpv/MpvPlayer.java
++++ b/app/src/main/java/com/fongmi/android/tv/player/mpv/MpvPlayer.java
+@@ -1038,6 +1038,9 @@ final class MpvPlayer extends SimpleBasePlayer implements MPVLib.EventObserver,
+         if (videoSize.width <= 0 || videoSize.height <= 0) return;
+         renderedFirstFrame = true;
+         newlyRenderedFirstFrame = true;
++        com.fongmi.android.tv.monitoring.CinemaMonitoring.breadcrumb("mpv_decoder", 0,
++                "engine=MPV hwdec=" + com.fongmi.android.tv.monitoring.CinemaExoAnalytics.safeToken(propString("hwdec-current", "unknown"))
++                        + " codec=" + com.fongmi.android.tv.monitoring.CinemaExoAnalytics.safeToken(propString("video-codec", "unknown")));
+         MpvLogCollector.log("MpvPlayer", "通知首帧已渲染");
+         invalidateState();
+     }
 diff --git a/app/src/main/java/com/fongmi/android/tv/source/SearchRelevance.java b/app/src/main/java/com/fongmi/android/tv/source/SearchRelevance.java
 index 61bef92339552c316cc783acbe9690c698c28db9..32276817fb67ccf2c0469dd7ee4f626b238c0133 100644
 --- a/app/src/main/java/com/fongmi/android/tv/source/SearchRelevance.java
@@ -1866,6 +2504,20 @@ index 3a86c6aa1fe257e00fa600499661adc85b4f3856..0b3f08d534a1451054ce7458f0d32610
      public static void cache(FragmentActivity activity, Runnable refreshed) {
          work(activity, CacheManager::snapshot, entries -> {
              String[] items = new String[entries.size()];
+diff --git a/app/src/main/java/com/fongmi/android/tv/ui/dialog/TrackDialog.java b/app/src/main/java/com/fongmi/android/tv/ui/dialog/TrackDialog.java
+index 580be454caa2350f32b82756135226f53cf35789..a0f3536e87300f4693122f8e92c8da93898e9ec1 100644
+--- a/app/src/main/java/com/fongmi/android/tv/ui/dialog/TrackDialog.java
++++ b/app/src/main/java/com/fongmi/android/tv/ui/dialog/TrackDialog.java
+@@ -181,6 +181,9 @@ public final class TrackDialog extends BasePlaybackSelectionDialog implements Tr
+     private List<Track> getTrack() {
+         List<Track> items = new ArrayList<>();
+         addTrack(items);
++        if (type == C.TRACK_TYPE_TEXT) {
++            return com.fongmi.android.tv.player.track.CinemaSubtitleOrder.sorted(items, Track::getFormat, Track::getName);
++        }
+         return items;
+     }
+ 
 diff --git a/app/src/main/java/com/fongmi/android/tv/update/UpdateDownloader.java b/app/src/main/java/com/fongmi/android/tv/update/UpdateDownloader.java
 index 71b6f8982a0caa5dc949bbddf62bc2599f93ba42..9b526c88780499a0a6c8693a480d1e9bdd271aba 100644
 --- a/app/src/main/java/com/fongmi/android/tv/update/UpdateDownloader.java

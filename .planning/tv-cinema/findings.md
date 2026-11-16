@@ -1,5 +1,36 @@
 # Findings
 
+## Bugly performance diagnostics — 2026-11-16
+- User explicitly authorized commit + push this turn, and asks for automatic real-usage/stall diagnosis. Remote `origin/fongmi` readback equals local HEAD `a925babf7023274906590a34cdb60332a1e6a26c`; no Release authorized.
+- Existing Bugly4.1.9.7 initializes on main-process startup and manual report posts a caught exception. Optional DiagnosticManager writes only locally and is off by default. SDK AAR javap confirms caught-exception reports are scheduled by SDK after initialization; no end-to-end receipt confirmed.
+- User had previously requested unfiltered SDK/logcat for a private TV. Keep that existing behavior; structured telemetry must not add URLs, tokens or headers. Automatic monitors use bounded events and non-production probe builds must not submit to the real console.
+- First UI monitor compile failed because a lambda field initializer referred to a later field. Moved `screen` before the lambda; rerun actual build. No device/SDK failure inferred.
+- Production preparation then rejected `PlayerManager.java` because it already belongs to `cinema-danmaku.patch`; removed the duplicate from `cinema.patch` and regenerated the existing danmaku patch instead. Both patch manifests remain disjoint; no upstream Git writes.
+- Final scope verified: 2s foreground UI pending-ack capture, 5s frame aggregates, 8s source/startup and5s rebuffer incidents; active pauses/cancellation/duplicates excluded in focused tests. All automatic kinds share a10min per-kind cooldown/20 per-process cap; stage breadcrumbs are bounded and do not continuously upload logs.
+- Verification:32 tools +35 targeted JVM +16 API28 ARM64 runtime pass. Synthetic tests use a debug fake sink and isolated package without SDK initialization; no production Bugly receipt claimed. Production signed ARMv7 Release passes at78,930,556B; exact artifact/hash/evidence in performance.md. R8 retains monitor entry; actual obfuscated stack interpretation still needs that build's mapping.
+
+## Responsiveness and playback — 2026-11-16
+- Actual root cause of avoidable work: TV ambient output has no current reader, yet focus still downloads/blurs/colors; specs capsule reads video back for decoration. Lightweight guards remove both; isolated observed requests8→0/readbacks2→0.
+- Compose motion had bypassed native lightweight settings. Animation getters now honor the profile while retaining non-lightweight values; focus border remains.
+- Compact default feed plan7 instead of12;3 section tasks max, independent tag/24s runtime deadline and queue wakeup; first content immediately, later160ms coalescing. Discover keeps12; per-section queue timeout/cancel tested. Runtime classifies tasks, not total HTTP requests.
+- Subtitle sort preserves current selection and persistent Track identity. Local search uses Android ICU Chinese buckets and <=300 background titles (current cid history/keeps plus discover keeps), returns <=12 merged suggestions. Source remote search receives original/full text.
+- Kept EXO/MPV output and hwdec compatibility. MPV Android9 copy mode is hardware decode+copy, not proof of software decoding. Media3 50s target buffer != startup wait; startup default1000ms. No user-TV OK package/version observed.
+- Final runtime13 targeted cases pass;32 tool checks and14 targeted JVM assertions. Legacy preview6 has3 baseline failures reproduced by materializing the earlier three UI files; no false full-suite claim. Durable details/logs/APK pointers in performance.md.
+
+## Gugaart suitability review — 2026-11-16
+- GitHub API identifies `camille3344520/gugaart` as a GPL-3.0 Kotlin/Compose Multiplatform Emby client. Review is pinned to `60f3cff782f2cc23e32be6512b7e1cf8dc97dbb5`.
+- README explicitly states that playback, danmaku and Emby core modules are not public and the repository cannot compile independently. APK capability claims therefore cannot be treated as reusable public implementations.
+- Public README lists phone Android13+, TV Android9+ ARM, and Windows x64. ARMv7 support and actual old-TV performance still require source/artifact verification.
+- Cinema shipping code is the pinned paired upstream plus `distribution/cinema.patch` and explicit overlays, not root `app/`. Current root HEAD `a925babf7023274906590a34cdb60332a1e6a26c`; initial worktree clean.
+- ppm read-only search `gugaart` returned no hits; no project/item write because this checkout is outside the four managed roots.
+- Public Gradle config mounts six modules from an unavailable sibling native project; `:ui` depends on `:app`. Referenced architecture/release scripts and tests are absent from this snapshot. No independent build was attempted.
+- `shell-android/build.gradle.kts` declares ARM64/ARMv7/x86_64 filters; release minification/resource shrinking are disabled. GitHub v1.2.5 TV asset is 179,228,288 bytes; package size is not runtime-performance evidence.
+- Inspected provided TV home/player and phone home images; README states their film data/artwork are fictional examples. Strong ideas: resume-specific CTA/progress, legible static focus geometry and player-side panels. Continuous 3D rotation/blur/4K artwork should not be copied into the old-TV profile without measurements.
+- `SubtitleOrder.kt` exposes separable language/title ranking and stable sort, but its wrappers use private models. It changes menu order, not automatic default selection; Chinese-audio→subtitles-off in README is a separate heuristic and should not be adopted wholesale.
+- Cinema already has EXO/MPV selection, history/favorites/normal subtitles and a WebDAV sync implementation; Emby is not a native first-class source in the inspected production implementation. External source plugins may add capabilities beyond the app code.
+- Inspection corrections: Android shell is `shell-android` with two flavors, not separate `shell-tv`/`shell-phone`; later inspection used the actual paths. Missing `scripts/`/tests/docs are snapshot limitations, not build failures produced in this review.
+- Final documentary validation caught an added blank EOF line in progress; corrected it. Added an exact `.gitignore` exception for the durable review, following the existing explicit feature-doc pattern.
+
 ## Mobile edition — 2026-11-13
 - User selected existing phone touch UI plus Cinema capabilities. Shared `VodConfig`, `WallConfig`, `VodPlaybackController` and `PlaybackActivity` require currently leanback-only classes/strings; supply the same reviewed bytes through explicit mobile copy declarations.
 - Production mobile `HomeActivity`/`SettingFragment` differ materially from preserved root sources; changes must target the pinned production pair.
