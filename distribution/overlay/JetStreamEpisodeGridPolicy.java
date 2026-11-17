@@ -66,6 +66,12 @@ public final class JetStreamEpisodeGridPolicy {
         return rows == null ? 0 : Math.min(MAX_VISIBLE_ROWS, rows.size());
     }
 
+    /** Fits as many complete rows as the bounded episode panel can show, never fewer than one. */
+    public static int visibleRows(List<Row> rows, int maxRows) {
+        if (rows == null || rows.isEmpty()) return 0;
+        return Math.min(Math.max(1, maxRows), rows.size());
+    }
+
     public static int clampIndex(int index, int itemCount) {
         return itemCount <= 0 ? -1 : Math.max(0, Math.min(index, itemCount - 1));
     }

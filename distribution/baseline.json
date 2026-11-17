@@ -12,12 +12,32 @@
     "directory": "build/reference/wobuhui-media"
   },
   "applicationId": "com.mjnhmd.tvcinema",
-  "cinemaPatchSha256": "fe4516e5a0d93982f24999f2c243afe75f8b0c4e5ea7ce664442034082f4307a",
+  "cinemaPatchSha256": "a4af5c33dc791b5d73bea8756d09ec244d8ca21f8c012cc13a0d0d9d46d7bb08",
   "nativeArchives": {
     "third_party/mpv/mpv-android-ffmpeg9-native.zip": "d3f22c64ab90a1476b489c2b4f06de8296672497f2998161efb4d906f9a4a66c",
     "third_party/mpv/mpv-android-ffmpeg9-bridge.zip": "29b1ef4c8d0b48475c1b5dba464d46157d7ec2e13ce913a67fcca93e4b2c20d6"
   },
   "copies": [
+    {
+      "source": "distribution/overlay/CinemaEpisodePanelAndroidTest.java",
+      "target": "app/src/androidTest/java/com/fongmi/android/tv/ui/custom/CinemaEpisodePanelAndroidTest.java"
+    },
+    {
+      "source": "distribution/overlay/CinemaEpisodeLabelsTest.java",
+      "target": "app/src/test/java/com/fongmi/android/tv/ui/custom/CinemaEpisodeLabelsTest.java"
+    },
+    {
+      "source": "distribution/overlay/CinemaEpisodeLabels.java",
+      "target": "app/src/leanback/java/com/fongmi/android/tv/ui/custom/CinemaEpisodeLabels.java"
+    },
+    {
+      "source": "distribution/overlay/CinemaEpisodeOrderTest.java",
+      "target": "app/src/test/java/com/fongmi/android/tv/source/CinemaEpisodeOrderTest.java"
+    },
+    {
+      "source": "distribution/overlay/CinemaEpisodeOrder.java",
+      "target": "app/src/main/java/com/fongmi/android/tv/source/CinemaEpisodeOrder.java"
+    },
     {
       "source": "distribution/overlay/CinemaMonitoringAndroidTest.java",
       "target": "app/src/androidTest/java/com/fongmi/android/tv/monitoring/CinemaMonitoringAndroidTest.java"

@@ -608,7 +608,7 @@ index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..54acab0c1a818c3415abc89d70b39438
      }
  
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/VideoActivity.java b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/VideoActivity.java
-index b181c843f13ab06b0daed7360f5954b7b594d37f..6d9f2b01fee2d6bb5dc4a9b92e1ea83a46f8f63c 100644
+index b181c843f13ab06b0daed7360f5954b7b594d37f..b4362cc42f9bc9c8b2f97c14ada8197864200222 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/VideoActivity.java
 +++ b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/VideoActivity.java
 @@ -38,7 +38,6 @@ import com.fongmi.android.tv.BuildConfig;
@@ -619,7 +619,23 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..6d9f2b01fee2d6bb5dc4a9b92e1ea83a
  import com.fongmi.android.tv.api.DanmakuApi;
  import com.fongmi.android.tv.api.SiteApi;
  import com.fongmi.android.tv.api.config.VodConfig;
-@@ -464,8 +463,6 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+@@ -64,6 +63,7 @@ import com.fongmi.android.tv.setting.PlayerSetting;
+ import com.fongmi.android.tv.syncplay.SyncplaySession;
+ import com.fongmi.android.tv.ui.dialog.SyncplayControls;
+ import com.fongmi.android.tv.ui.custom.CustomKeyDownVod;
++import com.fongmi.android.tv.ui.custom.CinemaEpisodeLabels;
+ import com.fongmi.android.tv.ui.custom.JetStreamAnimator;
+ import com.fongmi.android.tv.ui.custom.JetStreamChipRow;
+ import com.fongmi.android.tv.ui.custom.JetStreamVideoDecor;
+@@ -404,6 +404,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+                 () -> mContentRating,
+                 () -> !isJetStreamControlVisible() && !isJetStreamInfoVisible());
+         mFrameParams = mBinding.video.getLayoutParams();
++        mBinding.detail.setCompact(true);
+         mClock = Clock.create(mBinding.widget.clock);
+         mKeyDown = CustomKeyDownVod.create(this);
+         clearDetailState();
+@@ -464,8 +465,6 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
          mBinding.control.action.text.setOnClickListener(this::onTrack);
          mBinding.control.action.audio.setOnClickListener(this::onTrack);
          mBinding.control.action.video.setOnClickListener(this::onTrack);
@@ -628,7 +644,88 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..6d9f2b01fee2d6bb5dc4a9b92e1ea83a
          mBinding.control.action.speed.setUpListener(this::onSpeedAdd);
          mBinding.control.action.speed.setDownListener(this::onSpeedSub);
          mBinding.control.action.ending.setUpListener(this::onEndingAdd);
-@@ -1137,7 +1134,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+@@ -509,6 +508,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+                 mVod.selectEpisode(item);
+             }
+         });
++        mBinding.episode.setOnChipFocusListener(this::updateEpisodeFocusName);
+         mBinding.quality.setOnChipClickListener(pos -> {
+             if (mQualityResult != null && pos >= 0 && pos < mQualityResult.getUrl().getValues().size()) {
+                 mQualityResult.getUrl().set(pos);
+@@ -565,7 +565,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+     }
+ 
+     private void focusFirstMediaList() {
+-        for (int id : Arrays.asList(R.id.episode, R.id.array, R.id.flag, R.id.quality, R.id.part, R.id.quick)) {
++        for (int id : Arrays.asList(R.id.flag, R.id.array, R.id.episode, R.id.quality, R.id.part, R.id.quick)) {
+             View view = findViewById(id);
+             if (canRequestFocus(view)) {
+                 requestFocus(view, mBinding.video);
+@@ -767,7 +767,8 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+         getIntent().putExtra("id", item.getId());
+         getIntent().putExtra("playId", item.getPlayId());
+         if (!TextUtils.isEmpty(item.getPlayId())) getIntent().removeExtra("mark");
+-        mBinding.scroll.scrollTo(0, 0);
++        mBinding.secondary.scrollTo(0, 0);
++        mBinding.panel.scrollTo(0, 0);
+         mClock.setCallback(null);
+         mVod.stopCommunitySkip();
+         updateNavigationKey();
+@@ -837,6 +838,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+         checkKeepImg();
+         setText(item);
+         updateKeep();
++        updateEpisodeSummary();
+     }
+ 
+     @Override
+@@ -944,6 +946,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+     public void renderDescription(String desc) {
+         mDetailContent = desc;
+         updateDetailView();
++        updateEpisodeSummary();
+     }
+ 
+     @Override
+@@ -1047,19 +1050,32 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+     private void setEpisodeAdapter(List<Episode> items) {
+         mEpisodeItems = items;
+         setRowVisibility(mBinding.episode, !items.isEmpty());
+-        List<String> texts = new ArrayList<>();
+         int selected = -1;
+         for (int i = 0; i < items.size(); i++) {
+-            Episode ep = items.get(i);
+-            texts.add(ep.getDesc().concat(ep.getName()));
+-            if (ep.isSelected()) selected = i;
++            if (items.get(i).isSelected()) selected = i;
+         }
+-        mBinding.episode.setItems(texts, selected);
++        mBinding.episode.setItems(CinemaEpisodeLabels.display(items), selected);
+         mEpisodeSelectedPos = selected;
++        updateEpisodeFocusName(selected >= 0 ? selected : 0);
++        updateEpisodeSummary();
+         setArrayAdapter(items.size());
+         setR2Callback();
+     }
+ 
++    private void updateEpisodeFocusName(int position) {
++        if (mBinding == null || mEpisodeItems == null || position < 0 || position >= mEpisodeItems.size()) return;
++        Episode item = mEpisodeItems.get(position);
++        mBinding.episodeFocusName.setText(item.getDesc().concat(item.getName()));
++    }
++
++    private void updateEpisodeSummary() {
++        if (mBinding == null) return;
++        boolean shortList = mEpisodeItems != null && !mEpisodeItems.isEmpty() && mEpisodeItems.size() <= 12;
++        boolean visible = shortList && !TextUtils.isEmpty(mDetailContent);
++        mBinding.episodeSummary.setText(visible ? mDetailContent.replaceAll("\\s+", " ") : "");
++        mBinding.episodeSummary.setVisibility(visible ? View.VISIBLE : View.GONE);
++    }
++
+     private void setQualityVisible(boolean visible) {
+         setRowVisibility(mBinding.quality, visible);
+         setR2Callback();
+@@ -1137,7 +1153,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
  
      private void applyWindowVideoStyle() {
          if (isFullscreen()) return;
@@ -637,7 +734,50 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..6d9f2b01fee2d6bb5dc4a9b92e1ea83a
          mBinding.video.setForeground(JetStreamVideoDecor.windowForeground(mBinding.video));
          mBinding.video.setBackgroundResource(R.drawable.shape_video_window);
          mBinding.video.setClipToOutline(true);
-@@ -1650,8 +1647,17 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+@@ -1154,6 +1170,11 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+         return mpv ? PlayerSetting.RENDER_TEXTURE : super.getPlaybackRender();
+     }
+ 
++    @Override
++    public boolean sortsEpisodesNaturally() {
++        return true;
++    }
++
+     private void restoreWindowVideoFocus() {
+         mBinding.video.post(() -> {
+             if (isFullscreen()) return;
+@@ -1175,7 +1196,8 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+     private void updateFullscreenViews() {
+         int visibility = isFullscreen() ? View.GONE : View.VISIBLE;
+         mBinding.detail.setVisibility(visibility);
+-        mBinding.scroll.setVisibility(visibility);
++        mBinding.secondary.setVisibility(visibility == View.VISIBLE && hasSecondaryRow() ? View.VISIBLE : View.GONE);
++        mBinding.panel.setVisibility(visibility);
+         updateFocus();
+     }
+ 
+@@ -1487,9 +1509,20 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+         if (row.getParent() instanceof JetStreamPlaybackSectionLayout) {
+             ((View) row.getParent()).setVisibility(visible ? View.VISIBLE : View.GONE);
+         }
++        updateSecondaryVisibility();
+         updateFocus();
+     }
+ 
++    private boolean hasSecondaryRow() {
++        return mBinding.quality.getVisibility() == View.VISIBLE || mBinding.part.getVisibility() == View.VISIBLE
++                || mBinding.quick.getVisibility() == View.VISIBLE;
++    }
++
++    private void updateSecondaryVisibility() {
++        if (mBinding == null) return;
++        mBinding.secondary.setVisibility(!isFullscreen() && hasSecondaryRow() ? View.VISIBLE : View.GONE);
++    }
++
+     private boolean hasFocus(View... views) {
+         for (View view : views) {
+             if (view != null && view.hasFocus()) return true;
+@@ -1650,8 +1683,17 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
          setJetStreamCommand("replay", mBinding.control.action.replay, true);
          setJetStreamCommand("reset", mBinding.control.action.reset, true);
          setJetStreamCommand("subtitle", getString(R.string.play_subtitle), true, false);
@@ -657,7 +797,62 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..6d9f2b01fee2d6bb5dc4a9b92e1ea83a
          setJetStreamCommand("video", mBinding.control.action.video, isVisible(mBinding.control.action.video));
          setJetStreamCommand("danmaku", mBinding.control.action.danmaku, DanmakuSetting.isLoad());
          setJetStreamCommand("speed", mBinding.control.action.speed, true);
-@@ -2291,7 +2297,6 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+@@ -1736,23 +1778,41 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+             mBinding.detail.setNextFocusDownId(R.id.video);
+             return;
+         }
+-        List<View> rows = new ArrayList<>();
+-        for (int id : Arrays.asList(R.id.episode, R.id.array, R.id.flag, R.id.quality, R.id.part, R.id.quick)) {
+-            View row = findViewById(id);
+-            if (row != null && row.getVisibility() == View.VISIBLE && mBinding.scroll.getVisibility() == View.VISIBLE) rows.add(row);
++        int tool = firstVisible(R.id.flag, R.id.array, R.id.episode);
++        int aux = firstVisible(R.id.quality, R.id.part, R.id.quick);
++        mBinding.video.setNextFocusLeftId(R.id.video);
++        mBinding.video.setNextFocusRightId(R.id.detail);
++        mBinding.video.setNextFocusUpId(R.id.video);
++        mBinding.video.setNextFocusDownId(R.id.detail);
++        mBinding.detail.setNextFocusLeftId(R.id.video);
++        mBinding.detail.setNextFocusRightId(tool);
++        mBinding.detail.setNextFocusUpId(R.id.video);
++        mBinding.detail.setNextFocusDownId(aux);
++        // The right rail reads source -> ranges -> episodes; leaving it returns to the preview.
++        int[] tools = {R.id.flag, R.id.array, R.id.episode};
++        for (int index = 0; index < tools.length; index++) {
++            View row = findViewById(tools[index]);
++            row.setNextFocusLeftId(index == tools.length - 1 ? firstVisible(R.id.array, R.id.flag) : R.id.detail);
++            row.setNextFocusRightId(row.getId());
++            row.setNextFocusUpId(index == 0 ? R.id.detail : tools[index - 1]);
++            row.setNextFocusDownId(index == tools.length - 1 ? row.getId() : tools[index + 1]);
+         }
+-        int first = rows.isEmpty() ? R.id.video : rows.get(0).getId();
+-        mBinding.video.setNextFocusDownId(first);
+-        mBinding.detail.setNextFocusDownId(first);
+-        for (int i = 0; i < rows.size(); i++) {
+-            View row = rows.get(i);
+-            int up = i == 0 ? R.id.video : rows.get(i - 1).getId();
+-            int down = i == rows.size() - 1 ? row.getId() : rows.get(i + 1).getId();
++        int[] extras = {R.id.quality, R.id.part, R.id.quick};
++        for (int index = 0; index < extras.length; index++) {
++            View row = findViewById(extras[index]);
+             row.setNextFocusLeftId(row.getId());
+             row.setNextFocusRightId(row.getId());
+-            row.setNextFocusUpId(up);
+-            row.setNextFocusDownId(down);
++            row.setNextFocusUpId(index == 0 ? R.id.detail : extras[index - 1]);
++            row.setNextFocusDownId(index == extras.length - 1 ? row.getId() : extras[index + 1]);
++        }
++    }
++
++    private int firstVisible(int... ids) {
++        for (int id : ids) {
++            View view = findViewById(id);
++            if (view != null && view.getVisibility() == View.VISIBLE) return id;
+         }
++        return R.id.detail;
+     }
+ 
+     private void showTitleText(String name) {
+@@ -2291,7 +2351,6 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
          super.onStart();
          if (mSpecs != null) mSpecs.setStarted(true);
          SyncplaySession.get().observe(mSyncplayObserver);
@@ -665,6 +860,82 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..6d9f2b01fee2d6bb5dc4a9b92e1ea83a
          mClock.stop().start();
      }
  
+diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/components/TvFocusComponents.kt b/app/src/leanback/java/com/fongmi/android/tv/ui/components/TvFocusComponents.kt
+index 6826642ffa3792a5b63cb190555d075025e97125..7f3efcd98e4f5af782d0c6ffaf28076152abbc8a 100644
+--- a/app/src/leanback/java/com/fongmi/android/tv/ui/components/TvFocusComponents.kt
++++ b/app/src/leanback/java/com/fongmi/android/tv/ui/components/TvFocusComponents.kt
+@@ -63,6 +63,8 @@ fun TvActionButton(
+     onLongClick: (() -> Unit)? = null,
+     enabled: Boolean = true,
+     selected: Boolean = false,
++    selectedColor: Color = TvFocusStyle.SelectedContainer,
++    selectedBorder: Color = Color.Transparent,
+     shape: Shape = TvFocusStyle.Shape,
+     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+     interactionSource: MutableInteractionSource? = null,
+@@ -71,8 +73,8 @@ fun TvActionButton(
+ ) {
+     val active = enabled && LocalTvContentActive.current
+     val interactions = interactionSource ?: remember { MutableInteractionSource() }
+-    val background = animatedContainer(interactions, active, selected, TvFocusStyle.Container)
+-    val outline = animatedOutline(interactions, active)
++    val background = animatedContainer(interactions, active, selected, TvFocusStyle.Container, selectedColor)
++    val outline = animatedOutline(interactions, active, selected, selectedBorder)
+     Button(
+         onClick = onClick,
+         onLongClick = onLongClick,
+@@ -132,8 +134,8 @@ fun TvFocusableSurface(
+ ) {
+     val active = enabled && LocalTvContentActive.current
+     val interactions = interactionSource ?: remember { MutableInteractionSource() }
+-    val background = animatedContainer(interactions, active, selected, containerColor)
+-    val outline = animatedOutline(interactions, active)
++    val background = animatedContainer(interactions, active, selected, containerColor, TvFocusStyle.SelectedContainer)
++    val outline = animatedOutline(interactions, active, selected, Color.Transparent)
+     Surface(
+         onClick = onClick,
+         onLongClick = onLongClick,
+@@ -170,7 +172,8 @@ private fun animatedContainer(
+     interactionSource: MutableInteractionSource,
+     enabled: Boolean,
+     selected: Boolean,
+-    containerColor: Color
++    containerColor: Color,
++    selectedColor: Color
+ ): Color {
+     val focused by interactionSource.collectIsFocusedAsState()
+     val pressed by interactionSource.collectIsPressedAsState()
+@@ -179,7 +182,7 @@ private fun animatedContainer(
+             !enabled -> containerColor.copy(alpha = 0.45f)
+             pressed -> TvFocusStyle.PressedContainer
+             focused -> TvFocusStyle.FocusedContainer
+-            selected -> TvFocusStyle.SelectedContainer
++            selected -> selectedColor
+             else -> containerColor
+         },
+         animationSpec = tween(JetStreamAnimations.DurationFocus),
+@@ -189,10 +192,19 @@ private fun animatedContainer(
+ }
+ 
+ @Composable
+-private fun animatedOutline(interactionSource: MutableInteractionSource, enabled: Boolean): Color {
++private fun animatedOutline(
++    interactionSource: MutableInteractionSource,
++    enabled: Boolean,
++    selected: Boolean,
++    selectedBorder: Color
++): Color {
+     val focused by interactionSource.collectIsFocusedAsState()
+     val color by animateColorAsState(
+-        targetValue = if (focused && enabled) TvFocusStyle.FocusOutline else Color.Transparent,
++        targetValue = when {
++            focused && enabled -> TvFocusStyle.FocusOutline
++            selected -> selectedBorder
++            else -> Color.Transparent
++        },
+         animationSpec = tween(JetStreamAnimations.DurationFocus),
+         label = "tvActionOutline"
+     )
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/custom/CustomKeyDownVod.java b/app/src/leanback/java/com/fongmi/android/tv/ui/custom/CustomKeyDownVod.java
 index 02ed03571eabb0ddfcaea404615a5ad9026a30e7..c38d60aaa52ecb125510f40d7e2e73520b61e6fd 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/custom/CustomKeyDownVod.java
@@ -787,6 +1058,20 @@ index 3f9a763641caa3a53f761767ce7f817a0d1b44ce..db68de13aa339e76761d494a9d3e1ec1
          view.alpha = 0.65f
          view.animate().alpha(1f).setDuration(EXIT_DURATION).setInterpolator(enterInterpolator).start()
      }
+diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamChipRow.kt b/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamChipRow.kt
+index e9e16355c27e85acc7475c204f80476f641ede84..2a58d0d31fb50840e1dbdd92419d68f89efabf6a 100644
+--- a/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamChipRow.kt
++++ b/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamChipRow.kt
+@@ -193,6 +193,9 @@ class JetStreamChipRow @JvmOverloads constructor(
+                         when (event.nativeKeyEvent.keyCode) {
+                             KeyEvent.KEYCODE_DPAD_UP -> moveViewFocus(View.FOCUS_UP)
+                             KeyEvent.KEYCODE_DPAD_DOWN -> moveViewFocus(View.FOCUS_DOWN)
++                            // A horizontal chip strip must not trap the remote at its edges.
++                            KeyEvent.KEYCODE_DPAD_LEFT -> if (focusedIndex == 0) moveViewFocus(View.FOCUS_LEFT) else false
++                            KeyEvent.KEYCODE_DPAD_RIGHT -> if (focusedIndex == snapshot.lastIndex) moveViewFocus(View.FOCUS_RIGHT) else false
+                             else -> false
+                         }
+                     },
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamPlaybackSpecsView.kt b/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamPlaybackSpecsView.kt
 index b6821c6f60412b611ba97bb5c79f3f561a030bb8..0bb659126c465f27220a31e484dfe8902226e68b 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamPlaybackSpecsView.kt
@@ -1076,6 +1361,245 @@ index 56d17c6f81eb0da4e4121c2082816f30887d39a8..0821bf1ff5940ad070f66d8d0815470b
      }
  
      @Composable
+diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamVodDetailView.kt b/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamVodDetailView.kt
+index 94673697dd6773fe1842f5cd6cc75d535f1921eb..7cb41c9a7fc889541f96d01ec5fda706ce230cc8 100644
+--- a/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamVodDetailView.kt
++++ b/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamVodDetailView.kt
+@@ -12,6 +12,7 @@ import androidx.appcompat.widget.AppCompatImageView
+ import androidx.compose.foundation.layout.Arrangement
+ import androidx.compose.foundation.layout.BoxWithConstraints
+ import androidx.compose.foundation.layout.Column
++import androidx.compose.foundation.layout.PaddingValues
+ import androidx.compose.foundation.layout.Row
+ import androidx.compose.foundation.layout.Spacer
+ import androidx.compose.foundation.layout.fillMaxSize
+@@ -96,7 +97,6 @@ class JetStreamVodDetailView @JvmOverloads constructor(
+     )
+ 
+     private enum class DetailAction {
+-        WATCH,
+         SUMMARY,
+         KEEP,
+         CHANGE
+@@ -119,6 +119,7 @@ class JetStreamVodDetailView @JvmOverloads constructor(
+     private var selectedAction by mutableStateOf(0)
+     private var entryFocusToken by mutableStateOf(0L)
+     private var logoLoadFailed by mutableStateOf(false)
++    private var compactMode by mutableStateOf(false)
+ 
+     init {
+         isFocusable = true
+@@ -129,10 +130,15 @@ class JetStreamVodDetailView @JvmOverloads constructor(
+     @Composable
+     override fun Content() {
+         JetStreamTheme {
+-            DetailSurface()
++            if (compactMode) CompactSurface() else DetailSurface()
+         }
+     }
+ 
++    /** Star-rail layout: the preview owns the left column, so details stay short. */
++    fun setCompact(value: Boolean) {
++        compactMode = value
++    }
++
+     override fun onFocusChanged(gainFocus: Boolean, direction: Int, previouslyFocusedRect: android.graphics.Rect?) {
+         super.onFocusChanged(gainFocus, direction, previouslyFocusedRect)
+         if (gainFocus) {
+@@ -207,6 +213,89 @@ class JetStreamVodDetailView @JvmOverloads constructor(
+         }
+     }
+ 
++    @Composable
++    private fun CompactSurface() {
++        Column(modifier = Modifier.fillMaxSize()) {
++            CompactTitle()
++            Spacer(Modifier.height(6.dp))
++            CompactMetadata()
++            Spacer(Modifier.height(10.dp))
++            ActionRow()
++        }
++    }
++
++    @Composable
++    private fun CompactTitle() {
++        if (logoUrl.isNotEmpty() && !logoLoadFailed) {
++            AndroidView(
++                modifier = Modifier
++                    .fillMaxWidth()
++                    .height(44.dp),
++                factory = { context ->
++                    AppCompatImageView(context).apply { scaleType = ImageView.ScaleType.FIT_START }
++                },
++                update = { image ->
++                    val requestedLogo = logoUrl
++                    if (image.tag == requestedLogo) return@AndroidView
++                    image.tag = requestedLogo
++                    Glide.with(image)
++                        .load(requestedLogo)
++                        .disallowHardwareConfig()
++                        .downsample(DownsampleStrategy.FIT_CENTER)
++                        .transform(TmdbLogoTransformation(image.resources.displayMetrics.density))
++                        .listener(object : RequestListener<Drawable> {
++                            override fun onLoadFailed(e: GlideException?, model: Any?, target: Target<Drawable>, isFirstResource: Boolean): Boolean {
++                                if (image.tag == requestedLogo) logoLoadFailed = true
++                                return false
++                            }
++
++                            override fun onResourceReady(resource: Drawable, model: Any, target: Target<Drawable>?, dataSource: DataSource, isFirstResource: Boolean): Boolean {
++                                if (image.tag == requestedLogo) logoLoadFailed = false
++                                return false
++                            }
++                        })
++                        .into(image)
++                }
++            )
++        } else {
++            Text(
++                text = title,
++                color = MaterialTheme.colorScheme.onSurface,
++                fontSize = 20.sp,
++                lineHeight = 23.sp,
++                fontWeight = FontWeight.SemiBold,
++                maxLines = 2,
++                overflow = TextOverflow.Ellipsis
++            )
++        }
++    }
++
++    @Composable
++    private fun CompactMetadata() {
++        val facts = listOf(year, type, area, site).filter { it.isNotBlank() }
++        if (facts.isNotEmpty()) {
++            Text(
++                text = facts.joinToString("  ·  "),
++                color = MaterialTheme.colorScheme.onSurfaceVariant,
++                fontSize = 12.sp,
++                lineHeight = 15.sp,
++                maxLines = 1,
++                overflow = TextOverflow.Ellipsis
++            )
++        }
++        val ratings = listOf(tmdbRating, doubanRating, remark).filter { it.isNotBlank() }
++        if (ratings.isNotEmpty()) {
++            Text(
++                text = ratings.joinToString("  ·  "),
++                color = MaterialTheme.colorScheme.onSurfaceVariant,
++                fontSize = 12.sp,
++                lineHeight = 15.sp,
++                maxLines = 1,
++                overflow = TextOverflow.Ellipsis
++            )
++        }
++    }
++
+     @Composable
+     private fun TitleBlock() {
+         if (logoUrl.isNotEmpty() && !logoLoadFailed) {
+@@ -333,16 +422,14 @@ class JetStreamVodDetailView @JvmOverloads constructor(
+                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                 when (event.key) {
+                     Key.DirectionLeft -> {
+-                        if (index <= 1 || specs.subList(1, index).none { it.enabled }) {
++                        if (index == 0 || specs.subList(0, index).none { it.enabled }) {
+                             listener?.onFocusVideo()
+                             true
+                         } else false
+                     }
+                     Key.DirectionDown -> {
+-                        if (index > 0) {
+-                            listener?.onFocusList()
+-                            true
+-                        } else false
++                        listener?.onFocusList()
++                        true
+                     }
+                     else -> false
+                 }
+@@ -368,18 +455,13 @@ class JetStreamVodDetailView @JvmOverloads constructor(
+                 // Keep normal outlines and scaled corners inside the View host throughout
+                 // the focus animation, including the lower row's bottom border.
+                 val horizontalGutter = maxOf(6.dp, maxWidth * ((DETAIL_ACTION_FOCUSED_SCALE - 1f) / 2f) + 3.dp)
+-                Column(
++                Row(
+                     modifier = Modifier.fillMaxWidth().padding(horizontal = horizontalGutter, vertical = 4.dp),
+-                    verticalArrangement = Arrangement.spacedBy(8.dp)
++                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                 ) {
+-                    ActionButton(specs.first(), actionModifier(0, Modifier.fillMaxWidth())) {
+-                        performAction(DetailAction.WATCH)
+-                    }
+-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+-                        specs.drop(1).forEachIndexed { index, spec ->
+-                            ActionButton(spec, actionModifier(index + 1, Modifier.weight(1f))) {
+-                                performAction(spec.action)
+-                            }
++                    specs.forEachIndexed { index, spec ->
++                        ActionButton(spec, actionModifier(index, Modifier.weight(1f))) {
++                            performAction(spec.action)
+                         }
+                     }
+                 }
+@@ -389,27 +471,18 @@ class JetStreamVodDetailView @JvmOverloads constructor(
+ 
+     @Composable
+     private fun ActionButton(spec: ActionSpec, modifier: Modifier, onClick: () -> Unit) {
+-        val primary = spec.action == DetailAction.WATCH
+         val buttonModifier = modifier
+             .height(40.dp)
+             .focusProperties { canFocus = spec.enabled }
+             .tvTouchInput(spec.enabled, onClick)
+             .semantics { selected = spec.selected }
+-        if (primary) {
+-            Button(
+-                onClick = onClick,
+-                modifier = buttonModifier,
+-                enabled = spec.enabled,
+-                scale = ButtonDefaults.scale(focusedScale = DETAIL_ACTION_FOCUSED_SCALE)
+-            ) { ActionLabel(spec) }
+-        } else {
+-            OutlinedButton(
+-                onClick = onClick,
+-                modifier = buttonModifier,
+-                enabled = spec.enabled,
+-                scale = OutlinedButtonDefaults.scale(focusedScale = DETAIL_ACTION_FOCUSED_SCALE)
+-            ) { ActionLabel(spec) }
+-        }
++        OutlinedButton(
++            onClick = onClick,
++            modifier = buttonModifier,
++            enabled = spec.enabled,
++            contentPadding = if (compactMode) PaddingValues(horizontal = 6.dp, vertical = 0.dp) else OutlinedButtonDefaults.ContentPadding,
++            scale = OutlinedButtonDefaults.scale(focusedScale = DETAIL_ACTION_FOCUSED_SCALE)
++        ) { ActionLabel(spec) }
+     }
+ 
+     @Composable
+@@ -429,7 +502,7 @@ class JetStreamVodDetailView @JvmOverloads constructor(
+                 text = spec.label,
+                 modifier = Modifier.weight(1f, fill = false),
+                 style = MaterialTheme.typography.labelLarge.copy(
+-                    fontSize = if (spec.action == DetailAction.WATCH) 15.sp else 13.sp,
++                    fontSize = if (compactMode) 12.sp else 13.sp,
+                     lineHeight = 20.sp,
+                     platformStyle = PlatformTextStyle(includeFontPadding = false)
+                 ),
+@@ -450,7 +523,6 @@ class JetStreamVodDetailView @JvmOverloads constructor(
+         val spec = actions().firstOrNull { it.action == action } ?: return
+         if (!spec.enabled) return
+         when (spec.action) {
+-            DetailAction.WATCH -> listener?.onWatch()
+             DetailAction.SUMMARY -> listener?.onSummary()
+             DetailAction.KEEP -> listener?.onKeep()
+             DetailAction.CHANGE -> listener?.onChange()
+@@ -459,7 +531,6 @@ class JetStreamVodDetailView @JvmOverloads constructor(
+ 
+     private fun actions(): List<ActionSpec> {
+         return listOf(
+-            ActionSpec(DetailAction.WATCH, context.getString(R.string.playback_watch_fullscreen), R.drawable.ic_playback_fullscreen, true),
+             ActionSpec(DetailAction.SUMMARY, context.getString(R.string.detail_desc), R.drawable.msr_info, summaryEnabled),
+             ActionSpec(
+                 action = DetailAction.KEEP,
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/custom/PlaybackSpecsBackdrop.java b/app/src/leanback/java/com/fongmi/android/tv/ui/custom/PlaybackSpecsBackdrop.java
 index bacd13317ea932850dc35bcefc4cae15d5fbb0a4..9208a7b43df9cefa42eef6b7100896bd742fa364 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/custom/PlaybackSpecsBackdrop.java
@@ -1801,22 +2325,333 @@ index d28e5a0bae5ded4d78fe81f4fda72dd286b3f814..784aa678ecac70bfb2399f321faf0c35
      </LinearLayout>
  </com.fongmi.android.tv.ui.custom.JetStreamPageRootLayout>
 diff --git a/app/src/leanback/res/layout/activity_video.xml b/app/src/leanback/res/layout/activity_video.xml
-index 3f00c591512f821fb46279fd35c94dc891754408..8d615a92f56c740224c9f58574d980696a9a77e4 100644
+index 3f00c591512f821fb46279fd35c94dc891754408..39e33ea07009d850995fc4058aa442f8e9ed13b0 100644
 --- a/app/src/leanback/res/layout/activity_video.xml
 +++ b/app/src/leanback/res/layout/activity_video.xml
-@@ -114,10 +114,10 @@
-                         android:paddingEnd="4dp"
-                         android:text="@string/playback_episodes" />
+@@ -1,7 +1,6 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+     xmlns:app="http://schemas.android.com/apk/res-auto"
+-    xmlns:tools="http://schemas.android.com/tools"
+     android:layout_width="match_parent"
+     android:layout_height="match_parent">
  
--                    <com.fongmi.android.tv.ui.custom.JetStreamChipRow
-+                    <com.fongmi.android.tv.ui.custom.JetStreamEpisodeGrid
-                         android:id="@+id/episode"
+@@ -16,20 +15,15 @@
+ 
+         <FrameLayout
+             android:id="@+id/video"
+-            android:layout_width="432dp"
+-            android:layout_height="243dp"
+-            android:layout_marginStart="48dp"
+-            android:layout_marginTop="48dp"
+-            android:layout_marginEnd="28dp"
++            android:layout_width="320dp"
++            android:layout_height="180dp"
++            android:layout_marginStart="36dp"
++            android:layout_marginTop="36dp"
+             android:background="@drawable/shape_video_window"
+             android:clipToOutline="true"
+             android:focusable="true"
+             android:focusableInTouchMode="true"
+-            android:transitionName="jetstream_hero"
+-            android:nextFocusLeft="@id/video"
+-            android:nextFocusRight="@id/detail"
+-            android:nextFocusUp="@id/video"
+-            android:nextFocusDown="@id/episode">
++            android:transitionName="jetstream_hero">
+ 
+             <androidx.media3.ui.PlayerView
+                 android:id="@+id/player"
+@@ -66,172 +60,198 @@
+                 layout="@layout/view_progress"
+                 android:layout_width="match_parent"
+                 android:layout_height="match_parent" />
+-
+         </FrameLayout>
+ 
+         <com.fongmi.android.tv.ui.custom.JetStreamVodDetailView
+             android:id="@+id/detail"
+-            android:layout_width="match_parent"
+-            android:layout_height="243dp"
+-            android:layout_alignTop="@+id/video"
+-            android:layout_alignParentEnd="true"
+-            android:layout_marginEnd="48dp"
+-            android:layout_toEndOf="@+id/video"
++            android:layout_width="320dp"
++            android:layout_height="168dp"
++            android:layout_below="@+id/video"
++            android:layout_marginStart="36dp"
++            android:layout_marginTop="12dp"
+             android:focusable="true"
+-            android:focusableInTouchMode="true"
+-            android:nextFocusLeft="@id/video"
+-            android:nextFocusDown="@id/episode" />
++            android:focusableInTouchMode="true" />
+ 
+-        <com.fongmi.android.tv.ui.custom.JetStreamPageContentScrollView
+-            android:id="@+id/scroll"
+-            android:layout_width="match_parent"
+-            android:layout_height="match_parent"
+-            android:layout_below="@+id/video"
+-            android:layout_marginTop="24dp"
+-            android:layout_marginStart="44dp"
+-            android:layout_marginEnd="44dp"
+-            android:layout_marginBottom="24dp"
+-            android:overScrollMode="never">
++        <com.fongmi.android.tv.ui.custom.JetStreamPagePanelScrollView
++            android:id="@+id/secondary"
++            android:layout_width="320dp"
++            android:layout_height="96dp"
++            android:layout_below="@+id/detail"
++            android:layout_marginStart="36dp"
++            android:layout_marginTop="12dp"
++            android:visibility="gone">
+ 
+             <com.fongmi.android.tv.ui.custom.JetStreamPageContentLayout
+                 android:layout_width="match_parent"
+-                android:layout_height="match_parent"
+-                android:orientation="vertical"
+-                android:paddingBottom="8dp">
++                android:layout_height="wrap_content"
++                android:orientation="vertical">
+ 
+                 <com.fongmi.android.tv.ui.custom.JetStreamPlaybackSectionLayout
+                     android:layout_width="match_parent"
+                     android:layout_height="wrap_content"
+-                    android:layout_marginBottom="18dp"
++                    android:layout_marginBottom="10dp"
+                     android:orientation="vertical"
+                     android:visibility="gone">
+ 
+                     <com.fongmi.android.tv.ui.custom.JetStreamPlaybackSectionTitleView
+                         android:layout_width="match_parent"
+                         android:layout_height="wrap_content"
+-                        android:layout_marginBottom="8dp"
++                        android:layout_marginBottom="6dp"
+                         android:paddingStart="4dp"
+                         android:paddingEnd="4dp"
+-                        android:text="@string/playback_episodes" />
++                        android:text="@string/playback_quality" />
+ 
+                     <com.fongmi.android.tv.ui.custom.JetStreamChipRow
+-                        android:id="@+id/episode"
++                        android:id="@+id/quality"
                          android:layout_width="match_parent"
 -                        android:layout_height="48dp"
-+                        android:layout_height="wrap_content"
++                        android:layout_height="44dp"
                          android:visibility="gone" />
                  </com.fongmi.android.tv.ui.custom.JetStreamPlaybackSectionLayout>
  
+                 <com.fongmi.android.tv.ui.custom.JetStreamPlaybackSectionLayout
+                     android:layout_width="match_parent"
+                     android:layout_height="wrap_content"
+-                    android:layout_marginBottom="18dp"
++                    android:layout_marginBottom="10dp"
+                     android:orientation="vertical"
+                     android:visibility="gone">
+ 
+                     <com.fongmi.android.tv.ui.custom.JetStreamPlaybackSectionTitleView
+                         android:layout_width="match_parent"
+                         android:layout_height="wrap_content"
+-                        android:layout_marginBottom="8dp"
++                        android:layout_marginBottom="6dp"
+                         android:paddingStart="4dp"
+                         android:paddingEnd="4dp"
+-                        android:text="@string/playback_episode_ranges" />
++                        android:text="@string/playback_related" />
+ 
+                     <com.fongmi.android.tv.ui.custom.JetStreamChipRow
+-                        android:id="@+id/array"
++                        android:id="@+id/part"
+                         android:layout_width="match_parent"
+-                        android:layout_height="48dp"
++                        android:layout_height="44dp"
+                         android:visibility="gone" />
+                 </com.fongmi.android.tv.ui.custom.JetStreamPlaybackSectionLayout>
+ 
+                 <com.fongmi.android.tv.ui.custom.JetStreamPlaybackSectionLayout
+                     android:layout_width="match_parent"
+                     android:layout_height="wrap_content"
+-                    android:layout_marginBottom="18dp"
+                     android:orientation="vertical"
+                     android:visibility="gone">
+ 
+                     <com.fongmi.android.tv.ui.custom.JetStreamPlaybackSectionTitleView
+                         android:layout_width="match_parent"
+                         android:layout_height="wrap_content"
+-                        android:layout_marginBottom="8dp"
++                        android:layout_marginBottom="6dp"
+                         android:paddingStart="4dp"
+                         android:paddingEnd="4dp"
+-                        android:text="@string/playback_sources" />
++                        android:text="@string/playback_quick_sources" />
+ 
+                     <com.fongmi.android.tv.ui.custom.JetStreamChipRow
+-                        android:id="@+id/flag"
++                        android:id="@+id/quick"
+                         android:layout_width="match_parent"
+-                        android:layout_height="48dp"
++                        android:layout_height="44dp"
+                         android:visibility="gone" />
+                 </com.fongmi.android.tv.ui.custom.JetStreamPlaybackSectionLayout>
++            </com.fongmi.android.tv.ui.custom.JetStreamPageContentLayout>
++        </com.fongmi.android.tv.ui.custom.JetStreamPagePanelScrollView>
+ 
+-                <com.fongmi.android.tv.ui.custom.JetStreamPlaybackSectionLayout
++        <LinearLayout
++            android:id="@+id/panel"
++            android:layout_width="match_parent"
++            android:layout_height="match_parent"
++            android:layout_marginStart="380dp"
++            android:layout_marginTop="36dp"
++            android:layout_marginEnd="36dp"
++            android:layout_marginBottom="28dp"
++            android:orientation="vertical">
++
++            <com.fongmi.android.tv.ui.custom.JetStreamPlaybackSectionLayout
++                android:layout_width="match_parent"
++                android:layout_height="wrap_content"
++                android:layout_marginBottom="10dp"
++                android:orientation="vertical">
++
++                <com.fongmi.android.tv.ui.custom.JetStreamPlaybackSectionTitleView
+                     android:layout_width="match_parent"
+                     android:layout_height="wrap_content"
+-                    android:layout_marginBottom="18dp"
+-                    android:orientation="vertical"
+-                    android:visibility="gone">
++                    android:layout_marginBottom="6dp"
++                    android:paddingStart="4dp"
++                    android:paddingEnd="4dp"
++                    android:text="@string/playback_sources" />
+ 
+-                    <com.fongmi.android.tv.ui.custom.JetStreamPlaybackSectionTitleView
+-                        android:layout_width="match_parent"
+-                        android:layout_height="wrap_content"
+-                        android:layout_marginBottom="8dp"
+-                        android:paddingStart="4dp"
+-                        android:paddingEnd="4dp"
+-                        android:text="@string/playback_quality" />
++                <com.fongmi.android.tv.ui.custom.JetStreamChipRow
++                    android:id="@+id/flag"
++                    android:layout_width="match_parent"
++                    android:layout_height="44dp"
++                    android:visibility="gone" />
++            </com.fongmi.android.tv.ui.custom.JetStreamPlaybackSectionLayout>
+ 
+-                    <com.fongmi.android.tv.ui.custom.JetStreamChipRow
+-                        android:id="@+id/quality"
+-                        android:layout_width="match_parent"
+-                        android:layout_height="48dp"
+-                        android:visibility="gone" />
+-                </com.fongmi.android.tv.ui.custom.JetStreamPlaybackSectionLayout>
++            <com.fongmi.android.tv.ui.custom.JetStreamPlaybackSectionLayout
++                android:layout_width="match_parent"
++                android:layout_height="wrap_content"
++                android:layout_marginBottom="10dp"
++                android:orientation="vertical">
+ 
+-                <com.fongmi.android.tv.ui.custom.JetStreamPlaybackSectionLayout
++                <com.fongmi.android.tv.ui.custom.JetStreamPlaybackSectionTitleView
+                     android:layout_width="match_parent"
+                     android:layout_height="wrap_content"
+-                    android:layout_marginBottom="18dp"
+-                    android:orientation="vertical"
+-                    android:visibility="gone">
++                    android:layout_marginBottom="6dp"
++                    android:paddingStart="4dp"
++                    android:paddingEnd="4dp"
++                    android:text="@string/playback_episode_ranges" />
+ 
+-                    <com.fongmi.android.tv.ui.custom.JetStreamPlaybackSectionTitleView
+-                        android:layout_width="match_parent"
+-                        android:layout_height="wrap_content"
+-                        android:layout_marginBottom="8dp"
+-                        android:paddingStart="4dp"
+-                        android:paddingEnd="4dp"
+-                        android:text="@string/playback_related" />
++                <com.fongmi.android.tv.ui.custom.JetStreamChipRow
++                    android:id="@+id/array"
++                    android:layout_width="match_parent"
++                    android:layout_height="44dp"
++                    android:visibility="gone" />
++            </com.fongmi.android.tv.ui.custom.JetStreamPlaybackSectionLayout>
+ 
+-                    <com.fongmi.android.tv.ui.custom.JetStreamChipRow
+-                        android:id="@+id/part"
+-                        android:layout_width="match_parent"
+-                        android:layout_height="48dp"
+-                        android:visibility="gone" />
+-                </com.fongmi.android.tv.ui.custom.JetStreamPlaybackSectionLayout>
++            <com.fongmi.android.tv.ui.custom.JetStreamPlaybackSectionLayout
++                android:layout_width="match_parent"
++                android:layout_height="0dp"
++                android:layout_weight="1"
++                android:orientation="vertical">
+ 
+-                <com.fongmi.android.tv.ui.custom.JetStreamPlaybackSectionLayout
++                <com.fongmi.android.tv.ui.custom.JetStreamPlaybackSectionTitleView
+                     android:layout_width="match_parent"
+                     android:layout_height="wrap_content"
+-                    android:layout_marginBottom="18dp"
+-                    android:orientation="vertical"
+-                    android:visibility="gone">
++                    android:paddingStart="4dp"
++                    android:paddingEnd="4dp"
++                    android:text="@string/playback_episodes" />
+ 
+-                    <com.fongmi.android.tv.ui.custom.JetStreamPlaybackSectionTitleView
+-                        android:layout_width="match_parent"
+-                        android:layout_height="wrap_content"
+-                        android:layout_marginBottom="8dp"
+-                        android:paddingStart="4dp"
+-                        android:paddingEnd="4dp"
+-                        android:text="@string/playback_quick_sources" />
++                <TextView
++                    android:id="@+id/episodeFocusName"
++                    android:layout_width="match_parent"
++                    android:layout_height="wrap_content"
++                    android:layout_marginTop="2dp"
++                    android:ellipsize="end"
++                    android:maxLines="2"
++                    android:minHeight="32dp"
++                    android:paddingStart="6dp"
++                    android:paddingEnd="6dp"
++                    android:textColor="@color/jetstream_on_surface_variant"
++                    android:textSize="12sp" />
+ 
+-                    <com.fongmi.android.tv.ui.custom.JetStreamChipRow
+-                        android:id="@+id/quick"
+-                        android:layout_width="match_parent"
+-                        android:layout_height="48dp"
+-                        android:visibility="gone" />
+-                </com.fongmi.android.tv.ui.custom.JetStreamPlaybackSectionLayout>
++                <TextView
++                    android:id="@+id/episodeSummary"
++                    android:layout_width="match_parent"
++                    android:layout_height="wrap_content"
++                    android:layout_marginTop="4dp"
++                    android:ellipsize="end"
++                    android:maxLines="3"
++                    android:paddingStart="6dp"
++                    android:paddingEnd="6dp"
++                    android:textColor="@color/jetstream_on_surface_variant"
++                    android:textSize="12sp"
++                    android:visibility="gone" />
+ 
+-            </com.fongmi.android.tv.ui.custom.JetStreamPageContentLayout>
+-        </com.fongmi.android.tv.ui.custom.JetStreamPageContentScrollView>
++                <com.fongmi.android.tv.ui.custom.JetStreamEpisodeGrid
++                    android:id="@+id/episode"
++                    android:layout_width="match_parent"
++                    android:layout_height="0dp"
++                    android:layout_weight="1"
++                    android:layout_marginTop="4dp"
++                    android:visibility="gone" />
++            </com.fongmi.android.tv.ui.custom.JetStreamPlaybackSectionLayout>
++        </LinearLayout>
+     </com.fongmi.android.tv.ui.custom.ProgressLayout>
+ </FrameLayout>
 diff --git a/app/src/leanback/res/layout/dialog_update.xml b/app/src/leanback/res/layout/dialog_update.xml
 index 58e0067842d73da666a9041d851bb5d63b361d75..42db5ddefa75be99a67decd6e4c2ae6b3c70b05d 100644
 --- a/app/src/leanback/res/layout/dialog_update.xml
@@ -2044,6 +2879,22 @@ index b4712726f74be1595d26ce14b8dbb4f6215b5166..918169842a4964eb7ee9b6c3d407ad53
          } finally {
              bitmap.recycle();
          }
+diff --git a/app/src/main/java/com/fongmi/android/tv/bean/Flag.java b/app/src/main/java/com/fongmi/android/tv/bean/Flag.java
+index a00283ef84700a53ee4d61aa7c7a71ab328bee98..6ae84743f8618dfce95a2817c9fd628151021b12 100644
+--- a/app/src/main/java/com/fongmi/android/tv/bean/Flag.java
++++ b/app/src/main/java/com/fongmi/android/tv/bean/Flag.java
+@@ -93,6 +93,11 @@ public class Flag implements Parcelable, Diffable<Flag> {
+         return episodes;
+     }
+ 
++    /** Replace only the display order; the original Episode objects and their URLs stay intact. */
++    public void reorderEpisodes(List<Episode> items) {
++        this.episodes = new ArrayList<>(items);
++    }
++
+     public void setEpisodes(String url) {
+         String[] urls = url.contains("#") ? url.split("#") : new String[]{url};
+         for (int i = 0; i < urls.length; i++) {
 diff --git a/app/src/main/java/com/fongmi/android/tv/bean/Vod.java b/app/src/main/java/com/fongmi/android/tv/bean/Vod.java
 index ff0a2341b6bd9100fd816bacbc6badfe7c5be193..3cf8a33125ca5bddbb116b6ba6b650cd1a640979 100644
 --- a/app/src/main/java/com/fongmi/android/tv/bean/Vod.java
@@ -2194,10 +3045,16 @@ index 76e56be285a881d6f24571a65120f9e456ba93c5..93d7e62be86787c161a0adb4eaf04b10
  
      private record SearchTask(Site site, String keyword, boolean quick, String page) implements Callable<Result> {
 diff --git a/app/src/main/java/com/fongmi/android/tv/playback/vod/VodPlaybackController.java b/app/src/main/java/com/fongmi/android/tv/playback/vod/VodPlaybackController.java
-index 2630565a1e845bdde107a260794ab634740f771f..2f25e918abc5aaa79ebc32a8d0280bdd97d20fff 100644
+index 2630565a1e845bdde107a260794ab634740f771f..a966c6f3ac8b099939450d6ee21ef7aa6a3836f9 100644
 --- a/app/src/main/java/com/fongmi/android/tv/playback/vod/VodPlaybackController.java
 +++ b/app/src/main/java/com/fongmi/android/tv/playback/vod/VodPlaybackController.java
-@@ -15,6 +15,7 @@ import com.fongmi.android.tv.setting.Setting;
+@@ -10,17 +10,20 @@ import com.fongmi.android.tv.bean.History;
+ import com.fongmi.android.tv.bean.Parse;
+ import com.fongmi.android.tv.bean.Result;
+ import com.fongmi.android.tv.bean.Vod;
++import com.fongmi.android.tv.source.CinemaEpisodeOrder;
+ import com.fongmi.android.tv.player.skip.CommunitySkipRuntime;
+ import com.fongmi.android.tv.setting.Setting;
  import com.fongmi.android.tv.setting.SourceSelectionSetting;
  import com.fongmi.android.tv.source.EpisodeNavigator;
  import com.fongmi.android.tv.source.EpisodeTarget;
@@ -2205,15 +3062,54 @@ index 2630565a1e845bdde107a260794ab634740f771f..2f25e918abc5aaa79ebc32a8d0280bdd
  import com.fongmi.android.tv.source.SmartSourceSelector;
  import com.fongmi.android.tv.source.SourceReliabilityStore;
  import com.fongmi.android.tv.source.SourceSelectionMode;
-@@ -452,6 +453,7 @@ public class VodPlaybackController {
+ import com.fongmi.android.tv.utils.MpvLogCollector;
+ import com.fongmi.android.tv.utils.ResUtil;
+ 
++import java.util.ArrayList;
+ import java.util.Collections;
+ import java.util.List;
+ 
+@@ -202,12 +205,27 @@ public class VodPlaybackController {
+         if (items.isEmpty()) return;
+         if (!state.hasFlags()) {
+             state.setFlags(items);
++            normalizeEpisodeOrder();
+             host.renderFlags(state.getFlags());
+             return;
+         }
+         Flag activated = state.getFlag();
+         for (Flag item : items) mergeFlag(activated, item);
++        normalizeEpisodeOrder(true);
+         host.renderFlags(state.getFlags());
++        // Reorder replaces the Flag's list, so the grid must be rebound from the sorted copy.
++        if (activated != null) host.renderEpisodes(activated.getEpisodes());
++    }
++
++    /** Natural order is applied in place, keeping the selected Episode object and URL identity. */
++    private void normalizeEpisodeOrder() {
++        normalizeEpisodeOrder(false);
++    }
++
++    private void normalizeEpisodeOrder(boolean respectReverse) {
++        if (!host.sortsEpisodesNaturally()) return;
++        boolean reversed = respectReverse && state.getHistory() != null && state.getHistory().isRevSort();
++        for (Flag flag : state.getFlags()) CinemaEpisodeOrder.apply(flag, reversed);
+     }
+ 
+     public void selectSource(Vod item) {
+@@ -452,7 +470,11 @@ public class VodPlaybackController {
          requestedEpisodeMissing = false;
          item.checkPic(host.getVodPic());
          item.checkName(host.getVodName());
-+        boolean rejectedNavigation = item.getFlags().removeIf(NavigationPlaylistGuard::isNavigationList);
++        List<Flag> playableFlags = new ArrayList<>(item.getFlags());
++        boolean rejectedNavigation = playableFlags.removeIf(NavigationPlaylistGuard::isNavigationList);
++        if (rejectedNavigation) item.setFlags(playableFlags);
          state.setFlags(item.getFlags());
++        normalizeEpisodeOrder();
          state.setMedia(item);
          String key = host.getHistoryKey();
-@@ -463,6 +465,11 @@ public class VodPlaybackController {
+         History preferred = VodHistoryPolicy.preferredHistory(key, host.takeCastHistory(), state.getHistory());
+@@ -463,6 +485,11 @@ public class VodPlaybackController {
          host.renderFlags(item.getFlags());
          host.renderHistory(state.getHistory());
          host.onDetailFallbackCancelled();
@@ -2225,6 +3121,20 @@ index 2630565a1e845bdde107a260794ab634740f771f..2f25e918abc5aaa79ebc32a8d0280bdd
          if (!host.getVodPlayId().isEmpty()) {
              SmartSourceSelector.FlagSelection selection = SmartSourceSelector.selectExplicitEpisode(item,
                      host.getVodPlayId(), state.getHistory().getVodFlag());
+diff --git a/app/src/main/java/com/fongmi/android/tv/playback/vod/VodPlaybackHost.java b/app/src/main/java/com/fongmi/android/tv/playback/vod/VodPlaybackHost.java
+index 4cc72f8acd71b88ca142a6733458d4093664b043..18fa394e50b38a93bf5f0c409cdb496bbe3fa1c7 100644
+--- a/app/src/main/java/com/fongmi/android/tv/playback/vod/VodPlaybackHost.java
++++ b/app/src/main/java/com/fongmi/android/tv/playback/vod/VodPlaybackHost.java
+@@ -24,6 +24,9 @@ public interface VodPlaybackHost {
+ 
+     default void skipCommunitySegment(long positionMs) {}
+ 
++    /** TV opts in; the phone keeps the source order until it gets an equivalent layout. */
++    default boolean sortsEpisodesNaturally() { return false; }
++
+     default List<Vod> getSourceCandidates() {
+         return new ArrayList<>();
+     }
 diff --git a/app/src/main/java/com/fongmi/android/tv/player/exo/ExoPlayerEngine.java b/app/src/main/java/com/fongmi/android/tv/player/exo/ExoPlayerEngine.java
 index 32586fa3bad81039372ded585da046fcdc51608a..f6efa8fd349bd98e32a0bd6f85ed262931b6b6dd 100644
 --- a/app/src/main/java/com/fongmi/android/tv/player/exo/ExoPlayerEngine.java

@@ -1,5 +1,13 @@
 # TV Cinema task plan
 
+## Episode detail redesign and ordering — 2026-11-17
+- [completed] Read production rules/context/tests, inspect user photos, query ppm read-only and official TV layout/navigation guidance; obtain independent design/regression objections.
+- [completed] Implement TV-only reliable episode ordering with identity/history/next preservation; verify focused tests before layout changes.
+- [completed] Implement compact preview/detail + fixed source/range + full-height independently scrolling episode panel, explicit focus paths and long-name/short-list states.
+- [completed] Run actual-page API28 screenshot/D-pad/player regressions, ARMv7 build/recipe checks and independent adversarial review; record evidence and untested target-TV limits.
+- Review found and fixed three real defects: dated extras without an issue number sorted ahead of episode 1, the immutable-flags `removeIf` crash, and the merge/refresh path leaving the grid on the pre-sort list while navigation used the sorted one. 225 focused JVM tests pass, the signed ARMv7 Release was rebuilt (`218016100`, `build/outputs/tv-cinema-armv7-episode-layout.apk`), the superseded `218015630` file was renamed, and the 37-test API28 layout/window evidence still stands for unchanged layout code. Remaining: user television acceptance, then explicit commit/push/release authorization.
+- Scope and checks: `docs/features/tv-cinema/episode-layout.md`. Local development only; no commit/push/release, no personal-device install, no old-CI monitoring.
+
 ## Bugly performance diagnostics and Git delivery — 2026-11-16
 - [completed] Verify Bugly SDK capabilities, existing playback/UI lifecycles and remote branch; define bounded diagnostic events.
 - [completed] Implement and verify automatic stall, playback startup/buffering/drop/error reporting without adding media URLs to structured fields or continuous log uploads.

@@ -1,5 +1,11 @@
 # Findings
 
+## Episode layout and ordering — 2026-11-17
+- Source order is presented verbatim; only manual reverse existed, so file-size/date prefixes and merge append order looked random. Sorting is now a TV-gated controller step using EpisodeLabelParser; Episode objects/URLs are preserved and Flag.position is recomputed by identity.
+- 960×540dp arithmetic: the old 432×243 preview plus 48dp top left only ~201dp below, so source/range could never stay on screen. New layout: 320×180 preview + 216dp compact details + 72dp secondary rail left; 544dp right rail with fixed source/range and an independently scrolling grid of ~270dp (4 rows).
+- Focus graph is explicit across columns: video↔detail, tools top-to-bottom, grid row-start left returns to ranges, range down returns to grid. Fullscreen hides detail/secondary/panel; mFrameParams (video) untouched so EXO Surface/MPV Texture restoration stays valid.
+- Long captions use parsed date/number/part/variant and fall back to raw when unknown or when two captions collide; the focused item always shows its full original name above the grid. Short lists show a 3-line summary instead of stretching buttons.
+
 ## Bugly performance diagnostics — 2026-11-16
 - User explicitly authorized commit + push this turn, and asks for automatic real-usage/stall diagnosis. Remote `origin/fongmi` readback equals local HEAD `a925babf7023274906590a34cdb60332a1e6a26c`; no Release authorized.
 - Existing Bugly4.1.9.7 initializes on main-process startup and manual report posts a caught exception. Optional DiagnosticManager writes only locally and is off by default. SDK AAR javap confirms caught-exception reports are scheduled by SDK after initialization; no end-to-end receipt confirmed.

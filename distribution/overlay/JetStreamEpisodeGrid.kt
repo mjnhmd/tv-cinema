@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -35,6 +36,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
@@ -62,6 +64,10 @@ class JetStreamEpisodeGrid @JvmOverloads constructor(
         fun onChipClick(position: Int)
     }
 
+    interface OnChipFocusListener {
+        fun onChipFocus(position: Int)
+    }
+
     private val items = mutableStateListOf<String>()
     private var selectedIndex by mutableIntStateOf(-1)
     private var focusedIndex by mutableIntStateOf(-1)
@@ -72,6 +78,7 @@ class JetStreamEpisodeGrid @JvmOverloads constructor(
     private var windowFocused by mutableStateOf(false)
     private var packedRows: List<JetStreamEpisodeGridPolicy.Row> = emptyList()
     private var clickListener: ((Int) -> Unit)? = null
+    private var focusListener: ((Int) -> Unit)? = null
 
     init {
         setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
@@ -132,8 +139,13 @@ class JetStreamEpisodeGrid @JvmOverloads constructor(
         clickListener = { position -> listener.onChipClick(position) }
     }
 
+    fun setOnChipFocusListener(listener: OnChipFocusListener) {
+        focusListener = { position -> listener.onChipFocus(position) }
+    }
+
     fun clearListeners() {
         clickListener = null
+        focusListener = null
     }
 
     override fun onFocusChanged(gainFocus: Boolean, direction: Int, previouslyFocusedRect: Rect?) {
@@ -171,7 +183,13 @@ class JetStreamEpisodeGrid @JvmOverloads constructor(
     }
 
     private fun moveViewFocus(direction: Int): Boolean {
-        val targetId = if (direction == View.FOCUS_UP) nextFocusUpId else nextFocusDownId
+        val targetId = when (direction) {
+            View.FOCUS_UP -> nextFocusUpId
+            View.FOCUS_DOWN -> nextFocusDownId
+            View.FOCUS_LEFT -> nextFocusLeftId
+            View.FOCUS_RIGHT -> nextFocusRightId
+            else -> View.NO_ID
+        }
         val explicitTarget = if (targetId != View.NO_ID) rootView.findViewById<View>(targetId) else null
         val next = explicitTarget ?: focusSearch(direction)
         return next != null && next !== this && next.isShown && next.isEnabled && next.requestFocus()
@@ -188,6 +206,7 @@ class JetStreamEpisodeGrid @JvmOverloads constructor(
                 if (JetStreamEpisodeGridPolicy.handoffDown(packedRows, focusedIndex)) moveViewFocus(View.FOCUS_DOWN) else false
             }
             KeyEvent.KEYCODE_DPAD_LEFT -> JetStreamEpisodeGridPolicy.atRowStart(packedRows, focusedIndex)
+                .takeIf { it }?.let { moveViewFocus(View.FOCUS_LEFT) } ?: false
             KeyEvent.KEYCODE_DPAD_RIGHT -> JetStreamEpisodeGridPolicy.atRowEnd(packedRows, focusedIndex)
             else -> false
         }
@@ -213,16 +232,20 @@ class JetStreamEpisodeGrid @JvmOverloads constructor(
             val titles = remember(snapshot) {
                 snapshot.map { title -> title.replace('\n', ' ').replace('\r', ' ') }
             }
-            val widths = remember(titles, density.density, density.fontScale, measurer) {
+            // Fixed warm accent: focus stays a white outline, so "playing" must not share it.
+            val accent = Color(0xFFE6B450)
+            val widths = remember(titles, density.density, density.fontScale, measurer, selectedIndex) {
                 val padding = with(density) { 20.dp.roundToPx() }
                 val minimum = with(density) { 48.dp.roundToPx() }
-                titles.map { title ->
+                val badge = with(density) { 13.dp.roundToPx() }
+                titles.mapIndexed { index, title ->
                     val normal = measurer.measure(title, style = textStyle, softWrap = false, maxLines = 1)
                     val selected = measurer.measure(
                         title, style = textStyle.copy(fontWeight = FontWeight.SemiBold),
                         softWrap = false, maxLines = 1
                     )
-                    (maxOf(normal.size.width, selected.size.width) + padding + 2).coerceAtLeast(minimum)
+                    (maxOf(normal.size.width, selected.size.width) + padding
+                            + (if (index == selectedIndex) badge else 0) + 2).coerceAtLeast(minimum)
                 }
             }
             BoxWithConstraints(Modifier.fillMaxWidth()) {
@@ -232,8 +255,13 @@ class JetStreamEpisodeGrid @JvmOverloads constructor(
                     JetStreamEpisodeGridPolicy.layout(widths, rowWidth, gap)
                 }
                 packedRows = rows
+                val bounded = constraints.hasBoundedHeight
+                val rowSlots = if (bounded) {
+                    ((maxHeight - (VERTICAL_PADDING_DP * 2).dp + SPACING_DP.dp)
+                            / (CELL_HEIGHT_DP + SPACING_DP).dp).toInt().coerceAtLeast(1)
+                } else Int.MAX_VALUE
                 val heightDp = JetStreamEpisodeGridPolicy.gridHeightDp(
-                    JetStreamEpisodeGridPolicy.visibleRows(rows),
+                    JetStreamEpisodeGridPolicy.visibleRows(rows, rowSlots),
                     CELL_HEIGHT_DP, SPACING_DP, VERTICAL_PADDING_DP
                 )
                 LaunchedEffect(entryFocusToken, rows) {
@@ -259,7 +287,11 @@ class JetStreamEpisodeGrid @JvmOverloads constructor(
                     }
                 }
                 if (snapshot.isNotEmpty()) {
-                    Box(Modifier.fillMaxWidth().height(heightDp.dp).clipToBounds()) {
+                    Box(
+                        Modifier.fillMaxWidth()
+                            .height(if (bounded) maxHeight else heightDp.dp)
+                            .clipToBounds()
+                    ) {
                         LazyColumn(
                             state = gridState,
                             modifier = Modifier.fillMaxSize().onPreviewKeyEvent { event ->
@@ -278,6 +310,8 @@ class JetStreamEpisodeGrid @JvmOverloads constructor(
                                         TvActionButton(
                                             onClick = { clickChip(index) },
                                             selected = index == selectedIndex,
+                                            selectedColor = accent.copy(alpha = 0.24f),
+                                            selectedBorder = accent.copy(alpha = 0.8f),
                                             focusedScale = 1f,
                                             modifier = Modifier.width(with(density) { row.widths[column].toDp() })
                                                 .height(CELL_HEIGHT_DP.dp)
@@ -288,14 +322,25 @@ class JetStreamEpisodeGrid @JvmOverloads constructor(
                                                         focusedIndex = index
                                                         pendingFocusIndex = -1
                                                         actualFocusedIndex = index
+                                                        focusListener?.invoke(index)
                                                     } else if (actualFocusedIndex == index) {
                                                         actualFocusedIndex = -1
                                                     }
                                                 },
                                             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                                         ) {
+                                            if (index == selectedIndex) {
+                                                Text(
+                                                    text = "▶",
+                                                    color = accent,
+                                                    fontSize = 9.sp,
+                                                    lineHeight = 12.sp
+                                                )
+                                                Spacer(Modifier.width(4.dp))
+                                            }
                                             Text(
                                                 text = titles[index],
+                                                color = if (index == selectedIndex) accent else Color.Unspecified,
                                                 modifier = if (chipFocused && windowFocused && widths[index] > rowWidth) {
                                                     Modifier.basicMarquee(
                                                         iterations = Int.MAX_VALUE,

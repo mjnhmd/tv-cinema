@@ -1,5 +1,9 @@
 # TV Cinema: television redesign
 
+## Episode ordering and detail layout — 2026-11-17
+- User's TV photos show source/range below a long episode list and mixed file-size/date names. Implemented TV-only natural ordering (reliable number, then valid air date; unknown/ambiguous keeps source order) and a two-column detail layout: preview + compact details left, fixed source/range above an independently scrolling episode grid right, full focused name shown.
+- Evidence and limits in `episode-layout.md`: 225 focused JVM tests and 37 API28 runtime checks pass; 960×540dp screenshots `build/outputs/cinema-episodes-{long,short}.png`; signed ARMv7 `0.1.9-episode-layout-local` /`218016100` audited after the ordering-group and merge-refresh fixes. Local changes only; no commit/push/release, target TV not tested.
+
 ## Automatic performance diagnostics and authorized Git delivery — 2026-11-16
 - User explicitly requested commit/push of the preceding improvements and automatic real-use diagnostics through Bugly. Existing `fongmi` branch only; public Release and user-device installation remain outside this increment.
 - Added foreground UI watchdog/live blocked-thread stack capture, aggregated slow frames, source/parse/startup/rebuffer/error timing and EXO decoder/drop/MPV hwdec breadcrumbs. Same event type is limited to once per 10 minutes, with 20 automatic incidents per process. Structured fields exclude media URLs/headers/credentials; earlier raw Logcat policy remains as selected.
