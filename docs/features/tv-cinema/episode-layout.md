@@ -60,4 +60,4 @@ ppm context 只读查询成功；主题仍标未核验。checkout 位于四个�
 
 已知非阻断项：右栏没有任何次要行时，详情区按“下”没有落点，需要按“右”进入来源/选集；有来源或选集时路径正常。`updateFocus()` 在全部行都隐藏时把详情区的右/下指回自身。
 
-剩余：用户 TV 实机外观/遥控/真实片源仍 not_tested。未提交/推送；Release/OTA 未更新。
+Git 交付：用户于 2026-11-17 明确要求“提交推送 发新版”，16 个选集排序/布局/测试/文档文件提交为 `f688ca6e17382d9a4badba89ba00c6d6fc5b70f4`，推送 `origin/fongmi` 并读回同一 SHA。发布任务 `44007615179`（workflow_dispatch, publish=true）已成功并生成 Release `build-44007615179-1`；同日更早的 push 构建 `44007432461` 因 GitHub API rate limit 在 setup-java 失败，与代码无关。公开发布：`TV Cinema 0.1.9+20261117.030610` / code `218047970`，https://github.com/mjnhmd/tv-cinema/releases/tag/build-44007615179-1。电视 APK `leanback-armeabi_v7a-coexist.apk` 78,935,496B，SHA-256 `390bddb2d6b55dfc13484e89d25a185e4383f612190cbee5a33e5978c8149a7d`，与 OTA 清单一致；下载后复核包名/版本/minSdk24/ARMv7-only/原签名与 38 个裁剪 native libraries、两个精简依赖归档通过。同 Release 含手机 ARM64 APK 75,413,940B 与各自 OTA 清单。剩余：用户 TV 实机外观/遥控/真实片源仍 not_tested。

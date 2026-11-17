@@ -13,6 +13,8 @@
 
 - Real-data pass (built-in sources): removed duplicate fullscreen button, tightened compact actions, made the playing episode gold with ▶ and white focus ring for browsing, added left-edge handoff from chip rails. Verified on real TMDB search → 14 sources → `比特┃不卡` 《今天是太阳雨》 20 episodes, including video-confirm real fullscreen playback. Standalone grid marquee tests still fail identically with the new badge removed (pre-existing/flaky).
 
+- Delivery: committed `f688ca6e1` (`feat: redesign TV episode browsing and order playlists`) with 16 scoped files, pushed origin/fongmi and verified remote SHA. Publish run `44007615179` succeeded: Release `build-44007615179-1` = `TV Cinema 0.1.9+20261117.030610` / code 218047970; TV APK 78,935,496B / `390bddb2…9a7d` matches OTA manifest and passes package/minSdk24/ARMv7/signer/packaging checks; phone ARM64 75,413,940B included. Earlier push run failed only at setup-java due to GitHub API rate limit, not code.
+
 ## Bugly diagnostics verification — 2026-11-16
 - Existing source/patch/overlay lifecycle inspection and Bugly 4.1.9.7 AAR verification establish that caught exceptions request asynchronous SDK reporting; normal Logcat is not a real-time cloud log stream.
 - Implemented bounded UI stalls/live stacks/slow frames, source/parse/startup/rebuffer/error events and EXO decoder/drop + MPV hwdec breadcrumbs. Added active-pause exclusion and debug-only fake report sink; non-production packages never initialize Bugly.
