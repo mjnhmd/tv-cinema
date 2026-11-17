@@ -450,7 +450,7 @@ index ad651bdc80c512a182286e9f8c8a253c8d374d62..439301d4be8da1cf56867b3989d81ca4
      }
  }
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java
-index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..54acab0c1a818c3415abc89d70b39438c0d5f75b 100644
+index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..9ddc3b243e8f009dde87f2032bd6b6546d5103e4 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java
 +++ b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java
 @@ -3,6 +3,8 @@ package com.fongmi.android.tv.ui.activity;
@@ -462,18 +462,19 @@ index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..54acab0c1a818c3415abc89d70b39438
  import android.provider.Settings;
  import android.text.InputType;
  import android.text.TextUtils;
-@@ -16,6 +18,10 @@ import com.fongmi.android.tv.App;
+@@ -16,6 +18,11 @@ import com.fongmi.android.tv.App;
  import com.fongmi.android.tv.R;
  import com.fongmi.android.tv.Updater;
  import com.fongmi.android.tv.api.DiscoverApi;
 +import com.fongmi.android.tv.api.config.CinemaSources;
 +import com.fongmi.android.tv.api.config.CinemaDiscovery;
++import com.fongmi.android.tv.api.config.CinemaLanDiscovery;
 +import com.fongmi.android.tv.api.config.CinemaSourceMerger;
 +import com.fongmi.android.tv.api.config.CinemaWallpaper;
  import com.fongmi.android.tv.api.config.LiveConfig;
  import com.fongmi.android.tv.api.config.VodConfig;
  import com.fongmi.android.tv.api.config.WallConfig;
-@@ -48,7 +54,6 @@ import com.fongmi.android.tv.source.SourceSelectionMode;
+@@ -48,7 +55,6 @@ import com.fongmi.android.tv.source.SourceSelectionMode;
  import com.fongmi.android.tv.ui.base.BaseActivity;
  import com.fongmi.android.tv.ui.custom.JetStreamDialogDecor;
  import com.fongmi.android.tv.ui.custom.JetStreamSettingView;
@@ -481,7 +482,7 @@ index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..54acab0c1a818c3415abc89d70b39438
  import com.fongmi.android.tv.ui.dialog.ConfigDialog;
  import com.fongmi.android.tv.ui.dialog.CloudflarePreferredDialog;
  import com.fongmi.android.tv.ui.dialog.SyncplayDialog;
-@@ -153,6 +158,9 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
+@@ -153,6 +159,9 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
      private void refreshSourceRows() {
          setRowValue(JetStreamSettingView.KEY_VOD, VodConfig.getDesc());
          setRowValue(JetStreamSettingView.KEY_LIVE, LiveConfig.getDesc());
@@ -491,16 +492,17 @@ index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..54acab0c1a818c3415abc89d70b39438
          setRowValue(JetStreamSettingView.KEY_WALL, WallConfig.getDesc());
          setRowValue(JetStreamSettingView.KEY_WALL_VISIBLE, Setting.getSwitch(JetStreamWallpaper.isVisible()));
          int[] connectionModes = {R.string.setting_tmdb_default_proxy, R.string.setting_tmdb_direct, R.string.setting_tmdb_custom_proxy};
-@@ -363,6 +371,8 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
+@@ -363,6 +372,9 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
              case JetStreamSettingView.KEY_THEME_LIGHT -> RexTheme.setLight(true);
              case JetStreamSettingView.KEY_THEME_SYSTEM -> RexTheme.setMode(ThemeMode.SYSTEM);
              case JetStreamSettingView.KEY_VOD -> onVod();
 +            case JetStreamSettingView.KEY_BUILTIN_SOURCES -> onBuiltinSources();
 +            case JetStreamSettingView.KEY_DISCOVER_SOURCES -> onDiscoverSources();
++            case JetStreamSettingView.KEY_LAN_LIVE -> onLanLive();
              case JetStreamSettingView.KEY_LIVE -> onLive();
              case JetStreamSettingView.KEY_WALL -> onWall();
              case JetStreamSettingView.KEY_WALL_VISIBLE -> setWallVisible(!JetStreamWallpaper.isVisible());
-@@ -381,7 +391,6 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
+@@ -381,7 +393,6 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
              case JetStreamSettingView.KEY_CAPTION -> setCaption();
              case JetStreamSettingView.KEY_BACKGROUND -> onBackground();
              case JetStreamSettingView.KEY_UA -> onUa();
@@ -508,7 +510,7 @@ index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..54acab0c1a818c3415abc89d70b39438
              case JetStreamSettingView.KEY_COMMUNITY_SKIP -> {
                  Setting.putCommunitySkipEnabled(!Setting.isCommunitySkipEnabled());
                  setRowValue(JetStreamSettingView.KEY_COMMUNITY_SKIP, Setting.getSwitch(Setting.isCommunitySkipEnabled()));
-@@ -526,6 +535,64 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
+@@ -526,10 +537,123 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
          ConfigDialog.create().vod().show(this);
      }
  
@@ -573,7 +575,66 @@ index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..54acab0c1a818c3415abc89d70b39438
      private void onLive() {
          ConfigDialog.create().live().show(this);
      }
-@@ -645,8 +712,9 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
+ 
++    private void onLanLive() {
++        MaterialAlertDialogBuilder dialog = new MaterialAlertDialogBuilder(this)
++                .setTitle(R.string.cinema_lan_live)
++                .setMessage(R.string.cinema_lan_notice)
++                .setPositiveButton(R.string.cinema_lan_start, (ignored, which) -> startLanScan())
++                .setNegativeButton(R.string.dialog_negative, null);
++        String last = CinemaLanDiscovery.lastUrl();
++        if (!last.isEmpty()) {
++            dialog.setNeutralButton(R.string.cinema_lan_last, (ignored, which) -> {
++                Config config = CinemaLanDiscovery.lastConfig();
++                if (config != null) setConfig(config);
++            });
++        }
++        dialog.show();
++    }
++
++    private void startLanScan() {
++        boolean started = CinemaLanDiscovery.start(new CinemaLanDiscovery.Listener() {
++            @Override
++            public void onFound(List<CinemaLanDiscovery.Result> results) {
++                if (isFinishing() || isDestroyed()) return;
++                Notify.dismiss();
++                String[] items = new String[results.size()];
++                for (int i = 0; i < results.size(); i++) {
++                    CinemaLanDiscovery.Result result = results.get(i);
++                    items[i] = result.name() + " · " + result.channels() + " 个频道";
++                }
++                new MaterialAlertDialogBuilder(SettingActivity.this)
++                        .setTitle(R.string.cinema_lan_found)
++                        .setItems(items, (dialog, which) -> {
++                            dialog.dismiss();
++                            setConfig(CinemaLanDiscovery.toConfig(results.get(which)));
++                        })
++                        .setNegativeButton(R.string.dialog_negative, null)
++                        .show();
++            }
++
++            @Override
++            public void onEmpty() {
++                if (isFinishing() || isDestroyed()) return;
++                Notify.dismiss();
++                Notify.show(R.string.cinema_lan_empty);
++            }
++
++            @Override
++            public void onError() {
++                if (isFinishing() || isDestroyed()) return;
++                Notify.dismiss();
++                Notify.show(R.string.cinema_lan_failed);
++            }
++        });
++        if (started) Notify.progress(getActivity());
++        else Notify.show(R.string.cinema_lan_busy);
++    }
++
+     private void onWall() {
+         ConfigDialog.create().wall().show(this);
+     }
+@@ -645,8 +769,9 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
  
      private void setWallRefresh() {
          setWallVisible(true);
@@ -585,7 +646,7 @@ index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..54acab0c1a818c3415abc89d70b39438
      }
  
      private void setWallVisible(boolean visible) {
-@@ -1085,6 +1153,21 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
+@@ -1085,6 +1210,21 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
      }
  
      private void onVersion() {
@@ -1224,19 +1285,20 @@ index b6821c6f60412b611ba97bb5c79f3f561a030bb8..0bb659126c465f27220a31e484dfe890
              }
          }
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamSettingView.kt b/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamSettingView.kt
-index ac39ff77cc54b8eb290ba1652389ad8cb4495129..ec53525ed0625cc8fa779e9f6013361e4870f152 100644
+index ac39ff77cc54b8eb290ba1652389ad8cb4495129..70a573bedbde1a33dbfd29b026bea6f839227ad3 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamSettingView.kt
 +++ b/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamSettingView.kt
-@@ -500,6 +500,8 @@ class JetStreamSettingView @JvmOverloads constructor(
+@@ -500,6 +500,9 @@ class JetStreamSettingView @JvmOverloads constructor(
                              ActionSpec(KEY_VOD_HISTORY, context.getString(R.string.setting_history), R.drawable.msr_history)
                          )
                      ),
 +                    RowSpec(KEY_BUILTIN_SOURCES, context.getString(R.string.cinema_sources_catalog)),
 +                    RowSpec(KEY_DISCOVER_SOURCES, context.getString(R.string.cinema_discover_sources)),
++                    RowSpec(KEY_LAN_LIVE, context.getString(R.string.cinema_lan_live)),
                      RowSpec(
                          key = KEY_LIVE,
                          label = context.getString(R.string.setting_live),
-@@ -513,7 +515,7 @@ class JetStreamSettingView @JvmOverloads constructor(
+@@ -513,7 +516,7 @@ class JetStreamSettingView @JvmOverloads constructor(
                          label = context.getString(R.string.setting_wall),
                          actions = listOf(
                              ActionSpec(KEY_WALL_DEFAULT, context.getString(R.string.setting_default), R.drawable.msr_home),
@@ -1245,7 +1307,7 @@ index ac39ff77cc54b8eb290ba1652389ad8cb4495129..ec53525ed0625cc8fa779e9f6013361e
                          )
                      ),
                      RowSpec(KEY_WALL_VISIBLE, context.getString(R.string.setting_wall_visible), toggle = true),
-@@ -554,7 +556,6 @@ class JetStreamSettingView @JvmOverloads constructor(
+@@ -554,7 +557,6 @@ class JetStreamSettingView @JvmOverloads constructor(
                      RowSpec(KEY_CAPTION, context.getString(R.string.player_caption)),
                      RowSpec(KEY_BACKGROUND, context.getString(R.string.player_background), toggle = true),
                      RowSpec(KEY_UA, context.getString(R.string.player_ua)),
@@ -1253,16 +1315,17 @@ index ac39ff77cc54b8eb290ba1652389ad8cb4495129..ec53525ed0625cc8fa779e9f6013361e
                      RowSpec(KEY_COMMUNITY_SKIP, context.getString(R.string.player_community_skip), toggle = true),
                      RowSpec(KEY_MPV_CONF, context.getString(R.string.player_mpv_conf)),
                      RowSpec(KEY_MPV_ANIME4K, context.getString(R.string.player_mpv_anime4k)),
-@@ -659,6 +660,8 @@ class JetStreamSettingView @JvmOverloads constructor(
+@@ -659,6 +661,9 @@ class JetStreamSettingView @JvmOverloads constructor(
  
          const val KEY_VOD = "vod"
          const val KEY_LIVE = "live"
 +        const val KEY_BUILTIN_SOURCES = "builtin_sources"
 +        const val KEY_DISCOVER_SOURCES = "discover_sources"
++        const val KEY_LAN_LIVE = "lan_live"
          const val KEY_WALL = "wall"
          const val KEY_WALL_VISIBLE = "wall_visible"
          const val KEY_TMDB_CONNECTION = "tmdb_connection"
-@@ -679,7 +682,6 @@ class JetStreamSettingView @JvmOverloads constructor(
+@@ -679,7 +684,6 @@ class JetStreamSettingView @JvmOverloads constructor(
          const val KEY_CAPTION = "caption"
          const val KEY_BACKGROUND = "background"
          const val KEY_UA = "ua"
