@@ -1,5 +1,11 @@
 # TV Cinema: television redesign
 
+## LAN live source discovery — 2026-11-17
+- Settings gains a "局域网直播源" row that scans the local /24 network for HTTP live-source services (IPTV-API, iPTV and similar) and lists hits as `host:port · N 个频道`. Selecting a hit activates it; nothing is replaced automatically.
+- Design choice: no mDNS/SSDP. These services expose only HTTP playlists and register no discovery protocol, so passive waiting never resolves. Probing uses content fingerprints (`#EXTM3U`/`#EXTINF` or `#genre#`) rather than port liveness, so ordinary web pages on 8080 are rejected. Only the first 64 KB of each body is read. Ports are ordered by hit probability with 1905 first; eight common playlist paths are tried per port, 24 threads, 400 ms connect / 1200 ms read timeouts.
+- `CinemaLiveList` holds the pure logic (channel counting, private-range test) so it is unit-testable off-device; `CinemaLanDiscovery` owns networking and threading. `BaseConfig` is package-private, so that type is confined to `CinemaLanDiscovery.lastConfig()` and never imported from `ui.activity`.
+- Evidence and limits in `lan-live.md`: 15 JVM tests pass (m3u/txt counting, CRLF, false-positive rejection, private-range boundaries); local signed ARMv7 and ARM64 builds succeed and the classes plus `interface.m3u` / `#EXTINF` / `cinema-lan-scan` constants are confirmed inside the APK. Delivered as commit `c15c055c` and release `build-44049066006-1` (`0.1.10+20261117.084342`). On-device scan against the real NAS service is not yet exercised.
+
 ## Home hero sources — 2026-11-17
 - Fixed silent TMDB feed failure: proxy mode no longer requires a compiled API key. Home hero now interleaves Douban hot movie/TV with TMDB rows and rotates the leading source daily; long-lived snapshots still serve as offline fallback. Evidence and limits: `performance.md`. Delivered as commit `1556f102` and release `build-44014386864-1` (`0.1.10+20261117.040350`); downloaded TV APK matches the OTA manifest and passes signature/ABI/packaging checks.
 
