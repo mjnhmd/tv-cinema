@@ -3,7 +3,7 @@
 ## Daily home hero — 2026-11-17
 - User reported the hero stuck on 《特立独行》 which is absent from live TMDB trending. Snapshot ids prove the item came from TMDB rows (`tmdb:movie:1353926`), but TMDB feeds had been silently failing because the client required an API key that TV builds do not ship; the hero then kept a snapshot up to 7 days.
 - Fixed: keyless proxy requests, daily rotating hero that round-robins Douban hot movie/TV and TMDB sources. Emulator with real feeds shows current trending 《奥德赛》, Douban kicker alternating, and 20-item logs for trending/douban feeds. PosterHomeCatalogTest 10/10 pass.
-- Version base bumped to 0.1.10 for this release.
+- Version base bumped to 0.1.10. Committed `1556f102` and pushed; publish run `44014386864` succeeded as `0.1.10+20261117.040350` / code 218051430. Downloaded TV APK 78,935,188B matches the OTA manifest and passes package/minSdk24/ARMv7/signer/packaging checks; phone ARM64 and both manifests are in the same Release.
 
 ## Episode detail redesign — 2026-11-17
 - Read current production rules/patches/overlays/controller/models/grid/focus/tests and both user photos; initial637d2df28 clean. Source list order is preserved and only reversed, not naturally sorted; 243dp preview leaves~201dp below, so controls inevitably scroll offscreen.
