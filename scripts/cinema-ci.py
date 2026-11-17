@@ -71,7 +71,7 @@ def variant_for(mode, abi_key=None):
 
 MIN_VERSION_CODE = 10_001
 MAX_VERSION_CODE = 2_100_000_000
-BASE_VERSION_NAME = "0.1.9"
+BASE_VERSION_NAME = "0.1.10"
 VERSION_EPOCH = datetime(2020, 1, 1, tzinfo=timezone.utc)
 TAG_PATTERN = re.compile(r"(?:build-[1-9][0-9]*(?:-[1-9][0-9]*)?|v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))")
 CERT_PATTERN = re.compile(

@@ -1777,8 +1777,79 @@ index 70f11e7cf201555993edbaa3bd95677bb3596fae..25a7e13048cab0d40c177404aac22a95
          for (List<Vod> part : Lists.partition(items, getColumn())) {
              mLast = new ArrayObjectAdapter(presenter);
              mLast.addAll(0, part);
+diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/home/PosterHomeCatalog.java b/app/src/leanback/java/com/fongmi/android/tv/ui/home/PosterHomeCatalog.java
+index 5bbea23852a5d84114ab201c3335602f08565e9a..062204bd5711e496c7a610475c87a4b734ed1ff1 100644
+--- a/app/src/leanback/java/com/fongmi/android/tv/ui/home/PosterHomeCatalog.java
++++ b/app/src/leanback/java/com/fongmi/android/tv/ui/home/PosterHomeCatalog.java
+@@ -66,6 +66,15 @@ public final class PosterHomeCatalog {
+     }
+ 
+     public static List<Vod> compactHero(List<RexFeedResult> feeds, int category) {
++        return hero(compactContent(feeds, category), category);
++    }
++
++    /** Same feeds, but each day leads with a different source so the top wall is not fixed. */
++    public static List<Vod> compactDailyHero(List<RexFeedResult> feeds, int category, long day) {
++        return dailyHero(compactContent(feeds, category), category, day);
++    }
++
++    private static Map<DiscoverApi.Row, List<Vod>> compactContent(List<RexFeedResult> feeds, int category) {
+         Map<DiscoverApi.Row, List<Vod>> content = new java.util.EnumMap<>(DiscoverApi.Row.class);
+         for (RexFeedResult feed : feeds) {
+             DiscoverApi.Row row = switch (feed.getSection().getKey()) {
+@@ -81,7 +90,7 @@ public final class PosterHomeCatalog {
+             };
+             if (row != null) content.put(row, compactItems(feed.getItems(), category));
+         }
+-        return hero(content, category);
++        return content;
+     }
+ 
+     public static List<Vod> sourceVideos(List<Vod> items) {
+@@ -135,4 +144,41 @@ public final class PosterHomeCatalog {
+         }
+         return new ArrayList<>(result.values());
+     }
++
++    /**
++     * Rotates the leading source by calendar day and interleaves sources, so a daily wall mixes
++     * Douban hot lists with TMDB instead of always spending all five slots on TMDB.
++     */
++    public static List<Vod> dailyHero(Map<DiscoverApi.Row, List<Vod>> content, int category, long day) {
++        DiscoverApi.Row[] order = {
++                DiscoverApi.Row.DOUBAN_HOT_MOVIE, DiscoverApi.Row.DOUBAN_HOT_TV,
++                DiscoverApi.Row.TMDB_DAY, DiscoverApi.Row.TMDB_POPULAR_TV,
++                DiscoverApi.Row.TMDB_NOW_PLAYING, DiscoverApi.Row.TMDB_POPULAR_MOVIE,
++                DiscoverApi.Row.TMDB_TOP_MOVIE, DiscoverApi.Row.TMDB_TOP_TV
++        };
++        List<List<Vod>> pools = new ArrayList<>();
++        for (DiscoverApi.Row row : order) {
++            if (!visible(row, category)) continue;
++            List<Vod> items = filter(content.get(row), category);
++            if (items.isEmpty()) continue;
++            // Landscape artwork stays first inside its own source, but no source may take all slots.
++            List<Vod> ordered = new ArrayList<>();
++            for (Vod item : items) if (!item.getBackdrop().equals(item.getPic())) ordered.add(item);
++            for (Vod item : items) if (item.getBackdrop().equals(item.getPic())) ordered.add(item);
++            pools.add(ordered);
++        }
++        if (pools.isEmpty()) return List.of();
++        int shift = (int) Math.floorMod(day, pools.size());
++        Map<String, Vod> result = new LinkedHashMap<>();
++        for (int step = 0; result.size() < 5 && step < 20; step++) {
++            for (int index = 0; result.size() < 5 && index < pools.size(); index++) {
++                List<Vod> pool = pools.get((index + shift) % pools.size());
++                if (step >= pool.size()) continue;
++                Vod item = pool.get(step);
++                String title = TITLE_SEPARATORS.matcher(item.getName().toLowerCase(Locale.ROOT)).replaceAll("");
++                result.putIfAbsent(title + ":" + item.getYear() + ":" + item.getTypeName(), item);
++            }
++        }
++        return new ArrayList<>(result.values());
++    }
+ }
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/home/PosterHomeController.java b/app/src/leanback/java/com/fongmi/android/tv/ui/home/PosterHomeController.java
-index 75399bb4fc44ee4f6126476b41e94cacc546bc16..6345048048ca7df599b649712adef2583bfb41db 100644
+index 75399bb4fc44ee4f6126476b41e94cacc546bc16..c08a46d127c95a7a883cabfaacb8ef209b7e25f9 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/home/PosterHomeController.java
 +++ b/app/src/leanback/java/com/fongmi/android/tv/ui/home/PosterHomeController.java
 @@ -86,6 +86,7 @@ public final class PosterHomeController implements VodPresenter.OnClickListener
@@ -1827,11 +1898,13 @@ index 75399bb4fc44ee4f6126476b41e94cacc546bc16..6345048048ca7df599b649712adef258
      }
  
      private void render() {
-@@ -273,10 +289,15 @@ public final class PosterHomeController implements VodPresenter.OnClickListener
+@@ -272,11 +288,16 @@ public final class PosterHomeController implements VodPresenter.OnClickListener
+             renderCompact();
              return;
          }
-         List<Vod> heroItems = PosterHomeCatalog.hero(content, category);
+-        List<Vod> heroItems = PosterHomeCatalog.hero(content, category);
 -        if (!RexFeedResult.sameItems(hero.value.getItems(), heroItems)) {
++        List<Vod> heroItems = PosterHomeCatalog.dailyHero(content, category, dayIndex());
 +        if (heroItems.isEmpty() && !hero.value.getItems().isEmpty()) {
 +            // Keep the last successful hero while a refresh has no replacement yet.
 +        } else if (!RexFeedResult.sameItems(hero.value.getItems(), heroItems)) {
@@ -1853,11 +1926,13 @@ index 75399bb4fc44ee4f6126476b41e94cacc546bc16..6345048048ca7df599b649712adef258
              if (closed || rexSpotlightAdapter == null) return;
              applyRexResults(results);
          });
-@@ -393,9 +414,12 @@ public final class PosterHomeController implements VodPresenter.OnClickListener
+@@ -392,10 +413,13 @@ public final class PosterHomeController implements VodPresenter.OnClickListener
+ 
      private void renderCompact() {
          List<RexFeedResult> feeds = new ArrayList<>(compactFeeds.values());
-         List<Vod> heroItems = PosterHomeCatalog.compactHero(feeds, category);
+-        List<Vod> heroItems = PosterHomeCatalog.compactHero(feeds, category);
 -        if (!RexFeedResult.sameItems(hero.value.getItems(), heroItems)) {
++        List<Vod> heroItems = PosterHomeCatalog.compactDailyHero(feeds, category, dayIndex());
 +        if (heroItems.isEmpty() && !hero.value.getItems().isEmpty()) {
 +            // Keep the cached hero visible until a feed supplies real content.
 +        } else if (!RexFeedResult.sameItems(hero.value.getItems(), heroItems)) {
@@ -1867,6 +1942,17 @@ index 75399bb4fc44ee4f6126476b41e94cacc546bc16..6345048048ca7df599b649712adef258
          }
          List<String> keys = PosterHomeCatalog.compactKeys(category);
          for (Shelf shelf : shelves) {
+@@ -447,6 +471,10 @@ public final class PosterHomeController implements VodPresenter.OnClickListener
+         listener.onHeroChanged(!hero.value.isEmpty());
+     }
+ 
++    private static long dayIndex() {
++        return System.currentTimeMillis() / 86_400_000L;
++    }
++
+     private int compactShelfEnd() {
+         int index = page.indexOf(rexSpotlightRow);
+         return index >= 0 ? index : page.indexOf(source);
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/presenter/DiscoverHeroPresenter.java b/app/src/leanback/java/com/fongmi/android/tv/ui/presenter/DiscoverHeroPresenter.java
 index c16e0d0d85841626d91ea0e2ef18b426ca16aa0b..0824c0b0904730831e6289be2c32339b295f3b63 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/presenter/DiscoverHeroPresenter.java
@@ -2879,6 +2965,27 @@ index b4712726f74be1595d26ce14b8dbb4f6215b5166..918169842a4964eb7ee9b6c3d407ad53
          } finally {
              bitmap.recycle();
          }
+diff --git a/app/src/main/java/com/fongmi/android/tv/api/rex/RexTmdbClient.java b/app/src/main/java/com/fongmi/android/tv/api/rex/RexTmdbClient.java
+index d6f577f9647de74c22c1ef336989645ce745426e..412639af6c305b78e88329ff7001a6ae62789636 100644
+--- a/app/src/main/java/com/fongmi/android/tv/api/rex/RexTmdbClient.java
++++ b/app/src/main/java/com/fongmi/android/tv/api/rex/RexTmdbClient.java
+@@ -103,12 +103,14 @@ public final class RexTmdbClient {
+     }
+ 
+     static HttpUrl buildUrl(RexTmdbQuery.Query query, int page, @Nullable String apiKey) {
+-        if (RexJson.isEmpty(apiKey)) return null;
++        // The default proxy injects its own key; requiring one here silently disabled every
++        // TMDB feed on release builds that ship without a compiled key.
++        if (TmdbEndpoint.isDirect() && RexJson.isEmpty(apiKey)) return null;
+         HttpUrl url = HttpUrl.parse(TmdbEndpoint.getApiBase() + query.path);
+         if (url == null) return null;
+         HttpUrl.Builder builder = url.newBuilder()
+-                .addQueryParameter("api_key", apiKey.trim())
+                 .addQueryParameter("language", "zh-CN");
++        if (!RexJson.isEmpty(apiKey)) builder.addQueryParameter("api_key", apiKey.trim());
+         if (page > 0) builder.addQueryParameter("page", String.valueOf(page));
+         for (Map.Entry<String, String> entry : query.params.entrySet()) {
+             String value = entry.getValue();
 diff --git a/app/src/main/java/com/fongmi/android/tv/bean/Flag.java b/app/src/main/java/com/fongmi/android/tv/bean/Flag.java
 index a00283ef84700a53ee4d61aa7c7a71ab328bee98..6ae84743f8618dfce95a2817c9fd628151021b12 100644
 --- a/app/src/main/java/com/fongmi/android/tv/bean/Flag.java
@@ -4374,6 +4481,45 @@ index 5cdb898a03b6c63cb7752a11d33b34c07b2b6811..a7a056a18d573f39e38efc3e8f62d232
          <com.google.android.material.textview.MaterialTextView
              android:id="@+id/opening"
              style="@style/Control"
+diff --git a/app/src/test/java/com/fongmi/android/tv/ui/home/PosterHomeCatalogTest.java b/app/src/test/java/com/fongmi/android/tv/ui/home/PosterHomeCatalogTest.java
+index 7382a5ba5eec7e9d04b2d8bfd64a53cf20335124..e4fcddbc4b69979dd48e870729ee19cf66de917a 100644
+--- a/app/src/test/java/com/fongmi/android/tv/ui/home/PosterHomeCatalogTest.java
++++ b/app/src/test/java/com/fongmi/android/tv/ui/home/PosterHomeCatalogTest.java
+@@ -95,6 +95,34 @@ public class PosterHomeCatalogTest {
+         assertTrue(PosterHomeCatalog.compactHero(feeds, PosterHomeCatalog.TOP).isEmpty());
+     }
+ 
++    @Test
++    public void dailyHeroLeadsWithADifferentSourceEachDay() {
++        Map<DiscoverApi.Row, List<Vod>> content = new EnumMap<>(DiscoverApi.Row.class);
++        content.put(DiscoverApi.Row.DOUBAN_HOT_MOVIE, List.of(vod("douban:1", "豆瓣电影", "movie", "2026", true)));
++        content.put(DiscoverApi.Row.DOUBAN_HOT_TV, List.of(vod("douban:2", "豆瓣剧集", "tv", "2026", true)));
++        content.put(DiscoverApi.Row.TMDB_DAY, List.of(vod("tmdb:3", "TMDB 电影", "movie", "2026", true)));
++
++        assertEquals("豆瓣电影", PosterHomeCatalog.dailyHero(content, PosterHomeCatalog.ALL, 0).get(0).getName());
++        assertEquals("豆瓣剧集", PosterHomeCatalog.dailyHero(content, PosterHomeCatalog.ALL, 1).get(0).getName());
++        assertEquals("TMDB 电影", PosterHomeCatalog.dailyHero(content, PosterHomeCatalog.ALL, 2).get(0).getName());
++    }
++
++    @Test
++    public void dailyHeroKeepsDoubanVisibleWhenTmdbSuppliesMostItems() {
++        List<Vod> tmdb = new ArrayList<>();
++        for (int index = 0; index < 20; index++) tmdb.add(vod("tmdb:movie:" + index, "TMDB" + index, "movie", "2026", true));
++        Map<DiscoverApi.Row, List<Vod>> content = new EnumMap<>(DiscoverApi.Row.class);
++        content.put(DiscoverApi.Row.TMDB_DAY, tmdb);
++        content.put(DiscoverApi.Row.DOUBAN_HOT_MOVIE, List.of(vod("douban:1", "豆瓣电影", "movie", "2026", true)));
++        content.put(DiscoverApi.Row.DOUBAN_HOT_TV, List.of(vod("douban:2", "豆瓣剧集", "tv", "2026", true)));
++
++        List<String> all = PosterHomeCatalog.dailyHero(content, PosterHomeCatalog.ALL, 0).stream().map(Vod::getName).toList();
++        assertEquals(5, all.size());
++        assertTrue(all.contains("豆瓣电影"));
++        assertTrue(all.contains("豆瓣剧集"));
++        assertEquals(List.of("豆瓣剧集"), PosterHomeCatalog.dailyHero(content, PosterHomeCatalog.TV, 0).stream().map(Vod::getName).toList());
++    }
++
+     @Test
+     public void shouldPreserveActionsAfterThePreviewCapWithoutArtwork() throws Exception {
+         List<Vod> items = new ArrayList<>();
 diff --git a/app/src/tvPreviewTest/java/com/fongmi/android/tv/ui/custom/PlaybackSpecsControllerTest.java b/app/src/tvPreviewTest/java/com/fongmi/android/tv/ui/custom/PlaybackSpecsControllerTest.java
 index 9577870dc46d395d2e1c08716de581c76169e798..c06d88f96ab15d186249c0dd88fc00f5eaeccb79 100644
 --- a/app/src/tvPreviewTest/java/com/fongmi/android/tv/ui/custom/PlaybackSpecsControllerTest.java

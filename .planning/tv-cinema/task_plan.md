@@ -1,5 +1,10 @@
 # TV Cinema task plan
 
+## Daily home hero and TMDB proxy fix — 2026-11-17
+- [completed] Trace stale 《特立独行》 hero to id `tmdb:movie:1353926` and a 7-day snapshot; live proxy trending excludes it.
+- [completed] Allow keyless requests in proxy mode, interleave Douban/TMDB hero sources with a daily rotating lead, add JVM coverage and verify on a real-data emulator home.
+- [in_progress] Bump base version to 0.1.10, commit/push, publish and verify the Release assets under the user's explicit 2026-11-17 authorization.
+
 ## Episode detail redesign and ordering — 2026-11-17
 - [completed] Read production rules/context/tests, inspect user photos, query ppm read-only and official TV layout/navigation guidance; obtain independent design/regression objections.
 - [completed] Implement TV-only reliable episode ordering with identity/history/next preservation; verify focused tests before layout changes.

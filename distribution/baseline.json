@@ -12,7 +12,7 @@
     "directory": "build/reference/wobuhui-media"
   },
   "applicationId": "com.mjnhmd.tvcinema",
-  "cinemaPatchSha256": "a4af5c33dc791b5d73bea8756d09ec244d8ca21f8c012cc13a0d0d9d46d7bb08",
+  "cinemaPatchSha256": "89fd633faa3d795a4f33490d47ffc07ca9cf8c94c2b2361d8e40c21ec86849b3",
   "nativeArchives": {
     "third_party/mpv/mpv-android-ffmpeg9-native.zip": "d3f22c64ab90a1476b489c2b4f06de8296672497f2998161efb4d906f9a4a66c",
     "third_party/mpv/mpv-android-ffmpeg9-bridge.zip": "29b1ef4c8d0b48475c1b5dba464d46157d7ec2e13ce913a67fcca93e4b2c20d6"

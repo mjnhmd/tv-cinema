@@ -1,5 +1,8 @@
 # TV Cinema: television redesign
 
+## Home hero sources — 2026-11-17
+- Fixed silent TMDB feed failure: proxy mode no longer requires a compiled API key. Home hero now interleaves Douban hot movie/TV with TMDB rows and rotates the leading source daily; long-lived snapshots still serve as offline fallback. Evidence and limits: `performance.md`.
+
 ## Episode ordering and detail layout — 2026-11-17
 - User's TV photos show source/range below a long episode list and mixed file-size/date names. Implemented TV-only natural ordering (reliable number, then valid air date; unknown/ambiguous keeps source order) and a two-column detail layout: preview + compact details left, fixed source/range above an independently scrolling episode grid right, full focused name shown.
 - Evidence and limits in `episode-layout.md`: 225 focused JVM tests and 37 API28 runtime checks pass; 960×540dp screenshots `build/outputs/cinema-episodes-{long,short}.png`; signed ARMv7 `0.1.9-episode-layout-local` /`218016100` audited after the ordering-group and merge-refresh fixes. Delivered `f688ca6e1` to origin/fongmi and published `build-44007615179-1` = `TV Cinema 0.1.9+20261117.030610` (code 218047970) under the user's 2026-11-17 instruction; TV APK/manifest hashes and signature/ABI checks pass, target TV remains untested.

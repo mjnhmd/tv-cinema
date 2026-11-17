@@ -42,6 +42,16 @@
 
 已按本次授权，将33个明确范围内的性能、监控、测试、构建声明及调研/验证文档提交为 `f025e60f830fd26000993c817f536a7860125675`（`perf: reduce TV UI work and add bounded Bugly diagnostics`），推送到既有 `origin/fongmi`；`git ls-remote origin refs/heads/fongmi` 读回同一 SHA。交付前 recipe、输入指纹和 `git diff --check` 均通过；没有提交APK、mapping、凭据或签名材料。随后仅补充交付记录，不改本包运行时输入。普通 push 可能触发既有 artifact-only CI，不等于公共 Release/OTA 发布。
 
+## 首页主推数据源与每日轮换 — 2026-11-17
+
+用户反馈首页顶部长期停在《特立独行》，且该片当前不在 TMDB 热门中。核对：快照记录 id `tmdb:movie:1353926`，界面标签由 id 前缀决定（`douban:` 才是 Douban editorial）；直接请求应用默认 TMDB 代理 `trending/all/day`，当时前几名为《奥德赛》《饥饿游戏：收获日出》《复仇者联盟5》等，1353926 不在 trending/popular/now_playing/top_rated。
+
+根因两条：TV 构建没有内置 TMDB API Key，`RexTmdbClient.buildUrl` 在 Key 为空时直接放弃请求，而默认代理本身不需要 Key，导致所有 TMDB 栏目静默失败，首页只保留最长 7 天的成功快照；同时主推候选把 Douban 热门排在 TMDB 之后，豆瓣内容很难进入顶部。
+
+修复：代理/自定义代理模式下允许空 Key（直连模式仍要求 Key，并在 URL 中附带非空 Key）；主推改为每日轮换，豆瓣热门电影、豆瓣热门剧集、TMDB 日榜等来源每天换领衔，5 个位置按来源轮流取值，来源内部优先横版图。豆瓣没有“每日榜”，轮换只保证每天的变化与中外混合，不虚构日榜。
+
+验证：`PosterHomeCatalogTest` 10 项通过（含“不同日期领衔来源不同”“TMDB 条目很多时豆瓣仍可见”“分类隔离”）；设备日志 trending/豆瓣电影/豆瓣剧集各 20 条；真实首页从冻结的《特立独行》变为当前日榜第一《奥德赛》，轮播样本出现 `Douban editorial` 与多部 TMDB 片。边界：若用户把“海报主视觉轮播”设为仅手动切换，7 秒轮播会暂停；真实电视仍 not_tested。
+
 ## 目标与授权
 
 用户授权落实 gugaart 调研中的体验优化，并反馈 Cinema 比原版 OK 影视在界面操作、播放视频、加载速度上更卡。优先排查和降低可验证的额外开销，保留片源、历史、字幕、弹幕及用户已设置的行为；不更换播放底座，不凭推测宣称用户电视根因。
