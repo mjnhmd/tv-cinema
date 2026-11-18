@@ -4,7 +4,7 @@
 ## Version Sources
 - Shipping build is `scripts/cinema-build.sh`, not the legacy root application.
 - `TV_VERSION_CODE` and `TV_VERSION_NAME` define the APK version; `scripts/cinema-ci.py` `BASE_VERSION_NAME` is the shipping version base, currently `0.1.11`.
-- CI defaults to seconds since 2020-01-01 UTC plus 1,000,000 and `0.1.10+YYYYMMDD.HHMMSS`; manual codes must exceed installed versions. Tests pin the clock conversion and matching base version.
+- CI defaults to seconds since 2020-01-01 UTC plus 1,000,000 and `0.1.11+YYYYMMDD.HHMMSS`; manual codes must exceed installed versions. Tests pin the clock conversion and matching base version.
 - Existing local signing identity must be reused. Secrets belong only in repository Actions secrets.
 
 ## Release Trigger
