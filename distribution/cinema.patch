@@ -387,7 +387,7 @@ index e2706e7aee0a13c3f1e90e884f2c7cf40f28b838..70825d9a7efa6b89e894f2ff352bb33d
      }
  
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SearchActivity.java b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SearchActivity.java
-index ad651bdc80c512a182286e9f8c8a253c8d374d62..68aaa16f2f57d1f428b2ff13a0e7d7ded3e1cac0 100644
+index ad651bdc80c512a182286e9f8c8a253c8d374d62..1755a5e412286859020a9318f9a68a4bd040a03e 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SearchActivity.java
 +++ b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SearchActivity.java
 @@ -16,6 +16,11 @@ import androidx.viewbinding.ViewBinding;
@@ -436,7 +436,7 @@ index ad651bdc80c512a182286e9f8c8a253c8d374d62..68aaa16f2f57d1f428b2ff13a0e7d7de
          suggestionRequest = () -> {
              if (isFinishing() || isDestroyed() || generation != suggestionGeneration) return;
              String url = text.isEmpty() ? "https://hot.api.coolmarket.eu.org/api/douban-hot-mixed"
-@@ -163,12 +179,31 @@ public class SearchActivity extends BaseActivity implements WordAdapter.OnClickL
+@@ -163,17 +179,36 @@ public class SearchActivity extends BaseActivity implements WordAdapter.OnClickL
      private void setAdapter(String result, boolean save) {
          if (!save && empty()) return;
          if (save) Setting.putHot(result);
@@ -469,11 +469,24 @@ index ad651bdc80c512a182286e9f8c8a253c8d374d62..68aaa16f2f57d1f428b2ff13a0e7d7de
      }
  
      @Override
-@@ -200,6 +235,7 @@ public class SearchActivity extends BaseActivity implements WordAdapter.OnClickL
+     public void onItemClick(String text) {
+-        search(text);
++        search(text, "pick");
+     }
  
-     private void search(String keyword) {
+     @Override
+@@ -195,11 +230,12 @@ public class SearchActivity extends BaseActivity implements WordAdapter.OnClickL
+     public void onSearch() {
+         focus.invalidate();
+         if (empty()) return;
+-        search(mBinding.keyword.getText().toString().trim());
++        search(mBinding.keyword.getText().toString().trim(), "typed");
+     }
+ 
+-    private void search(String keyword) {
++    private void search(String keyword, String origin) {
          if (keyword.trim().isEmpty()) return;
-+        CinemaEventLog.event("ui", "search", keyword.trim());
++        CinemaEventLog.event("ui", "search", "origin=" + origin + " keyword=" + keyword.trim());
          focus.invalidate();
          View current = getCurrentFocus();
          returnToRecord = current != null && mBinding.recordRecycler.findContainingItemView(current) != null;
@@ -485,6 +498,67 @@ index ad651bdc80c512a182286e9f8c8a253c8d374d62..68aaa16f2f57d1f428b2ff13a0e7d7de
          super.onDestroy();
      }
  }
+diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SearchResultsController.java b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SearchResultsController.java
+index 762989bc40c1afe56a5c7c61cc99e08abfb2d620..8df313bdb968f43d9d05f03a71acc5f07971d4f0 100644
+--- a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SearchResultsController.java
++++ b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SearchResultsController.java
+@@ -1,5 +1,7 @@
+ package com.fongmi.android.tv.ui.activity;
+ 
++import com.fongmi.android.tv.monitoring.CinemaEventLog;
++
+ import android.os.Parcelable;
+ import android.view.View;
+ import android.view.ViewGroup;
+@@ -54,8 +56,10 @@ final class SearchResultsController {
+     private int filteredCount;
+     private int filterMode;
+     private final Runnable finishStatus = () -> {
++        boolean wasSearching = searching;
+         searching = false;
+         if (!isInactive()) updateStatus(false);
++        if (wasSearching) reportSearchFinished();
+     };
+     private CollectAdapter mAdapter;
+     private PageAdapter mPageAdapter;
+@@ -98,6 +102,7 @@ final class SearchResultsController {
+         String signature = VodConfig.getCid() + ":" + sites.stream().map(Site::getKey).collect(java.util.stream.Collectors.joining("|"));
+         if (next.isEmpty() || isInactive()) return false;
+         if (mSearchStarted && (searching || resultCount > 0) && next.equals(keyword) && signature.equals(siteSignature)) {
++            CinemaEventLog.event("search", "reuse", "keyword=" + keyword + " shown=" + resultCount + " filterMode=" + filterMode);
+             refreshFilter();
+             return false;
+         }
+@@ -122,6 +127,8 @@ final class SearchResultsController {
+         mAdapter.add(Collect.all());
+         mSearchStarted = true;
+         searching = !sites.isEmpty();
++        CinemaEventLog.event("search", "start", "keyword=" + keyword + " sites=" + sites.size()
++                + " filterMode=" + filterMode + (sites.isEmpty() ? " nosources" : ""));
+         mPageAdapter.notifyDataSetChanged();
+         updateStatus(!sites.isEmpty());
+         if (!sites.isEmpty()) {
+@@ -131,6 +138,12 @@ final class SearchResultsController {
+         return true;
+     }
+ 
++    private void reportSearchFinished() {
++        CinemaEventLog.event("search", "done", "keyword=" + keyword + " sites=" + mSites.size()
++                + " shown=" + resultCount + " filteredOut=" + filteredCount
++                + " batches=" + rawBatches.size() + " pages=" + (mAdapter == null ? 0 : mAdapter.getItemCount()));
++    }
++
+     private void updateStatus(boolean waiting) {
+         if (mSites.isEmpty()) mBinding.status.setText(R.string.tv_search_no_sources);
+         else if (resultCount > 0) mBinding.status.setText(activity.getString(R.string.tv_search_result_count, resultCount, Math.max(0, mAdapter.getItemCount() - 1)));
+@@ -220,6 +233,7 @@ final class SearchResultsController {
+         // Grouping mutates visible representatives; old candidates must not bypass a stricter filter.
+         for (List<Vod> raw : rawBatches) for (Vod item : raw) if (item != null) item.setSourceCandidates(null);
+         for (List<Vod> raw : rawBatches) addFilteredBatch(raw);
++        CinemaEventLog.event("search", "filter", "mode=" + filterMode + " shown=" + resultCount + " filteredOut=" + filteredCount);
+         mPageAdapter.notifyDataSetChanged();
+         updateStatus(searching);
+         mBinding.pager.post(this::flushPending);
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java
 index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..788c7e1281b887880d78076aad7d87d14dcd844a 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java
@@ -1933,10 +2007,18 @@ index 676aa436f31e6326957c501fe85dd0ae35c08075..d23538c3a9d73023af3d6c966d57446d
  
      private void onConfirm(View view) {
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/fragment/CollectFragment.java b/app/src/leanback/java/com/fongmi/android/tv/ui/fragment/CollectFragment.java
-index 70f11e7cf201555993edbaa3bd95677bb3596fae..25a7e13048cab0d40c177404aac22a950b9e2f62 100644
+index 70f11e7cf201555993edbaa3bd95677bb3596fae..61b5ee8c7b7d7251c7b8fe54e5bde3a61be6f033 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/fragment/CollectFragment.java
 +++ b/app/src/leanback/java/com/fongmi/android/tv/ui/fragment/CollectFragment.java
-@@ -29,6 +29,7 @@ import com.fongmi.android.tv.ui.custom.CustomRowPresenter;
+@@ -1,5 +1,7 @@
+ package com.fongmi.android.tv.ui.fragment;
+ 
++import com.fongmi.android.tv.monitoring.CinemaEventLog;
++
+ import android.app.Activity;
+ import android.os.Bundle;
+ import android.view.LayoutInflater;
+@@ -29,6 +31,7 @@ import com.fongmi.android.tv.ui.custom.CustomRowPresenter;
  import com.fongmi.android.tv.ui.custom.CustomScroller;
  import com.fongmi.android.tv.ui.custom.CustomSelector;
  import com.fongmi.android.tv.ui.presenter.VodPresenter;
@@ -1944,7 +2026,7 @@ index 70f11e7cf201555993edbaa3bd95677bb3596fae..25a7e13048cab0d40c177404aac22a95
  import com.fongmi.android.tv.utils.ResUtil;
  import com.fongmi.android.tv.setting.SourceSelectionSetting;
  import com.fongmi.android.tv.source.SourceAggregator;
-@@ -190,7 +191,7 @@ public class CollectFragment extends BaseFragment implements CustomScroller.Call
+@@ -190,7 +193,7 @@ public class CollectFragment extends BaseFragment implements CustomScroller.Call
          if (activity == null || !isAdded() || activity.isFinishing() || activity.isDestroyed()) return;
          if (checkLastSize(items)) return;
          List<ListRow> rows = new ArrayList<>();
@@ -1953,6 +2035,15 @@ index 70f11e7cf201555993edbaa3bd95677bb3596fae..25a7e13048cab0d40c177404aac22a95
          for (List<Vod> part : Lists.partition(items, getColumn())) {
              mLast = new ArrayObjectAdapter(presenter);
              mLast.addAll(0, part);
+@@ -234,6 +237,8 @@ public class CollectFragment extends BaseFragment implements CustomScroller.Call
+     public void onItemClick(Vod item, View poster) {
+         Activity activity = getActiveActivity();
+         if (activity == null) return;
++        CinemaEventLog.event("search", "open", "name=" + item.getName() + " site=" + item.getSiteKey()
++                + " id=" + item.getId() + " folder=" + item.isFolder());
+         activity.setResult(Activity.RESULT_OK);
+         if (item.isFolder()) VodActivity.start(activity, item.getSiteKey(), Result.folder(item));
+         else chooseSource(activity, item, poster);
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/home/PosterHomeCatalog.java b/app/src/leanback/java/com/fongmi/android/tv/ui/home/PosterHomeCatalog.java
 index 5bbea23852a5d84114ab201c3335602f08565e9a..062204bd5711e496c7a610475c87a4b734ed1ff1 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/home/PosterHomeCatalog.java
@@ -3300,6 +3391,59 @@ index 89c0c304e00bd9e40918d0c33f07ce327733604f..508a7392a3982575e8627de59eef37ea
          public String getTitle() {
              return TextUtils.isEmpty(title) ? "" : title;
          }
+diff --git a/app/src/main/java/com/fongmi/android/tv/browse/SearchResultCollector.java b/app/src/main/java/com/fongmi/android/tv/browse/SearchResultCollector.java
+index 3f232e8f50e1915b15adcfcb4270fd71bf6bf829..1b88619c25c2e498ebbaf550610a5be1dd1ac5e2 100644
+--- a/app/src/main/java/com/fongmi/android/tv/browse/SearchResultCollector.java
++++ b/app/src/main/java/com/fongmi/android/tv/browse/SearchResultCollector.java
+@@ -1,5 +1,7 @@
+ package com.fongmi.android.tv.browse;
+ 
++import com.fongmi.android.tv.monitoring.CinemaEventLog;
++
+ import com.google.common.util.concurrent.ListenableFuture;
+ import com.google.common.util.concurrent.MoreExecutors;
+ 
+@@ -16,6 +18,9 @@ final class SearchResultCollector {
+ 
+     static <T> List<T> collect(List<? extends ListenableFuture<List<T>>> futures, int limit, long deadlineNanos) {
+         List<T> items = new ArrayList<>();
++        long startedNanos = System.nanoTime();
++        int failed = 0;
++        boolean deadlineHit = false;
+         BlockingQueue<ListenableFuture<List<T>>> completed = new LinkedBlockingQueue<>();
+         try {
+             for (ListenableFuture<List<T>> future : futures) {
+@@ -27,7 +32,10 @@ final class SearchResultCollector {
+                 ListenableFuture<List<T>> future = completed.poll();
+                 if (future == null) {
+                     long waitNanos = deadlineNanos - System.nanoTime();
+-                    if (waitNanos <= 0) break;
++                    if (waitNanos <= 0) {
++                        deadlineHit = true;
++                        break;
++                    }
+                     future = completed.poll(waitNanos, TimeUnit.NANOSECONDS);
+                     if (future == null) break;
+                 }
+@@ -35,6 +43,7 @@ final class SearchResultCollector {
+                     List<T> result = future.get();
+                     if (result != null) items.addAll(result);
+                 } catch (ExecutionException | CancellationException ignored) {
++                    failed++;
+                     // A failed site must not hide successful results from another site.
+                 }
+             }
+@@ -43,6 +52,10 @@ final class SearchResultCollector {
+         } finally {
+             for (ListenableFuture<?> future : futures) if (!future.isDone()) future.cancel(true);
+         }
++        CinemaEventLog.event("search", "collect", "sites=" + futures.size() + " limit=" + limit
++                + " items=" + items.size() + " failed=" + failed
++                + " deadline=" + (deadlineHit ? "hit" : "no")
++                + " ms=" + ((System.nanoTime() - startedNanos) / 1000000));
+         return items;
+     }
+ }
 diff --git a/app/src/main/java/com/fongmi/android/tv/db/dao/HistoryDao.java b/app/src/main/java/com/fongmi/android/tv/db/dao/HistoryDao.java
 index 9e132119ac599edfd9113aa376135bb96af889f1..b92a28cc291b9eacdd22920680a3d98931285ce3 100644
 --- a/app/src/main/java/com/fongmi/android/tv/db/dao/HistoryDao.java
