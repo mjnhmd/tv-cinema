@@ -481,6 +481,10 @@
     {
       "source": "distribution/overlay/CinemaLanDiscoveryAndroidTest.java",
       "target": "app/src/androidTest/java/com/fongmi/android/tv/api/config/CinemaLanDiscoveryAndroidTest.java"
+    },
+    {
+      "source": "distribution/overlay/CinemaLiveConfigAndroidTest.java",
+      "target": "app/src/androidTest/java/com/fongmi/android/tv/api/config/CinemaLiveConfigAndroidTest.java"
     }
   ],
   "cinemaDanmakuPatchSha256": "f63bab36c34c217ed445609ecad8ddf0b472d26036075575cc1d66c6aed3d11a",
