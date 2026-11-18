@@ -1,78 +1,3 @@
-diff --git a/app/src/main/java/com/fongmi/android/tv/api/LogvarApi.java b/app/src/main/java/com/fongmi/android/tv/api/LogvarApi.java
-index 936bb3cb6d42cfbd07cb6247b137b8051b963dde..8b436541ceaa06623fed419df6f1d20eb461dcce 100644
---- a/app/src/main/java/com/fongmi/android/tv/api/LogvarApi.java
-+++ b/app/src/main/java/com/fongmi/android/tv/api/LogvarApi.java
-@@ -43,7 +43,7 @@ public class LogvarApi {
-     private static final String TAG = LogvarApi.class.getSimpleName();
-     private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-     private static final Pattern TITLE_SEASON = Pattern.compile("(?i)(?<![a-z0-9])(?:season\\s*|s)[0-9]{1,3}(?![a-z0-9])|第\\s*[零〇一二两三四五六七八九十百千0-9]+\\s*季");
--    private static final String PLATFORMS = "qq|tencent|qiyi|iqiyi|bilibili[0-9]*|bili|mgtv|mango|youku|renren|hanjutv|bahamut|baha|dandan(?:play)?|animeko|tmdb|local|hongguo|aiyifan|sohu|pptv|douyin|ixigua|letv|leshi|maiduidui|xigua|vod|unknown";
-+    private static final String PLATFORMS = "360|qq|tencent|qiyi|iqiyi|bilibili[0-9]*|bili|mgtv|mango|youku|renren|hanjutv|bahamut|baha|dandan(?:play)?|animeko|tmdb|local|hongguo|aiyifan|sohu|pptv|douyin|ixigua|letv|leshi|maiduidui|xigua|vod|unknown";
-     private static final String PLATFORM_LIST = "(?:" + PLATFORMS + ")(?:[&＆](?:" + PLATFORMS + "))*";
-     private static final Pattern PLATFORM_PREFIX = Pattern.compile("(?i)^\\s*(?:【|\\[)" + PLATFORM_LIST + "(?:】|\\])\\s*");
-     private static final Pattern SOURCE_SUFFIX = Pattern.compile("(?i)\\s*from\\s*" + PLATFORM_LIST + "\\s*$");
-@@ -68,40 +68,21 @@ public class LogvarApi {
-     }
- 
-     public static void searchAuto(String name, String episode, @Nullable Result result, boolean reliableEpisodeLabel, Listener listener) {
--        searchAuto(DanmakuSetting.getEffectiveLogvarUrl(), name, episode, preferredVideoUrl(result), reliableEpisodeLabel,
-+        searchAuto(DanmakuSetting.getEffectiveLogvarUrl(), name, episode, reliableEpisodeLabel,
-                 request -> OkHttp.client().newCall(request), App::post, listener);
-     }
- 
--    static void searchAuto(String serviceUrl, String name, String episode, String videoUrl, boolean reliableEpisodeLabel,
-+    static void searchAuto(String serviceUrl, String name, String episode, boolean reliableEpisodeLabel,
-                            Function<Request, Call> calls, Consumer<Runnable> dispatch, Listener listener) {
-         String base = normalizeBase(serviceUrl);
-         if (base.isEmpty()) {
-             dispatch.accept(() -> listener.onSuccess(Collections.emptyList()));
-             return;
-         }
--        if (isHttpUrl(videoUrl)) {
--            HttpUrl commentUrl = HttpUrl.parse(buildCommentByUrlUrl(base, videoUrl));
--            if (commentUrl == null) {
--                searchByEpisode(base, name, episode, reliableEpisodeLabel, calls, dispatch, listener);
--                return;
--            }
--            Request request = new Request.Builder().url(commentUrl).tag(TAG).build();
--            requestAuto(request, calls, dispatch, text -> hasDanmakuXml(text)
--                    ? Collections.singletonList(createDanmaku("Logvar URL", request.url().toString())) : Collections.emptyList(), new Listener() {
--                @Override
--                public void onSuccess(List<Danmaku> items) {
--                    if (items.isEmpty()) searchByEpisode(base, name, episode, reliableEpisodeLabel, calls, dispatch, listener);
--                    else listener.onSuccess(items);
--                }
--
--                @Override
--                public void onError(Exception e) {
--                    searchByEpisode(base, name, episode, reliableEpisodeLabel, calls, dispatch, listener);
--                }
--            });
--        } else {
--            searchByEpisode(base, name, episode, reliableEpisodeLabel, calls, dispatch, listener);
--        }
-+        // A play URL carries no verified episode identity: the service can only guess, and that
-+        // guess used to be bound as long as any comments came back. Always resolve the episode
-+        // from the show title and the current episode label instead.
-+        searchByEpisode(base, name, episode, reliableEpisodeLabel, calls, dispatch, listener);
-     }
- 
-     public static void searchEpisodes(String name, String episode, Listener listener) {
-@@ -234,14 +215,6 @@ public class LogvarApi {
-         return !label.isVariety() && label.isApiSafe() ? String.valueOf(label.number()) : value;
-     }
- 
--    public static String preferredVideoUrl(@Nullable Result result) {
--        if (result == null) return "";
--        String raw = result.getUrl().v();
--        if (isHttpUrl(raw)) return raw;
--        String real = result.getRealUrl();
--        return isHttpUrl(real) ? real : "";
--    }
--
-     public static boolean hasDanmakuXml(String text) {
-         return text != null && (text.contains("<d ") || text.contains("<d\t") || text.contains("<d\n"));
-     }
 diff --git a/app/src/main/java/com/fongmi/android/tv/api/DanmakuApi.java b/app/src/main/java/com/fongmi/android/tv/api/DanmakuApi.java
 index 4e3d10288162cbd3f87631121002db4547af7b28..7c392d5007d1b1e5d89d38a530a3088e73e3116e 100644
 --- a/app/src/main/java/com/fongmi/android/tv/api/DanmakuApi.java
@@ -155,38 +80,282 @@ index 4e3d10288162cbd3f87631121002db4547af7b28..7c392d5007d1b1e5d89d38a530a3088e
      public static void searchAuto(String name, String episode, Result result, SearchCallback callback) {
          searchAuto(name, episode, result, true, callback);
      }
-diff --git a/app/src/main/java/com/fongmi/android/tv/setting/DanmakuSetting.java b/app/src/main/java/com/fongmi/android/tv/setting/DanmakuSetting.java
-index 1a79634711bb583e2ac1cf60faec36da61c01070..e0053f1abbbf473995c73deb304b6f29d1d9a6db 100644
---- a/app/src/main/java/com/fongmi/android/tv/setting/DanmakuSetting.java
-+++ b/app/src/main/java/com/fongmi/android/tv/setting/DanmakuSetting.java
-@@ -9,6 +9,7 @@ import com.github.catvod.utils.Prefers;
- 
- public class DanmakuSetting {
- 
-+    private static final String CINEMA_DEFAULT_LOGVAR = "https://dmfl.us.ci/87654321";
-     private static final float MIN_TEXT_SCALE = 0.5f;
-     private static final float MAX_TEXT_SCALE = 3.0f;
-     private static final float MIN_TRANSPARENCY = 0.0f;
-@@ -311,7 +312,18 @@ public class DanmakuSetting {
-     public static String getEffectiveLogvarUrl() {
-         String userUrl = getLogvarUrl();
-         if (!TextUtils.isEmpty(userUrl)) return userUrl;
--        return VodConfig.get().getConfig().getLogvar();
-+        String configuredUrl = VodConfig.get().getConfig().getLogvar();
-+        if (!TextUtils.isEmpty(configuredUrl)) return configuredUrl;
-+        if (Prefers.getPrefers().contains("danmaku_logvar_url")
-+                || Prefers.getPrefers().contains("danmaku_logvr_url")
-+                || !TextUtils.isEmpty(getEffectiveApiUrl())) return "";
-+        return Prefers.getBoolean("cinema_danmaku_defaults_v1") ? CINEMA_DEFAULT_LOGVAR : "";
-+    }
-+
-+    public static boolean isCinemaDefaultLogvar(String url) {
-+        return CINEMA_DEFAULT_LOGVAR.equals(url)
-+                && !Prefers.getPrefers().contains("danmaku_logvar_url")
-+                && !Prefers.getPrefers().contains("danmaku_logvr_url");
+diff --git a/app/src/main/java/com/fongmi/android/tv/api/LogvarApi.java b/app/src/main/java/com/fongmi/android/tv/api/LogvarApi.java
+index 936bb3cb6d42cfbd07cb6247b137b8051b963dde..8b436541ceaa06623fed419df6f1d20eb461dcce 100644
+--- a/app/src/main/java/com/fongmi/android/tv/api/LogvarApi.java
++++ b/app/src/main/java/com/fongmi/android/tv/api/LogvarApi.java
+@@ -43,7 +43,7 @@ public class LogvarApi {
+     private static final String TAG = LogvarApi.class.getSimpleName();
+     private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+     private static final Pattern TITLE_SEASON = Pattern.compile("(?i)(?<![a-z0-9])(?:season\\s*|s)[0-9]{1,3}(?![a-z0-9])|第\\s*[零〇一二两三四五六七八九十百千0-9]+\\s*季");
+-    private static final String PLATFORMS = "qq|tencent|qiyi|iqiyi|bilibili[0-9]*|bili|mgtv|mango|youku|renren|hanjutv|bahamut|baha|dandan(?:play)?|animeko|tmdb|local|hongguo|aiyifan|sohu|pptv|douyin|ixigua|letv|leshi|maiduidui|xigua|vod|unknown";
++    private static final String PLATFORMS = "360|qq|tencent|qiyi|iqiyi|bilibili[0-9]*|bili|mgtv|mango|youku|renren|hanjutv|bahamut|baha|dandan(?:play)?|animeko|tmdb|local|hongguo|aiyifan|sohu|pptv|douyin|ixigua|letv|leshi|maiduidui|xigua|vod|unknown";
+     private static final String PLATFORM_LIST = "(?:" + PLATFORMS + ")(?:[&＆](?:" + PLATFORMS + "))*";
+     private static final Pattern PLATFORM_PREFIX = Pattern.compile("(?i)^\\s*(?:【|\\[)" + PLATFORM_LIST + "(?:】|\\])\\s*");
+     private static final Pattern SOURCE_SUFFIX = Pattern.compile("(?i)\\s*from\\s*" + PLATFORM_LIST + "\\s*$");
+@@ -68,40 +68,21 @@ public class LogvarApi {
      }
  
-     public static boolean hasSearchApi() {
+     public static void searchAuto(String name, String episode, @Nullable Result result, boolean reliableEpisodeLabel, Listener listener) {
+-        searchAuto(DanmakuSetting.getEffectiveLogvarUrl(), name, episode, preferredVideoUrl(result), reliableEpisodeLabel,
++        searchAuto(DanmakuSetting.getEffectiveLogvarUrl(), name, episode, reliableEpisodeLabel,
+                 request -> OkHttp.client().newCall(request), App::post, listener);
+     }
+ 
+-    static void searchAuto(String serviceUrl, String name, String episode, String videoUrl, boolean reliableEpisodeLabel,
++    static void searchAuto(String serviceUrl, String name, String episode, boolean reliableEpisodeLabel,
+                            Function<Request, Call> calls, Consumer<Runnable> dispatch, Listener listener) {
+         String base = normalizeBase(serviceUrl);
+         if (base.isEmpty()) {
+             dispatch.accept(() -> listener.onSuccess(Collections.emptyList()));
+             return;
+         }
+-        if (isHttpUrl(videoUrl)) {
+-            HttpUrl commentUrl = HttpUrl.parse(buildCommentByUrlUrl(base, videoUrl));
+-            if (commentUrl == null) {
+-                searchByEpisode(base, name, episode, reliableEpisodeLabel, calls, dispatch, listener);
+-                return;
+-            }
+-            Request request = new Request.Builder().url(commentUrl).tag(TAG).build();
+-            requestAuto(request, calls, dispatch, text -> hasDanmakuXml(text)
+-                    ? Collections.singletonList(createDanmaku("Logvar URL", request.url().toString())) : Collections.emptyList(), new Listener() {
+-                @Override
+-                public void onSuccess(List<Danmaku> items) {
+-                    if (items.isEmpty()) searchByEpisode(base, name, episode, reliableEpisodeLabel, calls, dispatch, listener);
+-                    else listener.onSuccess(items);
+-                }
+-
+-                @Override
+-                public void onError(Exception e) {
+-                    searchByEpisode(base, name, episode, reliableEpisodeLabel, calls, dispatch, listener);
+-                }
+-            });
+-        } else {
+-            searchByEpisode(base, name, episode, reliableEpisodeLabel, calls, dispatch, listener);
+-        }
++        // A play URL carries no verified episode identity: the service can only guess, and that
++        // guess used to be bound as long as any comments came back. Always resolve the episode
++        // from the show title and the current episode label instead.
++        searchByEpisode(base, name, episode, reliableEpisodeLabel, calls, dispatch, listener);
+     }
+ 
+     public static void searchEpisodes(String name, String episode, Listener listener) {
+@@ -234,14 +215,6 @@ public class LogvarApi {
+         return !label.isVariety() && label.isApiSafe() ? String.valueOf(label.number()) : value;
+     }
+ 
+-    public static String preferredVideoUrl(@Nullable Result result) {
+-        if (result == null) return "";
+-        String raw = result.getUrl().v();
+-        if (isHttpUrl(raw)) return raw;
+-        String real = result.getRealUrl();
+-        return isHttpUrl(real) ? real : "";
+-    }
+-
+     public static boolean hasDanmakuXml(String text) {
+         return text != null && (text.contains("<d ") || text.contains("<d\t") || text.contains("<d\n"));
+     }
+diff --git a/app/src/main/java/com/fongmi/android/tv/player/PlayerManager.java b/app/src/main/java/com/fongmi/android/tv/player/PlayerManager.java
+index be88fdbc9c6ba98bb935f85982683dc8c64dc6e9..42cab36bde8e67487e1321456469ecbc2a0d496f 100644
+--- a/app/src/main/java/com/fongmi/android/tv/player/PlayerManager.java
++++ b/app/src/main/java/com/fongmi/android/tv/player/PlayerManager.java
+@@ -28,9 +28,11 @@ import com.fongmi.android.tv.bean.Result;
+ import com.fongmi.android.tv.bean.Sub;
+ import com.fongmi.android.tv.bean.Track;
+ import com.fongmi.android.tv.impl.ParseCallback;
++import com.fongmi.android.tv.monitoring.CinemaEventLog;
+ import com.fongmi.android.tv.player.engine.PlayerEngine;
+ import com.fongmi.android.tv.player.engine.PlayerEngineFactory;
+ import com.fongmi.android.tv.player.audio.AudioTrackRecovery;
++import com.fongmi.android.tv.monitoring.CinemaPlaybackProbe;
+ import com.fongmi.android.tv.player.media.MediaUrlGuard;
+ import com.fongmi.android.tv.player.media.MediaItemFactory;
+ import com.fongmi.android.tv.player.media.PlaySpec;
+@@ -60,6 +62,8 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
+     private ParseJob parseJob;
+     private PlaySpec spec;
+     private Player player;
++    private final CinemaPlaybackProbe cinemaProbe = new CinemaPlaybackProbe(this::performanceDetails,
++            () -> player != null && player.getPlayWhenReady());
+     private Sub pendingPrimarySubtitle;
+     private Format pendingSecondarySubtitle;
+ 
+@@ -99,6 +103,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
+     }
+ 
+     public void release() {
++        cinemaProbe.stop();
+         timeshift.clear();
+         stopParse();
+         App.removeCallbacks(runnable);
+@@ -464,14 +469,18 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
+     }
+ 
+     public void play() {
++        CinemaEventLog.event("play", "play", "pos=" + getPosition());
+         player.play();
+     }
+ 
+     public void pause() {
++        CinemaEventLog.event("play", "pause", "pos=" + getPosition());
+         player.pause();
+     }
+ 
+     public void stop() {
++        CinemaEventLog.event("play", "stop", "pos=" + getPosition());
++        cinemaProbe.stop();
+         pendingTimeshiftRebuild = false;
+         timeshift.clear();
+         App.removeCallbacks(runnable);
+@@ -480,6 +489,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
+     }
+ 
+     public void clearMediaItems() {
++        cinemaProbe.stop();
+         timeshift.clear();
+         player.clearMediaItems();
+     }
+@@ -493,6 +503,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
+     }
+ 
+     public void replay(long positionMs) {
++        CinemaEventLog.event("play", "replay", "to=" + positionMs);
+         if (timeshift.isActive()) timeshift.seekTo(positionMs);
+         else if (positionMs == C.TIME_UNSET) player.seekToDefaultPosition();
+         else player.seekTo(positionMs);
+@@ -500,6 +511,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
+     }
+ 
+     public void seekTo(long time) {
++        CinemaEventLog.event("play", "seek", "to=" + time);
+         if (timeshift.isActive()) timeshift.seekTo(time);
+         else player.seekTo(time);
+     }
+@@ -526,6 +538,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
+     }
+ 
+     public void clear() {
++        cinemaProbe.stop();
+         pendingPrimarySubtitle = null;
+         pendingSecondarySubtitle = null;
+         pendingTimeshiftRebuild = false;
+@@ -628,6 +641,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
+ 
+     private void handleDecodeError(PlaybackException e) {
+         if (++retry > 1) {
++            CinemaEventLog.event("play", "error", "decode " + engine.getErrorMessage(e));
+             callback.onError(engine.getErrorMessage(e));
+         } else {
+             Notify.show(R.string.error_decode_fallback);
+@@ -656,6 +670,8 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
+     }
+ 
+     private void onPlayTimeout() {
++        CinemaEventLog.event("play", "error", "timeout");
++        cinemaProbe.error(-1);
+         if (retryWithSoftwareEngine()) return;
+         stop();
+         callback.onError(ResUtil.getString(R.string.error_play_timeout));
+@@ -769,6 +785,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
+         audioRecoveryKey = null;
+         retry = 0;
+         this.spec = spec;
++        cinemaProbe.begin(false);
+         pendingTimeshiftRebuild = false;
+         timeshift.start(spec);
+         setMediaItem(timeout, timeshift.isActive() ? C.TIME_UNSET : startPositionMs);
+@@ -789,6 +806,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
+         pendingTimeshiftRebuild = false;
+         timeshift.clear();
+         spec = PlaySpec.fromParse(result, key, metadata);
++        cinemaProbe.begin(true);
+         parseJob = ParseJob.create(this).start(result, useParse);
+     }
+ 
+@@ -805,6 +823,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
+             return;
+         }
+         ensureEngine(spec.checkUa());
++        cinemaProbe.mediaStarted();
+         engine.start(spec, startPositionMs);
+         setDanmakus(spec.getDanmakus());
+         App.post(runnable, timeout);
+@@ -813,6 +832,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
+     }
+ 
+     private void rejectMediaItem(PlaySpec spec) {
++        cinemaProbe.stop();
+         App.removeCallbacks(runnable);
+         engine.stop();
+         stopParse();
+@@ -880,6 +900,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
+     }
+ 
+     public Danmaku getSelectedDanmaku() {
++        if (spec != null && spec.isDanmakuSuppressed()) return Danmaku.empty();
+         return getSelectedDanmaku(getDanmakus());
+     }
+ 
+@@ -918,6 +939,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
+     @Override
+     public void onParseError() {
+         DiagnosticLog.record("parse", "failed");
++        cinemaProbe.parseError();
+         pendingStartPositionMs = C.TIME_UNSET;
+         callback.onError(ResUtil.getString(R.string.error_play_parse));
+     }
+@@ -952,6 +974,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
+ 
+         @Override
+         public void onPlaybackStateChanged(int state) {
++            cinemaProbe.stateChanged(state, player != null && player.getPlayWhenReady(), CinemaPlaybackProbe.hasSelectedVideo(player));
+             DiagnosticLog.record("playback", "state=" + state + " engine=" + (engine == null ? "none" : engine.getType()));
+             if (state == Player.STATE_READY || state == Player.STATE_ENDED) App.removeCallbacks(runnable);
+             if (state == Player.STATE_READY) {
+@@ -964,6 +987,19 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
+             }
+         }
+ 
++        @Override public void onPlayWhenReadyChanged(boolean playWhenReady, int reason) {
++            cinemaProbe.requested(playWhenReady);
++        }
++
++        @Override public void onRenderedFirstFrame() {
++            cinemaProbe.firstFrame();
++        }
++
++        @Override public void onPositionDiscontinuity(@NonNull Player.PositionInfo oldPosition,
++                                                       @NonNull Player.PositionInfo newPosition, int reason) {
++            cinemaProbe.seek(reason);
++        }
++
+         @Override
+         public void onTracksChanged(@NonNull Tracks tracks) {
+             if (tracks.isEmpty()) return;
+@@ -994,6 +1030,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
+             DiagnosticLog.record("playback", "errorCode=" + e.errorCode);
+             DiagnosticLog.record("playback", e);
+             if (spec == null) return;
++            cinemaProbe.error(e.errorCode);
+             PlayerEngine.ErrorAction action = engine.handleError(e);
+             if (action != PlayerEngine.ErrorAction.RECOVERED) App.removeCallbacks(runnable);
+             switch (action) {
+@@ -1006,4 +1043,15 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
+         }
+     };
+ 
++    private String performanceDetails() {
++        Player current = player;
++        if (current == null) return "engine=none";
++        androidx.media3.common.VideoSize size = current.getVideoSize();
++        return "engine=" + (engine == null ? "none" : engine.getType())
++                + " decode=" + (decode == PlayerEngine.HARD ? "hard" : "soft")
++                + " width=" + size.width + " height=" + size.height
++                + " buffered_ms=" + Math.max(0, current.getTotalBufferedDuration())
++                + " state=" + current.getPlaybackState();
++    }
++
+ }
 diff --git a/app/src/main/java/com/fongmi/android/tv/player/media/PlaySpec.java b/app/src/main/java/com/fongmi/android/tv/player/media/PlaySpec.java
 index 690a83c85f0b93f8e6fee2414c5f0c3028052236..94edf6c12f0109e2bdb5da07b4995b55c0acb355 100644
 --- a/app/src/main/java/com/fongmi/android/tv/player/media/PlaySpec.java
@@ -230,166 +399,80 @@ index 690a83c85f0b93f8e6fee2414c5f0c3028052236..94edf6c12f0109e2bdb5da07b4995b55
      public void addDanmaku(Danmaku item) {
          if (danmakus == null) danmakus = new ArrayList<>();
          if (item.isEmpty() || danmakus.contains(item)) return;
-diff --git a/app/src/main/java/com/fongmi/android/tv/player/PlayerManager.java b/app/src/main/java/com/fongmi/android/tv/player/PlayerManager.java
-index be88fdbc9c6ba98bb935f85982683dc8c64dc6e9..07361e6873f2a78c6ab72b979522623bee0718f8 100644
---- a/app/src/main/java/com/fongmi/android/tv/player/PlayerManager.java
-+++ b/app/src/main/java/com/fongmi/android/tv/player/PlayerManager.java
-@@ -31,6 +31,7 @@ import com.fongmi.android.tv.impl.ParseCallback;
- import com.fongmi.android.tv.player.engine.PlayerEngine;
- import com.fongmi.android.tv.player.engine.PlayerEngineFactory;
- import com.fongmi.android.tv.player.audio.AudioTrackRecovery;
-+import com.fongmi.android.tv.monitoring.CinemaPlaybackProbe;
- import com.fongmi.android.tv.player.media.MediaUrlGuard;
- import com.fongmi.android.tv.player.media.MediaItemFactory;
- import com.fongmi.android.tv.player.media.PlaySpec;
-@@ -60,6 +61,8 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
-     private ParseJob parseJob;
-     private PlaySpec spec;
-     private Player player;
-+    private final CinemaPlaybackProbe cinemaProbe = new CinemaPlaybackProbe(this::performanceDetails,
-+            () -> player != null && player.getPlayWhenReady());
-     private Sub pendingPrimarySubtitle;
-     private Format pendingSecondarySubtitle;
+diff --git a/app/src/main/java/com/fongmi/android/tv/setting/DanmakuSetting.java b/app/src/main/java/com/fongmi/android/tv/setting/DanmakuSetting.java
+index 1a79634711bb583e2ac1cf60faec36da61c01070..e0053f1abbbf473995c73deb304b6f29d1d9a6db 100644
+--- a/app/src/main/java/com/fongmi/android/tv/setting/DanmakuSetting.java
++++ b/app/src/main/java/com/fongmi/android/tv/setting/DanmakuSetting.java
+@@ -9,6 +9,7 @@ import com.github.catvod.utils.Prefers;
  
-@@ -99,6 +102,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
-     }
+ public class DanmakuSetting {
  
-     public void release() {
-+        cinemaProbe.stop();
-         timeshift.clear();
-         stopParse();
-         App.removeCallbacks(runnable);
-@@ -472,6 +476,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
-     }
- 
-     public void stop() {
-+        cinemaProbe.stop();
-         pendingTimeshiftRebuild = false;
-         timeshift.clear();
-         App.removeCallbacks(runnable);
-@@ -480,6 +485,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
-     }
- 
-     public void clearMediaItems() {
-+        cinemaProbe.stop();
-         timeshift.clear();
-         player.clearMediaItems();
-     }
-@@ -526,6 +532,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
-     }
- 
-     public void clear() {
-+        cinemaProbe.stop();
-         pendingPrimarySubtitle = null;
-         pendingSecondarySubtitle = null;
-         pendingTimeshiftRebuild = false;
-@@ -656,6 +663,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
-     }
- 
-     private void onPlayTimeout() {
-+        cinemaProbe.error(-1);
-         if (retryWithSoftwareEngine()) return;
-         stop();
-         callback.onError(ResUtil.getString(R.string.error_play_timeout));
-@@ -769,6 +777,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
-         audioRecoveryKey = null;
-         retry = 0;
-         this.spec = spec;
-+        cinemaProbe.begin(false);
-         pendingTimeshiftRebuild = false;
-         timeshift.start(spec);
-         setMediaItem(timeout, timeshift.isActive() ? C.TIME_UNSET : startPositionMs);
-@@ -789,6 +798,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
-         pendingTimeshiftRebuild = false;
-         timeshift.clear();
-         spec = PlaySpec.fromParse(result, key, metadata);
-+        cinemaProbe.begin(true);
-         parseJob = ParseJob.create(this).start(result, useParse);
-     }
- 
-@@ -805,6 +815,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
-             return;
-         }
-         ensureEngine(spec.checkUa());
-+        cinemaProbe.mediaStarted();
-         engine.start(spec, startPositionMs);
-         setDanmakus(spec.getDanmakus());
-         App.post(runnable, timeout);
-@@ -813,6 +824,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
-     }
- 
-     private void rejectMediaItem(PlaySpec spec) {
-+        cinemaProbe.stop();
-         App.removeCallbacks(runnable);
-         engine.stop();
-         stopParse();
-@@ -880,6 +892,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
-     }
- 
-     public Danmaku getSelectedDanmaku() {
-+        if (spec != null && spec.isDanmakuSuppressed()) return Danmaku.empty();
-         return getSelectedDanmaku(getDanmakus());
-     }
- 
-@@ -918,6 +931,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
-     @Override
-     public void onParseError() {
-         DiagnosticLog.record("parse", "failed");
-+        cinemaProbe.parseError();
-         pendingStartPositionMs = C.TIME_UNSET;
-         callback.onError(ResUtil.getString(R.string.error_play_parse));
-     }
-@@ -952,6 +966,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
- 
-         @Override
-         public void onPlaybackStateChanged(int state) {
-+            cinemaProbe.stateChanged(state, player != null && player.getPlayWhenReady(), CinemaPlaybackProbe.hasSelectedVideo(player));
-             DiagnosticLog.record("playback", "state=" + state + " engine=" + (engine == null ? "none" : engine.getType()));
-             if (state == Player.STATE_READY || state == Player.STATE_ENDED) App.removeCallbacks(runnable);
-             if (state == Player.STATE_READY) {
-@@ -964,6 +979,19 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
-             }
-         }
- 
-+        @Override public void onPlayWhenReadyChanged(boolean playWhenReady, int reason) {
-+            cinemaProbe.requested(playWhenReady);
-+        }
-+
-+        @Override public void onRenderedFirstFrame() {
-+            cinemaProbe.firstFrame();
-+        }
-+
-+        @Override public void onPositionDiscontinuity(@NonNull Player.PositionInfo oldPosition,
-+                                                       @NonNull Player.PositionInfo newPosition, int reason) {
-+            cinemaProbe.seek(reason);
-+        }
-+
-         @Override
-         public void onTracksChanged(@NonNull Tracks tracks) {
-             if (tracks.isEmpty()) return;
-@@ -994,6 +1022,7 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
-             DiagnosticLog.record("playback", "errorCode=" + e.errorCode);
-             DiagnosticLog.record("playback", e);
-             if (spec == null) return;
-+            cinemaProbe.error(e.errorCode);
-             PlayerEngine.ErrorAction action = engine.handleError(e);
-             if (action != PlayerEngine.ErrorAction.RECOVERED) App.removeCallbacks(runnable);
-             switch (action) {
-@@ -1006,4 +1035,15 @@ public class PlayerManager implements ParseCallback, TimeshiftPlayback.Host {
-         }
-     };
- 
-+    private String performanceDetails() {
-+        Player current = player;
-+        if (current == null) return "engine=none";
-+        androidx.media3.common.VideoSize size = current.getVideoSize();
-+        return "engine=" + (engine == null ? "none" : engine.getType())
-+                + " decode=" + (decode == PlayerEngine.HARD ? "hard" : "soft")
-+                + " width=" + size.width + " height=" + size.height
-+                + " buffered_ms=" + Math.max(0, current.getTotalBufferedDuration())
-+                + " state=" + current.getPlaybackState();
++    private static final String CINEMA_DEFAULT_LOGVAR = "https://dmfl.us.ci/87654321";
+     private static final float MIN_TEXT_SCALE = 0.5f;
+     private static final float MAX_TEXT_SCALE = 3.0f;
+     private static final float MIN_TRANSPARENCY = 0.0f;
+@@ -311,7 +312,18 @@ public class DanmakuSetting {
+     public static String getEffectiveLogvarUrl() {
+         String userUrl = getLogvarUrl();
+         if (!TextUtils.isEmpty(userUrl)) return userUrl;
+-        return VodConfig.get().getConfig().getLogvar();
++        String configuredUrl = VodConfig.get().getConfig().getLogvar();
++        if (!TextUtils.isEmpty(configuredUrl)) return configuredUrl;
++        if (Prefers.getPrefers().contains("danmaku_logvar_url")
++                || Prefers.getPrefers().contains("danmaku_logvr_url")
++                || !TextUtils.isEmpty(getEffectiveApiUrl())) return "";
++        return Prefers.getBoolean("cinema_danmaku_defaults_v1") ? CINEMA_DEFAULT_LOGVAR : "";
 +    }
 +
++    public static boolean isCinemaDefaultLogvar(String url) {
++        return CINEMA_DEFAULT_LOGVAR.equals(url)
++                && !Prefers.getPrefers().contains("danmaku_logvar_url")
++                && !Prefers.getPrefers().contains("danmaku_logvr_url");
+     }
+ 
+     public static boolean hasSearchApi() {
+diff --git a/app/src/test/java/com/fongmi/android/tv/api/DanmakuApiTest.java b/app/src/test/java/com/fongmi/android/tv/api/DanmakuApiTest.java
+index 3046ee3443f1956b12894b5c4aca2a24eac901af..7da6c3a6f56216f16b50697256b02065340819ab 100644
+--- a/app/src/test/java/com/fongmi/android/tv/api/DanmakuApiTest.java
++++ b/app/src/test/java/com/fongmi/android/tv/api/DanmakuApiTest.java
+@@ -1,7 +1,12 @@
+ package com.fongmi.android.tv.api;
+ 
++import com.fongmi.android.tv.bean.Danmaku;
++
++import java.util.List;
++
+ import org.junit.Test;
+ 
++import static org.junit.Assert.assertEquals;
+ import static org.junit.Assert.assertFalse;
+ import static org.junit.Assert.assertTrue;
+ 
+@@ -20,4 +25,25 @@ public class DanmakuApiTest {
+             assertTrue(label, DanmakuApi.canAutoSearchLegacy(label));
+         }
+     }
++
++    @Test
++    public void shouldNeverBindANeighbouringEpisodeFromALegacyList() {
++        List<Danmaku> neighbours = List.of(Danmaku.from("Show 第02集"), Danmaku.from("Show 第04集"));
++        assertTrue(DanmakuApi.selectExactEpisode(neighbours, "Show", "第3集").isEmpty());
++    }
++
++    @Test
++    public void shouldBindTheOnlyCandidateWithTheSameTitleAndEpisode() {
++        List<Danmaku> items = List.of(Danmaku.from("Show 第02集"), Danmaku.from("Show 第03集"));
++        assertEquals(1, DanmakuApi.selectExactEpisode(items, "Show", "第3集").size());
++        assertEquals("Show 第03集", DanmakuApi.selectExactEpisode(items, "Show", "第3集").get(0).getName());
++    }
++
++    @Test
++    public void shouldRefuseAmbiguousOrForeignCandidates() {
++        List<Danmaku> ambiguous = List.of(Danmaku.from("Show 第03集"), Danmaku.from("Show 第3集"));
++        assertTrue(DanmakuApi.selectExactEpisode(ambiguous, "Show", "第3集").isEmpty());
++        List<Danmaku> foreign = List.of(Danmaku.from("Other Show 第03集"));
++        assertTrue(DanmakuApi.selectExactEpisode(foreign, "Show", "第3集").isEmpty());
++    }
  }
 diff --git a/app/src/test/java/com/fongmi/android/tv/api/LogvarApiTest.java b/app/src/test/java/com/fongmi/android/tv/api/LogvarApiTest.java
 index be2c3700238a12ca04e6473b3bc7fb92f2c427ce..1bb01cbf0d98b12a0a98e8d1a20e56209ba2c2b0 100644
@@ -500,46 +583,3 @@ index be2c3700238a12ca04e6473b3bc7fb92f2c427ce..1bb01cbf0d98b12a0a98e8d1a20e5620
                  @Override public void onSuccess(List<Danmaku> found) { items.set(found); done.countDown(); }
                  @Override public void onError(Exception failure) { error.set(failure); done.countDown(); }
              });
-diff --git a/app/src/test/java/com/fongmi/android/tv/api/DanmakuApiTest.java b/app/src/test/java/com/fongmi/android/tv/api/DanmakuApiTest.java
-index 3046ee3443f1956b12894b5c4aca2a24eac901af..7da6c3a6f56216f16b50697256b02065340819ab 100644
---- a/app/src/test/java/com/fongmi/android/tv/api/DanmakuApiTest.java
-+++ b/app/src/test/java/com/fongmi/android/tv/api/DanmakuApiTest.java
-@@ -1,7 +1,12 @@
- package com.fongmi.android.tv.api;
- 
-+import com.fongmi.android.tv.bean.Danmaku;
-+
-+import java.util.List;
-+
- import org.junit.Test;
- 
-+import static org.junit.Assert.assertEquals;
- import static org.junit.Assert.assertFalse;
- import static org.junit.Assert.assertTrue;
- 
-@@ -20,4 +25,25 @@ public class DanmakuApiTest {
-             assertTrue(label, DanmakuApi.canAutoSearchLegacy(label));
-         }
-     }
-+
-+    @Test
-+    public void shouldNeverBindANeighbouringEpisodeFromALegacyList() {
-+        List<Danmaku> neighbours = List.of(Danmaku.from("Show 第02集"), Danmaku.from("Show 第04集"));
-+        assertTrue(DanmakuApi.selectExactEpisode(neighbours, "Show", "第3集").isEmpty());
-+    }
-+
-+    @Test
-+    public void shouldBindTheOnlyCandidateWithTheSameTitleAndEpisode() {
-+        List<Danmaku> items = List.of(Danmaku.from("Show 第02集"), Danmaku.from("Show 第03集"));
-+        assertEquals(1, DanmakuApi.selectExactEpisode(items, "Show", "第3集").size());
-+        assertEquals("Show 第03集", DanmakuApi.selectExactEpisode(items, "Show", "第3集").get(0).getName());
-+    }
-+
-+    @Test
-+    public void shouldRefuseAmbiguousOrForeignCandidates() {
-+        List<Danmaku> ambiguous = List.of(Danmaku.from("Show 第03集"), Danmaku.from("Show 第3集"));
-+        assertTrue(DanmakuApi.selectExactEpisode(ambiguous, "Show", "第3集").isEmpty());
-+        List<Danmaku> foreign = List.of(Danmaku.from("Other Show 第03集"));
-+        assertTrue(DanmakuApi.selectExactEpisode(foreign, "Show", "第3集").isEmpty());
-+    }
- }

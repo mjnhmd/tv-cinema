@@ -1,16 +1,20 @@
 diff --git a/app/build.gradle b/app/build.gradle
-index 19f91509e0c4753dbed3ba68e8504053fff624d3..4fc6bfba38e2a3c4f9f8aa264ebcf5aac7ee9476 100644
+index 19f91509e0c4753dbed3ba68e8504053fff624d3..34cfbf6cd8db4592ae9cdbfa5885d295ef2ca5d1 100644
 --- a/app/build.gradle
 +++ b/app/build.gradle
-@@ -50,6 +50,7 @@ android {
+@@ -50,6 +50,11 @@ android {
          buildConfigField "String", "TMDB_API_KEY", buildConfigString(localOrEnv('tmdbApiKey', 'TMDB_API_KEY'))
          buildConfigField "String", "ASSRT_API_TOKEN", buildConfigString(localOrEnv('assrtApiToken', 'ASSRT_API_TOKEN'))
          buildConfigField "String", "TMDB_LOGO_SIZE", buildConfigString(localOrEnv('tmdbLogoSize', 'TMDB_LOGO_SIZE') ?: 'w500')
 +        buildConfigField "String", "CINEMA_BUGLY_APP_ID", buildConfigString(localOrEnv('cinemaBuglyAppId', 'CINEMA_BUGLY_APP_ID') ?: 'c06d8f73d2')
++        // Optional LAN sink for the diagnostic event log; empty keeps it disabled.
++        buildConfigField "String", "CINEMA_LOG_UPLOAD_URL", buildConfigString(localOrEnv('cinemaLogUploadUrl', 'CINEMA_LOG_UPLOAD_URL'))
++        buildConfigField "String", "CINEMA_LOG_UPLOAD_USER", buildConfigString(localOrEnv('cinemaLogUploadUser', 'CINEMA_LOG_UPLOAD_USER'))
++        buildConfigField "String", "CINEMA_LOG_UPLOAD_PASS", buildConfigString(localOrEnv('cinemaLogUploadPass', 'CINEMA_LOG_UPLOAD_PASS'))
          javaCompileOptions {
              annotationProcessorOptions {
                  arguments = ["room.schemaLocation": "$projectDir/schemas".toString(), "eventBusIndex": "com.fongmi.android.tv.event.EventIndex"]
-@@ -132,8 +133,8 @@ android {
+@@ -132,8 +137,8 @@ android {
              matchingFallbacks = ['debug']
          }
          release {
@@ -21,7 +25,7 @@ index 19f91509e0c4753dbed3ba68e8504053fff624d3..4fc6bfba38e2a3c4f9f8aa264ebcf5aa
              signingConfig = signingConfigs.release
              proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro', 'proguard-rules-media.pro'
          }
-@@ -180,10 +181,10 @@ androidComponents {
+@@ -180,10 +185,10 @@ androidComponents {
  }
  
  dependencies {
@@ -33,7 +37,7 @@ index 19f91509e0c4753dbed3ba68e8504053fff624d3..4fc6bfba38e2a3c4f9f8aa264ebcf5aa
      implementation project(':catvod')
      implementation project(':chaquo')
      implementation project(':quickjs')
-@@ -218,6 +219,7 @@ dependencies {
+@@ -218,6 +223,7 @@ dependencies {
      implementation libs.permissionx
      implementation libs.simple.xml
      implementation libs.textdrawable
@@ -256,7 +260,7 @@ index 624c44f2602b3c77348c62c446100176e4ea807d..5d50f1d39cf6d32c0eb4b02da92de773
              <meta-data
                  android:name="android.app.searchable"
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/HomeActivity.java b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/HomeActivity.java
-index bba7d139580d24c850b030bb1980b05e414c5079..e2938b77f2929ffa0b3e6ba7648751732a0b02dc 100644
+index bba7d139580d24c850b030bb1980b05e414c5079..d94f6568a98cc05277144af93d2e73ffc2325137 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/HomeActivity.java
 +++ b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/HomeActivity.java
 @@ -33,6 +33,7 @@ import com.fongmi.android.tv.Product;
@@ -267,7 +271,15 @@ index bba7d139580d24c850b030bb1980b05e414c5079..e2938b77f2929ffa0b3e6ba764875173
  import com.fongmi.android.tv.api.config.VodConfig;
  import com.fongmi.android.tv.api.config.WallConfig;
  import com.fongmi.android.tv.bean.Cache;
-@@ -75,6 +76,7 @@ import com.fongmi.android.tv.ui.presenter.HistoryPresenter;
+@@ -53,6 +54,7 @@ import com.fongmi.android.tv.event.RefreshEvent;
+ import com.fongmi.android.tv.event.ServerEvent;
+ import com.fongmi.android.tv.impl.Callback;
+ import com.fongmi.android.tv.model.SiteViewModel;
++import com.fongmi.android.tv.monitoring.CinemaEventLog;
+ import com.fongmi.android.tv.player.extractor.Source;
+ import com.fongmi.android.tv.server.Server;
+ import com.fongmi.android.tv.service.DLNARendererService;
+@@ -75,6 +77,7 @@ import com.fongmi.android.tv.ui.presenter.HistoryPresenter;
  import com.fongmi.android.tv.ui.presenter.ProgressPresenter;
  import com.fongmi.android.tv.ui.presenter.VodPresenter;
  import com.fongmi.android.tv.utils.Clock;
@@ -275,7 +287,7 @@ index bba7d139580d24c850b030bb1980b05e414c5079..e2938b77f2929ffa0b3e6ba764875173
  import com.fongmi.android.tv.utils.FileChooser;
  import com.fongmi.android.tv.utils.HistoryTaskQueue;
  import com.fongmi.android.tv.utils.ImgUtil;
-@@ -154,6 +156,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
+@@ -154,6 +157,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
  
      @Override
      protected void onCreate(Bundle savedInstanceState) {
@@ -283,7 +295,7 @@ index bba7d139580d24c850b030bb1980b05e414c5079..e2938b77f2929ffa0b3e6ba764875173
          SplashScreen.installSplashScreen(this);
          super.onCreate(savedInstanceState);
      }
-@@ -179,7 +182,6 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
+@@ -179,7 +183,6 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
          mBinding.progressLayout.showProgress();
          PermissionUtil.requestNotify(this);
          DLNARendererService.start(this);
@@ -291,7 +303,7 @@ index bba7d139580d24c850b030bb1980b05e414c5079..e2938b77f2929ffa0b3e6ba764875173
          setRecyclerView();
          setNavigationView();
          setViewModel();
-@@ -328,6 +330,12 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
+@@ -328,6 +331,12 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
      }
  
      private void initConfig() {
@@ -304,7 +316,7 @@ index bba7d139580d24c850b030bb1980b05e414c5079..e2938b77f2929ffa0b3e6ba764875173
          VodConfig.get().init().load(getCallback());
          LiveConfig.get().init().load();
          WallConfig.get().init();
-@@ -727,6 +735,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
+@@ -727,6 +736,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
          if (LiveConfig.hasUrl()) items.add(new JetStreamHomeNavView.NavItem(String.valueOf(R.string.home_live), getString(R.string.home_live), R.drawable.ic_home_live));
          items.add(new JetStreamHomeNavView.NavItem(String.valueOf(R.string.home_search), getString(R.string.home_search), R.drawable.ic_home_search));
          items.add(new JetStreamHomeNavView.NavItem(String.valueOf(R.string.home_tab_my), getString(R.string.home_tab_my), R.drawable.ic_home_setting));
@@ -312,6 +324,22 @@ index bba7d139580d24c850b030bb1980b05e414c5079..e2938b77f2929ffa0b3e6ba764875173
          mBinding.nav.setItems(items);
          mBinding.nav.setSelectedKey(String.valueOf(R.string.home_tab_home));
      }
+@@ -924,6 +934,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
+     @Override
+     public void onItemClick(Vod item, View poster) {
+         if (!isCurrentSourceItem(item)) return;
++        CinemaEventLog.event("ui", "click vod", "name=" + item.getName() + " id=" + item.getId() + " action=" + item.isAction());
+         if (item.isAction()) {
+             mActionSourceRequest = mHomeSource.getRequest();
+             mViewModel.action(getHome().getKey(), item.getAction());
+@@ -948,6 +959,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
+     @Override
+     public void onItemClick(History item) {
+         if (item.getCid() != VodConfig.getCid()) return;
++        CinemaEventLog.event("ui", "click resume", "name=" + item.getVodName() + " pos=" + item.getPosition() + "/" + item.getDuration() + " remark=" + item.getVodRemarks());
+         VideoActivity.start(this, item.getSiteKey(), item.getVodId(), item.getVodName(), item.getVodPic());
+     }
+ 
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/LiveActivity.java b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/LiveActivity.java
 index 790124a80aea6ff7feaed0079f77b20f4cdacc1d..b2ba171558fb28f839667cd4a1951eb574320e9b 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/LiveActivity.java
@@ -360,21 +388,22 @@ index e2706e7aee0a13c3f1e90e884f2c7cf40f28b838..70825d9a7efa6b89e894f2ff352bb33d
      }
  
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SearchActivity.java b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SearchActivity.java
-index ad651bdc80c512a182286e9f8c8a253c8d374d62..439301d4be8da1cf56867b3989d81ca4451130a5 100644
+index ad651bdc80c512a182286e9f8c8a253c8d374d62..68aaa16f2f57d1f428b2ff13a0e7d7ded3e1cac0 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SearchActivity.java
 +++ b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SearchActivity.java
-@@ -16,6 +16,10 @@ import androidx.viewbinding.ViewBinding;
+@@ -16,6 +16,11 @@ import androidx.viewbinding.ViewBinding;
  import com.fongmi.android.tv.App;
  import com.fongmi.android.tv.R;
  import com.fongmi.android.tv.bean.Word;
 +import com.fongmi.android.tv.api.config.VodConfig;
 +import com.fongmi.android.tv.db.AppDatabase;
++import com.fongmi.android.tv.monitoring.CinemaEventLog;
 +import com.fongmi.android.tv.utils.CinemaLocalSearch;
 +import com.fongmi.android.tv.utils.Task;
  import com.fongmi.android.tv.databinding.ActivitySearchBinding;
  import com.fongmi.android.tv.impl.Callback;
  import com.fongmi.android.tv.setting.Setting;
-@@ -51,6 +55,8 @@ public class SearchActivity extends BaseActivity implements WordAdapter.OnClickL
+@@ -51,6 +56,8 @@ public class SearchActivity extends BaseActivity implements WordAdapter.OnClickL
      private final SearchFocusGuard focus = new SearchFocusGuard(this);
      private long resumeFocusGeneration;
      private boolean restoreAfterResume;
@@ -383,7 +412,7 @@ index ad651bdc80c512a182286e9f8c8a253c8d374d62..439301d4be8da1cf56867b3989d81ca4
  
      public static void start(Activity activity) {
          activity.startActivity(new Intent(activity, SearchActivity.class));
-@@ -81,6 +87,15 @@ public class SearchActivity extends BaseActivity implements WordAdapter.OnClickL
+@@ -81,6 +88,15 @@ public class SearchActivity extends BaseActivity implements WordAdapter.OnClickL
          CustomKeyboard.init(this, mBinding);
          setRecyclerView();
          checkKeyword();
@@ -399,7 +428,7 @@ index ad651bdc80c512a182286e9f8c8a253c8d374d62..439301d4be8da1cf56867b3989d81ca4
      }
  
      @Override
-@@ -132,7 +147,7 @@ public class SearchActivity extends BaseActivity implements WordAdapter.OnClickL
+@@ -132,7 +148,7 @@ public class SearchActivity extends BaseActivity implements WordAdapter.OnClickL
          if (suggestionCall != null) suggestionCall.cancel();
          mBinding.word.setText(text.isEmpty() ? R.string.search_hot : R.string.search_suggest);
          if (text.isEmpty()) mWordAdapter.setItems(Word.objectFrom(Setting.getHot()).getData());
@@ -408,7 +437,7 @@ index ad651bdc80c512a182286e9f8c8a253c8d374d62..439301d4be8da1cf56867b3989d81ca4
          suggestionRequest = () -> {
              if (isFinishing() || isDestroyed() || generation != suggestionGeneration) return;
              String url = text.isEmpty() ? "https://hot.api.coolmarket.eu.org/api/douban-hot-mixed"
-@@ -163,12 +178,31 @@ public class SearchActivity extends BaseActivity implements WordAdapter.OnClickL
+@@ -163,12 +179,31 @@ public class SearchActivity extends BaseActivity implements WordAdapter.OnClickL
      private void setAdapter(String result, boolean save) {
          if (!save && empty()) return;
          if (save) Setting.putHot(result);
@@ -441,7 +470,15 @@ index ad651bdc80c512a182286e9f8c8a253c8d374d62..439301d4be8da1cf56867b3989d81ca4
      }
  
      @Override
-@@ -455,6 +489,7 @@ public class SearchActivity extends BaseActivity implements WordAdapter.OnClickL
+@@ -200,6 +235,7 @@ public class SearchActivity extends BaseActivity implements WordAdapter.OnClickL
+ 
+     private void search(String keyword) {
+         if (keyword.trim().isEmpty()) return;
++        CinemaEventLog.event("ui", "search", keyword.trim());
+         focus.invalidate();
+         View current = getCurrentFocus();
+         returnToRecord = current != null && mBinding.recordRecycler.findContainingItemView(current) != null;
+@@ -455,6 +491,7 @@ public class SearchActivity extends BaseActivity implements WordAdapter.OnClickL
          if (suggestionRequest != null) App.removeCallbacks(suggestionRequest);
          if (suggestionCall != null) suggestionCall.cancel();
          mBinding.mic.destroy();
@@ -450,7 +487,7 @@ index ad651bdc80c512a182286e9f8c8a253c8d374d62..439301d4be8da1cf56867b3989d81ca4
      }
  }
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java
-index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..24c48138d261b0f10df5c694fb956a7aed4c8cbb 100644
+index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..5fe21b101ad1a31c78248b6206015e5cb11c57e2 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java
 +++ b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java
 @@ -3,6 +3,8 @@ package com.fongmi.android.tv.ui.activity;
@@ -474,7 +511,16 @@ index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..24c48138d261b0f10df5c694fb956a7a
  import com.fongmi.android.tv.api.config.LiveConfig;
  import com.fongmi.android.tv.api.config.VodConfig;
  import com.fongmi.android.tv.api.config.WallConfig;
-@@ -48,7 +55,6 @@ import com.fongmi.android.tv.source.SourceSelectionMode;
+@@ -33,6 +40,8 @@ import com.fongmi.android.tv.impl.LiveListener;
+ import com.fongmi.android.tv.impl.SiteListener;
+ import com.fongmi.android.tv.impl.SpeedListener;
+ import com.fongmi.android.tv.impl.UaListener;
++import com.fongmi.android.tv.monitoring.CinemaEventLog;
++import com.fongmi.android.tv.monitoring.CinemaEventUpload;
+ import com.fongmi.android.tv.setting.DanmakuSetting;
+ import com.fongmi.android.tv.setting.PlayerSetting;
+ import com.fongmi.android.tv.setting.PreloadSetting;
+@@ -48,7 +57,6 @@ import com.fongmi.android.tv.source.SourceSelectionMode;
  import com.fongmi.android.tv.ui.base.BaseActivity;
  import com.fongmi.android.tv.ui.custom.JetStreamDialogDecor;
  import com.fongmi.android.tv.ui.custom.JetStreamSettingView;
@@ -482,7 +528,7 @@ index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..24c48138d261b0f10df5c694fb956a7a
  import com.fongmi.android.tv.ui.dialog.ConfigDialog;
  import com.fongmi.android.tv.ui.dialog.CloudflarePreferredDialog;
  import com.fongmi.android.tv.ui.dialog.SyncplayDialog;
-@@ -153,6 +159,9 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
+@@ -153,6 +161,9 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
      private void refreshSourceRows() {
          setRowValue(JetStreamSettingView.KEY_VOD, VodConfig.getDesc());
          setRowValue(JetStreamSettingView.KEY_LIVE, LiveConfig.getDesc());
@@ -492,7 +538,7 @@ index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..24c48138d261b0f10df5c694fb956a7a
          setRowValue(JetStreamSettingView.KEY_WALL, WallConfig.getDesc());
          setRowValue(JetStreamSettingView.KEY_WALL_VISIBLE, Setting.getSwitch(JetStreamWallpaper.isVisible()));
          int[] connectionModes = {R.string.setting_tmdb_default_proxy, R.string.setting_tmdb_direct, R.string.setting_tmdb_custom_proxy};
-@@ -363,6 +372,9 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
+@@ -363,6 +374,9 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
              case JetStreamSettingView.KEY_THEME_LIGHT -> RexTheme.setLight(true);
              case JetStreamSettingView.KEY_THEME_SYSTEM -> RexTheme.setMode(ThemeMode.SYSTEM);
              case JetStreamSettingView.KEY_VOD -> onVod();
@@ -502,7 +548,7 @@ index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..24c48138d261b0f10df5c694fb956a7a
              case JetStreamSettingView.KEY_LIVE -> onLive();
              case JetStreamSettingView.KEY_WALL -> onWall();
              case JetStreamSettingView.KEY_WALL_VISIBLE -> setWallVisible(!JetStreamWallpaper.isVisible());
-@@ -381,7 +393,6 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
+@@ -381,7 +395,6 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
              case JetStreamSettingView.KEY_CAPTION -> setCaption();
              case JetStreamSettingView.KEY_BACKGROUND -> onBackground();
              case JetStreamSettingView.KEY_UA -> onUa();
@@ -510,7 +556,7 @@ index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..24c48138d261b0f10df5c694fb956a7a
              case JetStreamSettingView.KEY_COMMUNITY_SKIP -> {
                  Setting.putCommunitySkipEnabled(!Setting.isCommunitySkipEnabled());
                  setRowValue(JetStreamSettingView.KEY_COMMUNITY_SKIP, Setting.getSwitch(Setting.isCommunitySkipEnabled()));
-@@ -526,10 +537,130 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
+@@ -526,10 +539,130 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
          ConfigDialog.create().vod().show(this);
      }
  
@@ -641,7 +687,7 @@ index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..24c48138d261b0f10df5c694fb956a7a
      private void onWall() {
          ConfigDialog.create().wall().show(this);
      }
-@@ -645,8 +769,9 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
+@@ -645,8 +778,9 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
  
      private void setWallRefresh() {
          setWallVisible(true);
@@ -653,7 +699,47 @@ index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..24c48138d261b0f10df5c694fb956a7a
      }
  
      private void setWallVisible(boolean visible) {
-@@ -1085,6 +1210,21 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
+@@ -1009,7 +1143,7 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
+     }
+ 
+     private void setMpvLogText() {
+-        setRowValue(JetStreamSettingView.KEY_MPV_LOG, getLogText(MpvLogCollector.isEnabled(), MpvLogCollector.getLogCount()));
++        setRowValue(JetStreamSettingView.KEY_MPV_LOG, getLogText(MpvLogCollector.isEnabled(), MpvLogCollector.getLogCount()) + " / 事件 " + CinemaEventLog.size());
+     }
+ 
+     private void setQuickJsLogText() {
+@@ -1018,6 +1152,7 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
+ 
+     private void setMpvLog() {
+         MpvLogCollector.putEnabled(!MpvLogCollector.isEnabled());
++        CinemaEventLog.event("setting", "mpvLog", "enabled=" + MpvLogCollector.isEnabled());
+         setMpvLogText();
+     }
+ 
+@@ -1029,14 +1164,20 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
+     private void onMpvLog() {
+         PermissionUtil.requestFile(this, allGranted -> {
+             String path = MpvLogCollector.exportToFile(this);
++            String events = CinemaEventLog.export(this);
+             if (path != null) {
+                 Notify.show("日志已导出到: " + path);
+                 setMpvLogText();
+-            } else if (MpvLogCollector.getLogCount() == 0) {
++            } else if (MpvLogCollector.getLogCount() == 0 && events == null) {
+                 Notify.show("暂无MPV日志可导出");
+-            } else {
++            } else if (events == null) {
+                 Notify.show("导出日志失败，请检查存储权限");
+             }
++            if (events != null) Notify.show("事件日志已导出到: " + events);
++            if (CinemaEventUpload.configured()) {
++                CinemaEventUpload.uploadAsync(true);
++                Notify.show("正在上传事件日志到 NAS");
++            }
+         });
+     }
+ 
+@@ -1085,6 +1226,21 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
      }
  
      private void onVersion() {
@@ -2915,39 +3001,84 @@ index 86665409aff456027f1a751bc482e79a2d09b9f4..b5df922b9985a9662d2d8aabf1275bf7
              android:name=".receiver.ActionReceiver"
              android:exported="false">
 diff --git a/app/src/main/java/com/fongmi/android/tv/App.java b/app/src/main/java/com/fongmi/android/tv/App.java
-index 8e5e1447c9755675ac905401dfedcc4cd1779e8e..e8fe51e732423347cf98b9bc9ceec1f9cacc1407 100644
+index 8e5e1447c9755675ac905401dfedcc4cd1779e8e..7b477e63f1df396896d0e9b657e22b5451863440 100644
 --- a/app/src/main/java/com/fongmi/android/tv/App.java
 +++ b/app/src/main/java/com/fongmi/android/tv/App.java
-@@ -14,6 +14,7 @@ import androidx.core.os.HandlerCompat;
+@@ -3,6 +3,7 @@ package com.fongmi.android.tv;
+ import android.app.Activity;
+ import android.app.Application;
+ import android.content.Context;
++import android.content.Intent;
+ import android.content.pm.PackageManager;
+ import android.os.Bundle;
+ import android.os.Handler;
+@@ -12,10 +13,15 @@ import androidx.annotation.NonNull;
+ import androidx.annotation.Nullable;
+ import androidx.core.os.HandlerCompat;
  
++import com.fongmi.android.tv.monitoring.CinemaEventLog;
++import com.fongmi.android.tv.monitoring.CinemaEventUpload;
++import com.fongmi.android.tv.monitoring.CinemaNetworkTrace;
  import com.fongmi.android.tv.utils.Notify;
  import com.fongmi.android.tv.utils.ToastFilter;
 +import com.fongmi.android.tv.monitoring.CinemaMonitoring;
  import com.fongmi.android.tv.sync.WebDavSyncManager;
  import com.fongmi.hook.Hook;
++import com.github.catvod.net.OkHttp;
  import com.github.catvod.Init;
-@@ -96,6 +97,7 @@ public class App extends Application implements Application.ActivityLifecycleCal
+ import com.google.gson.Gson;
+ 
+@@ -96,6 +102,9 @@ public class App extends Application implements Application.ActivityLifecycleCal
      @Override
      public void onCreate() {
          super.onCreate();
 +        CinemaMonitoring.start(this);
++        CinemaEventLog.app(this);
++        OkHttp.setListenerFactory(CinemaNetworkTrace.factory());
          com.fongmi.android.tv.player.skip.LegacySkipMigration.clearPreferences();
          // Only schedules Pine when toast filter is already enabled in settings.
          ToastFilter.install();
-@@ -119,11 +121,13 @@ public class App extends Application implements Application.ActivityLifecycleCal
+@@ -119,11 +128,15 @@ public class App extends Application implements Application.ActivityLifecycleCal
      @Override
      public void onActivityResumed(@NonNull Activity activity) {
          if (activity != activity()) this.activity = activity;
 +        CinemaMonitoring.onResumed(activity);
++        CinemaEventLog.event("nav", "resume " + activity.getClass().getSimpleName(), describeIntent(activity));
      }
  
      @Override
      public void onActivityPaused(@NonNull Activity activity) {
          if (activity == activity()) this.activity = null;
 +        CinemaMonitoring.onPaused(activity);
++        CinemaEventLog.event("nav", "pause " + activity.getClass().getSimpleName());
      }
  
      @Override
+@@ -142,15 +155,24 @@ public class App extends Application implements Application.ActivityLifecycleCal
+     public void onActivityStarted(@NonNull Activity activity) {
+         handler.removeCallbacks(backgroundSync);
+         if (startedActivities++ == 0) {
++            CinemaEventLog.event("app", "foreground");
+             handler.removeCallbacks(automaticSync);
+             handler.post(automaticSync);
+         }
+     }
+ 
++    private static String describeIntent(Activity activity) {
++        Intent intent = activity.getIntent();
++        if (intent == null) return null;
++        return "action=" + intent.getAction() + " data=" + intent.getDataString();
++    }
++
+     @Override
+     public void onActivityStopped(@NonNull Activity activity) {
+         startedActivities = Math.max(0, startedActivities - 1);
+         if (startedActivities == 0) {
++            CinemaEventLog.event("app", "background");
++            CinemaEventUpload.uploadAsync(false);
+             handler.removeCallbacks(automaticSync);
+             // Activity changes and rotations may briefly have no started Activity.
+             handler.postDelayed(backgroundSync, 2_000L);
 diff --git a/app/src/main/java/com/fongmi/android/tv/Updater.java b/app/src/main/java/com/fongmi/android/tv/Updater.java
 index 84f4027e40034ca59cb7844fe9e73354c7e6bfa2..0c447d4a6e9e8da745e0cc0c5399cb8eaeb98720 100644
 --- a/app/src/main/java/com/fongmi/android/tv/Updater.java
@@ -3298,13 +3429,14 @@ index f4b0097638c61bc18622d5ccf2f5806158520a14..3002c72374680db2b119ba34184b940c
      }
  }
 diff --git a/app/src/main/java/com/fongmi/android/tv/playback/vod/VodPlaybackController.java b/app/src/main/java/com/fongmi/android/tv/playback/vod/VodPlaybackController.java
-index 2630565a1e845bdde107a260794ab634740f771f..7654a6f8fa4c740fe371e6d540fb1605a8873c08 100644
+index 2630565a1e845bdde107a260794ab634740f771f..d3b7e836266c380d4337dbc6629a98c8c72e7b3d 100644
 --- a/app/src/main/java/com/fongmi/android/tv/playback/vod/VodPlaybackController.java
 +++ b/app/src/main/java/com/fongmi/android/tv/playback/vod/VodPlaybackController.java
-@@ -10,17 +10,21 @@ import com.fongmi.android.tv.bean.History;
+@@ -10,17 +10,22 @@ import com.fongmi.android.tv.bean.History;
  import com.fongmi.android.tv.bean.Parse;
  import com.fongmi.android.tv.bean.Result;
  import com.fongmi.android.tv.bean.Vod;
++import com.fongmi.android.tv.monitoring.CinemaEventLog;
 +import com.fongmi.android.tv.source.CinemaEpisodeOrder;
  import com.fongmi.android.tv.player.skip.CommunitySkipRuntime;
  import com.fongmi.android.tv.setting.Setting;
@@ -3323,7 +3455,7 @@ index 2630565a1e845bdde107a260794ab634740f771f..7654a6f8fa4c740fe371e6d540fb1605
  import java.util.Collections;
  import java.util.List;
  
-@@ -115,6 +119,8 @@ public class VodPlaybackController {
+@@ -115,6 +120,8 @@ public class VodPlaybackController {
          if (result.hasDesc()) host.renderDescription(result.getDesc());
          if (result.hasArtwork()) host.renderArtwork(result.getArtwork());
          Long sourcePosition = historyPolicy.acceptedResultPosition(state.getHistory(), result.getPosition());
@@ -3332,7 +3464,7 @@ index 2630565a1e845bdde107a260794ab634740f771f..7654a6f8fa4c740fe371e6d540fb1605
          if (sourcePosition != null) state.getHistory().setPosition(sourcePosition);
          boolean live = result.getTimeshift() != null && result.getTimeshift().isValid(System.currentTimeMillis());
          startPlayback(result, live ? C.TIME_UNSET : startPositionMs());
-@@ -142,6 +148,7 @@ public class VodPlaybackController {
+@@ -142,6 +149,7 @@ public class VodPlaybackController {
          boolean live = result.getTimeshift() != null && result.getTimeshift().isValid(System.currentTimeMillis());
          if (live) stopCommunitySkip();
          else communitySkip.start(state.getMedia(), state.getHistory(), state.getEpisode());
@@ -3340,7 +3472,23 @@ index 2630565a1e845bdde107a260794ab634740f771f..7654a6f8fa4c740fe371e6d540fb1605
          host.startPlayback(result, state.isUseParse(), startPositionMs, state.getHistory(), state.getEpisode());
      }
  
-@@ -202,12 +209,27 @@ public class VodPlaybackController {
+@@ -156,6 +164,7 @@ public class VodPlaybackController {
+     private void selectFlag(Flag item, boolean force) {
+         if (!state.hasFlags()) return;
+         Flag selected = resolveFlag(item);
++        CinemaEventLog.event("play", "source", "flag=" + selected.getFlag() + " show=" + selected.getShow() + " episodes=" + selected.getEpisodes().size() + (force ? " force" : ""));
+         if (!force && selected.isSelected()) return;
+         bindFlag(selected);
+         if (!host.getVodPlayId().isEmpty()) return;
+@@ -172,6 +181,7 @@ public class VodPlaybackController {
+     public void selectEpisode(Episode item) {
+         if (!state.hasFlags() || item == null) return;
+         boolean explicit = !host.getVodPlayId().isEmpty();
++        CinemaEventLog.event("play", "episode", "name=" + item.getName() + " explicit=" + explicit);
+         if (explicit) host.clearVodPlayId();
+         requestedEpisodeMissing = false;
+         state.setEpisodeTarget(EpisodeTarget.of(item, state.getMediaSeason()));
+@@ -202,12 +212,27 @@ public class VodPlaybackController {
          if (items.isEmpty()) return;
          if (!state.hasFlags()) {
              state.setFlags(items);
@@ -3368,7 +3516,7 @@ index 2630565a1e845bdde107a260794ab634740f771f..7654a6f8fa4c740fe371e6d540fb1605
      }
  
      public void selectSource(Vod item) {
-@@ -452,17 +474,33 @@ public class VodPlaybackController {
+@@ -452,17 +477,33 @@ public class VodPlaybackController {
          requestedEpisodeMissing = false;
          item.checkPic(host.getVodPic());
          item.checkName(host.getVodName());
@@ -3402,7 +3550,7 @@ index 2630565a1e845bdde107a260794ab634740f771f..7654a6f8fa4c740fe371e6d540fb1605
          if (!host.getVodPlayId().isEmpty()) {
              SmartSourceSelector.FlagSelection selection = SmartSourceSelector.selectExplicitEpisode(item,
                      host.getVodPlayId(), state.getHistory().getVodFlag());
-@@ -506,6 +544,9 @@ public class VodPlaybackController {
+@@ -506,6 +547,9 @@ public class VodPlaybackController {
      }
  
      private void requestPlayer(Flag flag, Episode episode) {
@@ -3412,7 +3560,7 @@ index 2630565a1e845bdde107a260794ab634740f771f..7654a6f8fa4c740fe371e6d540fb1605
          historyPolicy.updateEpisode(state.getHistory(), flag, episode);
          VodPlayRequest request = VodPlayRequest.create(host.getVodKey(), flag, episode);
          state.setPendingRequest(request);
-@@ -564,4 +605,22 @@ public class VodPlaybackController {
+@@ -564,4 +608,22 @@ public class VodPlaybackController {
          int current = state.getFlag().getPosition();
          return EpisodeNavigator.relative(episodes, current, offset);
      }
@@ -4740,6 +4888,52 @@ index 9577870dc46d395d2e1c08716de581c76169e798..c06d88f96ab15d186249c0dd88fc00f5
              Map.entry("community_skip_enabled", false));
      private final Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
      private final AtomicReference<String> error = new AtomicReference<>();
+diff --git a/catvod/src/main/java/com/github/catvod/net/OkHttp.java b/catvod/src/main/java/com/github/catvod/net/OkHttp.java
+index eee07c4e686d47d69ffd501b3f7246fb688f7ae8..87abff7c50951d912782b5a50172d095d888b05c 100644
+--- a/catvod/src/main/java/com/github/catvod/net/OkHttp.java
++++ b/catvod/src/main/java/com/github/catvod/net/OkHttp.java
+@@ -25,6 +25,7 @@ import javax.net.ssl.TrustManager;
+ import javax.net.ssl.X509TrustManager;
+ 
+ import okhttp3.Call;
++import okhttp3.EventListener;
+ import okhttp3.FormBody;
+ import okhttp3.Headers;
+ import okhttp3.HttpUrl;
+@@ -37,6 +38,7 @@ import okhttp3.logging.HttpLoggingInterceptor;
+ public class OkHttp {
+ 
+     private static final long TIMEOUT = TimeUnit.SECONDS.toMillis(30);
++    private static volatile EventListener.Factory listenerFactory;
+ 
+     private ResponseInterceptor responseInterceptor;
+     private RequestInterceptor requestInterceptor;
+@@ -214,6 +216,16 @@ public class OkHttp {
+         return builder.build();
+     }
+ 
++    /** Installs an optional per-call observer for every client built from this base; null disables it. */
++    public static void setListenerFactory(EventListener.Factory factory) {
++        listenerFactory = factory;
++    }
++
++    private static EventListener listenerFor(Call call) {
++        EventListener.Factory factory = listenerFactory;
++        return factory == null ? EventListener.NONE : factory.create(call);
++    }
++
+     private static OkHttpClient.Builder getBuilder() {
+         return getBuilder(trustAllCertificates());
+     }
+@@ -234,7 +246,7 @@ public class OkHttp {
+                         return resolver == null ? null : resolver.resolveWithCloudflareFallback(hostname);
+                     }
+                 });
+-        OkHttpClient.Builder builder = new OkHttpClient.Builder().addInterceptor(requestInterceptor()).addInterceptor(authInterceptor()).addInterceptor(new ProxyRedirectInterceptor(selector)).addInterceptor(get().preferred).addNetworkInterceptor(get().preferred.networkInterceptor()).addNetworkInterceptor(responseInterceptor()).connectTimeout(TIMEOUT, TimeUnit.MILLISECONDS).readTimeout(TIMEOUT, TimeUnit.MILLISECONDS).writeTimeout(TIMEOUT, TimeUnit.MILLISECONDS).dns(dns()).hostnameVerifier((hostname, session) -> true).sslSocketFactory(sockets, trustManager).followRedirects(false);
++        OkHttpClient.Builder builder = new OkHttpClient.Builder().addInterceptor(requestInterceptor()).addInterceptor(authInterceptor()).addInterceptor(new ProxyRedirectInterceptor(selector)).addInterceptor(get().preferred).addNetworkInterceptor(get().preferred.networkInterceptor()).addNetworkInterceptor(responseInterceptor()).connectTimeout(TIMEOUT, TimeUnit.MILLISECONDS).readTimeout(TIMEOUT, TimeUnit.MILLISECONDS).writeTimeout(TIMEOUT, TimeUnit.MILLISECONDS).dns(dns()).hostnameVerifier((hostname, session) -> true).sslSocketFactory(sockets, trustManager).followRedirects(false).eventListenerFactory(OkHttp::listenerFor);
+         HttpLoggingInterceptor logging = new HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY);
+         builder.proxyAuthenticator(authenticator());
+         //builder.addNetworkInterceptor(logging);
 diff --git a/chaquo/build.gradle b/chaquo/build.gradle
 index b646583c1318023c47b3b71a360516f6d11ec7d3..9bcd6cdfe39ba940928d77fbae125bd0743cd8f4 100644
 --- a/chaquo/build.gradle
