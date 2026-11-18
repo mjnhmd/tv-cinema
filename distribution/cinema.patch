@@ -450,7 +450,7 @@ index ad651bdc80c512a182286e9f8c8a253c8d374d62..439301d4be8da1cf56867b3989d81ca4
      }
  }
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java
-index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..9ddc3b243e8f009dde87f2032bd6b6546d5103e4 100644
+index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..24c48138d261b0f10df5c694fb956a7aed4c8cbb 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java
 +++ b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java
 @@ -3,6 +3,8 @@ package com.fongmi.android.tv.ui.activity;
@@ -510,7 +510,7 @@ index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..9ddc3b243e8f009dde87f2032bd6b654
              case JetStreamSettingView.KEY_COMMUNITY_SKIP -> {
                  Setting.putCommunitySkipEnabled(!Setting.isCommunitySkipEnabled());
                  setRowValue(JetStreamSettingView.KEY_COMMUNITY_SKIP, Setting.getSwitch(Setting.isCommunitySkipEnabled()));
-@@ -526,10 +537,123 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
+@@ -526,10 +537,130 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
          ConfigDialog.create().vod().show(this);
      }
  
@@ -596,7 +596,10 @@ index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..9ddc3b243e8f009dde87f2032bd6b654
 +        boolean started = CinemaLanDiscovery.start(new CinemaLanDiscovery.Listener() {
 +            @Override
 +            public void onFound(List<CinemaLanDiscovery.Result> results) {
-+                if (isFinishing() || isDestroyed()) return;
++                if (isFinishing() || isDestroyed()) {
++                    CinemaLanDiscovery.remember(results.get(0));
++                    return;
++                }
 +                Notify.dismiss();
 +                String[] items = new String[results.size()];
 +                for (int i = 0; i < results.size(); i++) {
@@ -614,10 +617,14 @@ index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..9ddc3b243e8f009dde87f2032bd6b654
 +            }
 +
 +            @Override
-+            public void onEmpty() {
++            public void onEmpty(CinemaLanDiscovery.Diagnostics diagnostics) {
 +                if (isFinishing() || isDestroyed()) return;
 +                Notify.dismiss();
-+                Notify.show(R.string.cinema_lan_empty);
++                new MaterialAlertDialogBuilder(SettingActivity.this)
++                        .setTitle(R.string.cinema_lan_empty_title)
++                        .setMessage(getString(R.string.cinema_lan_empty, diagnostics.summary()))
++                        .setPositiveButton(R.string.dialog_positive, null)
++                        .show();
 +            }
 +
 +            @Override

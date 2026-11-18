@@ -286,3 +286,11 @@
 - Read rules, current recipe, feature/mobile context and existing plan; initial root worktree clean at `a925babf7023274906590a34cdb60332a1e6a26c`.
 - Queried ppm read-only; no gugaart hit. Fetched public GitHub metadata/README/tree and pinned review to `60f3cff782f2cc23e32be6512b7e1cf8dc97dbb5`.
 - Assigned a read-only worker to compare Cinema's actual production functionality. Main agent owns public-source/design inspection and review notes; no application or Git writes.
+
+## LAN live source discovery fix — 2026-11-18
+- Rewrote `distribution/overlay/CinemaLanDiscovery.java` (probe-then-read, 250ms connect, 64/16 threads, 25s budget, 1905 first, early exit) and extended `CinemaLiveList` with `subnetPrefix`/`expandHosts`/`hostOf`; updated `SettingActivity` callbacks and `cinema.xml` strings in `distribution/cinema.patch`.
+- Added `CinemaMonitoring` reporting: `lan_scan_empty` / `lan_scan_error` as incidents, `lan_scan_found` as breadcrumb, detail `local= hosts= ports= open= found=`.
+- Fixed `cinema.patch` modified-blob id for `SettingActivity.java`; 85/85 targets now sit at their declared modified blob after applying to a pristine export.
+- Verified: `CinemaLiveListTest` 12/12; `CinemaLanDiscoveryAndroidTest` OK in 1.2s on emulator-5590 (API28 ARM64); `scripts/cinema-build.sh --mode leanback --abi armv7` PASS with signed `build/outputs/tv-cinema-armv7.apk` (sha256 `fff1c198…`), `lan_scan_empty` present in `classes3.dex`.
+- Next: user television acceptance; confirm whether the NAS IPTV service on 1905 is running.
+- Blocked/unknown: no access to the user's home network; emulator NAT timing is not WiFi timing.

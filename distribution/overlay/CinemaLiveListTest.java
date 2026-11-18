@@ -6,6 +6,8 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
+import java.util.List;
+
 public class CinemaLiveListTest {
 
     @Test
@@ -58,5 +60,50 @@ public class CinemaLiveListTest {
         assertFalse(CinemaLiveList.isPrivate("8.8.8.8"));
         assertFalse(CinemaLiveList.isPrivate(null));
         assertFalse(CinemaLiveList.isPrivate("not-an-ip"));
+    }
+
+    @Test
+    public void expandsWholeSubnetAndSkipsNonPrivate() {
+        List<String> hosts = CinemaLiveList.expandHosts(List.of("192.168.31.12", "8.8.8.8"), 254, "");
+        assertEquals(254, hosts.size());
+        assertEquals("192.168.31.1", hosts.get(0));
+        assertEquals("192.168.31.254", hosts.get(253));
+        assertFalse(hosts.contains("8.8.8.1"));
+    }
+
+    @Test
+    public void lastHitIsProbedFirst() {
+        List<String> hosts = CinemaLiveList.expandHosts(List.of("192.168.31.12"), 254, "192.168.31.236");
+        assertEquals("192.168.31.236", hosts.get(0));
+        assertEquals(254, hosts.size());
+    }
+
+    @Test
+    public void subnetBudgetIsSharedAcrossSubnets() {
+        // 两个网段各 254 个地址，上限 254 时必须两边都扫到，不能被第一个网段吃光
+        List<String> hosts = CinemaLiveList.expandHosts(List.of("192.168.31.12", "10.0.0.8"), 254, "");
+        assertEquals(254, hosts.size());
+        assertTrue(hosts.contains("10.0.0.1"));
+        assertTrue(hosts.contains("10.0.0.127"));
+        assertTrue(hosts.contains("192.168.31.1"));
+        assertEquals("192.168.31.1", hosts.get(0));
+        assertEquals("10.0.0.1", hosts.get(1));
+    }
+
+    @Test
+    public void hostOfExtractsPrivateHostOnly() {
+        assertEquals("192.168.31.236",
+                CinemaLiveList.hostOf("http://192.168.31.236:1905/interface.m3u?relay=1"));
+        assertEquals("10.0.0.5", CinemaLiveList.hostOf("https://10.0.0.5/txt"));
+        assertEquals("", CinemaLiveList.hostOf("http://example.com:1905/a.m3u"));
+        assertEquals("", CinemaLiveList.hostOf(""));
+        assertEquals("", CinemaLiveList.hostOf(null));
+    }
+
+    @Test
+    public void subnetPrefixRejectsNonPrivate() {
+        assertEquals("192.168.31.", CinemaLiveList.subnetPrefix("192.168.31.236"));
+        assertEquals("", CinemaLiveList.subnetPrefix("8.8.8.8"));
+        assertEquals("", CinemaLiveList.subnetPrefix(null));
     }
 }

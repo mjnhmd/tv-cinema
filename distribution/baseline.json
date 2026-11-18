@@ -12,7 +12,7 @@
     "directory": "build/reference/wobuhui-media"
   },
   "applicationId": "com.mjnhmd.tvcinema",
-  "cinemaPatchSha256": "fada37008210cb80180e80300f042de58702e97c1c8af7d77cadcfff6e69d574",
+  "cinemaPatchSha256": "054be81ba2bbfeedb8863395182ea851ae4fc0f73a2482a95cce320feab279fe",
   "nativeArchives": {
     "third_party/mpv/mpv-android-ffmpeg9-native.zip": "d3f22c64ab90a1476b489c2b4f06de8296672497f2998161efb4d906f9a4a66c",
     "third_party/mpv/mpv-android-ffmpeg9-bridge.zip": "29b1ef4c8d0b48475c1b5dba464d46157d7ec2e13ce913a67fcca93e4b2c20d6"
@@ -477,6 +477,10 @@
     {
       "source": "distribution/overlay/CinemaLiveListTest.java",
       "target": "app/src/test/java/com/fongmi/android/tv/api/config/CinemaLiveListTest.java"
+    },
+    {
+      "source": "distribution/overlay/CinemaLanDiscoveryAndroidTest.java",
+      "target": "app/src/androidTest/java/com/fongmi/android/tv/api/config/CinemaLanDiscoveryAndroidTest.java"
     }
   ],
   "cinemaDanmakuPatchSha256": "f63bab36c34c217ed445609ecad8ddf0b472d26036075575cc1d66c6aed3d11a",

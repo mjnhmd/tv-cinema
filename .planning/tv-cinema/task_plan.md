@@ -228,3 +228,10 @@ Ship a native TV redesign and a verified signed ARMv7 APK for an Android 9 telev
 - Reference worker: completed read-only reference audit; no source modifications.
 - Secondary UI worker: completed 27 XML edits; main agent reviewed and owns integration.
 - Source worker: preset source class and asset only; main agent owns HomeActivity onboarding.
+
+## LAN live source discovery fix — 2026-11-18
+- [completed] Reproduce the reported symptom on the shipping parameters and establish the root cause with numbers (2286 probes, wall 38.3s single port, ~5.1 min full; results only posted after every future completed).
+- [completed] Rewrite discovery as probe-then-read with early exit, 25s budget, multi-subnet rotation and an on-screen diagnostics dialog; add Bugly reporting for empty/error scans.
+- [completed] Verify: 12 JVM cases, device-side `CinemaLanDiscoveryAndroidTest` on emulator-5590 (1.2s, finds a local 1905 playlist), ARMv7 signed build and DEX/APK checks.
+- Not verified: the user's Android 9 / ARMv7 television, and whether the NAS IPTV service on port 1905 is currently running (a one-off subnet scan reported ports 554 and 5000 open on 192.168.31.236, no 1905 listener, no m3u service anywhere in that subnet).
+- Scope and evidence: `docs/features/tv-cinema/lan-live.md`. Local commit authorized; push/release/device install need fresh explicit consent.

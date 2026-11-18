@@ -2,13 +2,17 @@ package com.fongmi.android.tv.api.config;
 
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.bean.Config;
+import com.fongmi.android.tv.monitoring.CinemaMonitoring;
 import com.github.catvod.net.OkHttp;
 import com.github.catvod.utils.Prefers;
 
 import java.net.Inet4Address;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
+import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -18,7 +22,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -30,12 +33,15 @@ import okhttp3.Response;
  * 设计取舍：
  * 1. 不做 mDNS/SSDP 广播发现。目标服务（IPTV-API、iPTV 这类自建产物）绝大多数只在
  *    HTTP 上暴露播放列表，不注册任何发现协议，等 mDNS 等不到东西。
- * 2. 直接扫描本机 /24 网段的常见 IPTV 端口，用播放列表内容特征判定，比端口名可靠。
- * 3. 只做「发现并填入」，不自动启用。用户点选后才替换当前直播源，避免悄悄改配置。
+ * 2. 先做一轮 TCP 端口探活，再只对真正开放的端口去读播放列表内容。
+ *    旧实现直接对每个 host:port 顺序试全部路径，实测 254 个地址 × 9 端口 × 8 路径
+ *    在家庭网络上要 5 分钟以上，用户在出结果前就放弃了。
+ * 3. 1905（IPTV-API 默认端口）单独先行扫描，命中就不再扫其余端口。
+ * 4. 只做「发现并填入」，不自动启用。用户点选后才替换当前直播源，避免悄悄改配置。
  */
 public final class CinemaLanDiscovery {
 
-    /** 常见自建 IPTV 服务端口，按命中概率排序。 */
+    /** 常见自建 IPTV 服务端口，按命中概率排序；1905 是 IPTV-API 默认端口。 */
     private static final int[] PORTS = {1905, 8080, 8000, 8088, 9000, 3000, 5000, 7890, 9981};
 
     /** 播放列表探测路径，命中即认为是对端产物。 */
@@ -44,11 +50,16 @@ public final class CinemaLanDiscovery {
             "/result.m3u", "/result.txt", "/live.m3u", "/tvbox.m3u"
     };
 
-    private static final int CONNECT_TIMEOUT_MS = 400;
-    private static final int READ_TIMEOUT_MS = 1200;
+    /** 局域网内可用主机 RTT 通常小于 10ms，250ms 足够把无响应地址判掉。 */
+    private static final int CONNECT_TIMEOUT_MS = 250;
+    private static final int READ_TIMEOUT_MS = 1500;
     private static final int MAX_BODY_BYTES = 64 * 1024;
     private static final int MAX_SCAN_HOSTS = 254;
-    private static final int PROBE_THREADS = 24;
+    private static final int PORT_THREADS = 64;
+    private static final int PATH_THREADS = 16;
+    /** 单次扫描的总时长上限，超时就让用户看到已经找到的部分和诊断信息。 */
+    private static final long SCAN_BUDGET_MS = 25_000L;
+    private static final long PATH_WAIT_MS = 8_000L;
 
     private static final String KEY_LAST = "cinema_lan_last";
     private static final Object LOCK = new Object();
@@ -65,13 +76,35 @@ public final class CinemaLanDiscovery {
         }
     }
 
+    /**
+     * 一次扫描的诊断信息。扫不到时把它显示给用户，
+     * 用户才能判断是「网段不同」「路由器隔离」还是「服务没开」。
+     *
+     * @param localIp   本机私有 IPv4 地址，多个用 / 分隔
+     * @param hosts     实际探测的主机数
+     * @param ports     探测的端口数
+     * @param openPorts 真正开放的端口数
+     * @param tookMs    总耗时
+     */
+    public record Diagnostics(String localIp, int hosts, int ports, int openPorts, long tookMs) {
+
+        public String summary() {
+            String local = localIp == null || localIp.isEmpty() ? "未知" : localIp;
+            return "本机 " + local + "，扫描 " + hosts + " 个地址 / " + ports + " 个端口，"
+                    + openPorts + " 个端口有响应，用时 " + String.format("%.1f", tookMs / 1000.0) + " 秒";
+        }
+    }
+
     public interface Listener {
 
         void onFound(List<Result> results);
 
-        void onEmpty();
+        void onEmpty(Diagnostics diagnostics);
 
         void onError();
+    }
+
+    private record Report(List<Result> results, Diagnostics diagnostics) {
     }
 
     public static boolean isRunning() {
@@ -89,19 +122,42 @@ public final class CinemaLanDiscovery {
             running = true;
         }
         new Thread(() -> {
-            List<Result> results = new ArrayList<>();
+            Report report;
+            boolean failed = false;
             try {
-                results.addAll(scan());
-            } catch (Throwable ignored) {
+                report = scan();
+            } catch (Throwable error) {
+                failed = true;
+                report = new Report(List.of(), new Diagnostics("", 0, 0, 0, 0));
             } finally {
                 running = false;
             }
+            Report finalReport = report;
+            boolean finalFailed = failed;
+            reportToMonitoring(finalFailed, finalReport);
             App.post(() -> {
-                if (results.isEmpty()) listener.onEmpty();
-                else listener.onFound(results);
+                if (finalFailed) listener.onError();
+                else if (finalReport.results().isEmpty()) listener.onEmpty(finalReport.diagnostics());
+                else listener.onFound(finalReport.results());
             });
         }, "cinema-lan-scan").start();
         return true;
+    }
+
+    /**
+     * 往 Bugly 留一条可检索的记录。
+     * 扫不到时用户往往只能描述「搜不到」，这里带上本机网段、扫描规模和耗时，
+     * 下次反馈时可以直接对上；扫描成功则只写 breadcrumb，不占一条异常记录。
+     */
+    private static void reportToMonitoring(boolean failed, Report report) {
+        Diagnostics diagnostics = report.diagnostics();
+        String local = diagnostics.localIp() == null || diagnostics.localIp().isEmpty() ? "none" : diagnostics.localIp();
+        String detail = "local=" + local + " hosts=" + diagnostics.hosts()
+                + " ports=" + diagnostics.ports() + " open=" + diagnostics.openPorts()
+                + " found=" + report.results().size();
+        if (failed) CinemaMonitoring.incident("lan_scan_error", diagnostics.tookMs(), detail, null);
+        else if (report.results().isEmpty()) CinemaMonitoring.incident("lan_scan_empty", diagnostics.tookMs(), detail, null);
+        else CinemaMonitoring.breadcrumb("lan_scan_found", diagnostics.tookMs(), detail);
     }
 
     /**
@@ -112,6 +168,11 @@ public final class CinemaLanDiscovery {
         Prefers.put(KEY_LAST, result.url());
         return Config.find(result.url(), BaseConfig.LIVE)
                 .name("局域网 · " + result.name());
+    }
+
+    /** 扫描到结果但页面已经关闭时，至少把地址留下来，下次可以「用上次地址」。 */
+    public static void remember(Result result) {
+        Prefers.put(KEY_LAST, result.url());
     }
 
     /**
@@ -126,58 +187,109 @@ public final class CinemaLanDiscovery {
         return Config.find(last, BaseConfig.LIVE).name("局域网 · " + last);
     }
 
-    private static List<Result> scan() {
-        Set<String> hosts = localHosts();
-        if (hosts.isEmpty()) return List.of();
+    private static Report scan() {
+        long started = System.currentTimeMillis();
+        List<String> ips = localIps();
+        String local = String.join("/", ips);
+        List<String> hosts = CinemaLiveList.expandHosts(ips, MAX_SCAN_HOSTS, CinemaLiveList.hostOf(lastUrl()));
+        if (hosts.isEmpty()) return new Report(List.of(), new Diagnostics(local, 0, PORTS.length, 0, 0));
         OkHttpClient client = OkHttp.client().newBuilder()
                 .connectTimeout(CONNECT_TIMEOUT_MS, TimeUnit.MILLISECONDS)
                 .readTimeout(READ_TIMEOUT_MS, TimeUnit.MILLISECONDS)
                 .callTimeout(READ_TIMEOUT_MS * 2L, TimeUnit.MILLISECONDS)
                 .retryOnConnectionFailure(false)
                 .build();
-        ExecutorService pool = Executors.newFixedThreadPool(PROBE_THREADS);
-        List<Future<Result>> futures = new ArrayList<>();
-        AtomicInteger budget = new AtomicInteger(MAX_SCAN_HOSTS);
+        ExecutorService portPool = Executors.newFixedThreadPool(PORT_THREADS);
+        ExecutorService pathPool = Executors.newFixedThreadPool(PATH_THREADS);
+        int openCount = 0;
+        List<Result> found = new ArrayList<>();
         try {
-            for (String host : hosts) {
-                if (budget.decrementAndGet() < 0) break;
-                for (int port : PORTS) futures.add(pool.submit(probe(client, host, port)));
+            // 第一轮：只扫 IPTV-API 默认端口，命中就不必再动其余端口
+            List<String> open = probePorts(portPool, hosts, new int[]{PORTS[0]}, started);
+            openCount += open.size();
+            found.addAll(probePaths(pathPool, client, open));
+            if (found.isEmpty()) {
+                int[] rest = new int[PORTS.length - 1];
+                System.arraycopy(PORTS, 1, rest, 0, rest.length);
+                List<String> more = probePorts(portPool, hosts, rest, started);
+                openCount += more.size();
+                found.addAll(probePaths(pathPool, client, more));
             }
-            Set<String> seen = new LinkedHashSet<>();
-            List<Result> found = new ArrayList<>();
-            for (Future<Result> future : futures) {
-                Result result;
-                try {
-                    result = future.get();
-                } catch (Exception ignored) {
-                    continue;
-                }
-                if (result == null || !result.usable()) continue;
-                // 同一服务可能多路径命中，按 URL 去重
-                if (seen.add(result.url())) found.add(result);
-            }
-            return found;
         } finally {
-            pool.shutdownNow();
+            portPool.shutdownNow();
+            pathPool.shutdownNow();
         }
+        found.sort(Comparator.comparing(Result::name));
+        return new Report(found, new Diagnostics(local, hosts.size(), PORTS.length, openCount,
+                System.currentTimeMillis() - started));
     }
 
-    private static Callable<Result> probe(OkHttpClient client, String host, int port) {
-        return () -> {
-            for (String path : PATHS) {
-                String url = "http://" + host + ":" + port + path;
-                try {
-                    Request request = new Request.Builder().url(url).get().build();
-                    try (Response response = client.newCall(request).execute()) {
-                        if (!response.isSuccessful() || response.body() == null) continue;
-                        int channels = CinemaLiveList.countChannels(peek(response));
-                        if (channels > 0) return new Result(host + ":" + port, url, channels);
-                    }
-                } catch (Exception ignored) {
-                }
+    /** 并发探活主机端口，返回形如 {@code host:port} 的开放列表。 */
+    private static List<String> probePorts(ExecutorService pool, List<String> hosts, int[] ports, long started) {
+        List<Future<String>> futures = new ArrayList<>();
+        for (int port : ports) {
+            for (String host : hosts) {
+                futures.add(pool.submit(() -> portOpen(host, port) ? host + ":" + port : null));
             }
-            return null;
+        }
+        List<String> open = new ArrayList<>();
+        for (Future<String> future : futures) {
+            long remaining = SCAN_BUDGET_MS - (System.currentTimeMillis() - started);
+            if (remaining <= 0) break;
+            try {
+                String value = future.get(remaining, TimeUnit.MILLISECONDS);
+                if (value != null) open.add(value);
+            } catch (Exception ignored) {
+            }
+        }
+        return open;
+    }
+
+    /** 对已开放的端口并发试播放列表路径，同一地址只保留一条结果。 */
+    private static List<Result> probePaths(ExecutorService pool, OkHttpClient client, List<String> targets) {
+        if (targets.isEmpty()) return List.of();
+        List<Future<Result>> futures = new ArrayList<>();
+        for (String target : targets) {
+            for (String path : PATHS) futures.add(pool.submit(probePath(client, target, path)));
+        }
+        Set<String> seen = new LinkedHashSet<>();
+        List<Result> results = new ArrayList<>();
+        for (Future<Result> future : futures) {
+            try {
+                Result result = future.get(PATH_WAIT_MS, TimeUnit.MILLISECONDS);
+                if (result == null || !result.usable()) continue;
+                // 同一服务常常多条路径都能出列表，按 host:port 去重
+                if (seen.add(result.name())) results.add(result);
+            } catch (Exception ignored) {
+            }
+        }
+        return results;
+    }
+
+    private static Callable<Result> probePath(OkHttpClient client, String target, String path) {
+        return () -> {
+            String url = "http://" + target + path;
+            try {
+                Request request = new Request.Builder().url(url).get().build();
+                try (Response response = client.newCall(request).execute()) {
+                    if (!response.isSuccessful() || response.body() == null) return null;
+                    int channels = CinemaLiveList.countChannels(peek(response));
+                    return channels > 0 ? new Result(target, url, channels) : null;
+                }
+            } catch (Exception ignored) {
+                return null;
+            }
         };
+    }
+
+    /** 只探测端口是否接受连接，不读任何内容。 */
+    private static boolean portOpen(String host, int port) {
+        try (Socket socket = new Socket()) {
+            socket.connect(new InetSocketAddress(host, port), CONNECT_TIMEOUT_MS);
+            return true;
+        } catch (Exception ignored) {
+            return false;
+        }
     }
 
     /** 只读响应体前若干字节，避免把超大播放列表整个读进内存。 */
@@ -190,13 +302,9 @@ public final class CinemaLanDiscovery {
         }
     }
 
-    /**
-     * 取本机所有可用的 IPv4 私有地址，按 /24 展开成待扫描主机。
-     * 只扫前三段相同的地址，跨网段扫描既慢又不合理。
-     */
-    private static Set<String> localHosts() {
-        Set<String> hosts = new LinkedHashSet<>();
-        Set<String> prefixes = new LinkedHashSet<>();
+    /** 取本机所有可用的 IPv4 私有地址。跨网段扫描既慢又不合理，范围由 expandHosts 决定。 */
+    private static List<String> localIps() {
+        List<String> ips = new ArrayList<>();
         try {
             for (Enumeration<NetworkInterface> nifs = NetworkInterface.getNetworkInterfaces(); nifs.hasMoreElements(); ) {
                 NetworkInterface nif = nifs.nextElement();
@@ -205,15 +313,12 @@ public final class CinemaLanDiscovery {
                     InetAddress address = addresses.nextElement();
                     if (!(address instanceof Inet4Address) || address.isLoopbackAddress()) continue;
                     String ip = address.getHostAddress();
-                    if (!CinemaLiveList.isPrivate(ip)) continue;
-                    prefixes.add(ip.substring(0, ip.lastIndexOf('.') + 1));
+                    if (!CinemaLiveList.isPrivate(ip) || ips.contains(ip)) continue;
+                    ips.add(ip);
                 }
             }
         } catch (Exception ignored) {
         }
-        for (String prefix : prefixes) {
-            for (int host = 1; host <= 254; host++) hosts.add(prefix + host);
-        }
-        return hosts;
+        return ips;
     }
 }

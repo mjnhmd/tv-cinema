@@ -29,11 +29,12 @@
     <string name="cinema_monitor_report_queued">已发起问题上报</string>
     <string name="cinema_monitor_report_failed">问题上报失败，请稍后重试</string>
     <string name="cinema_lan_live">局域网直播源</string>
-    <string name="cinema_lan_notice">扫描当前局域网，自动查找在 NAS 或电脑上运行的直播源服务（如 IPTV-API、iPTV）。\n\n扫描需要几秒到半分钟，只读取播放列表开头的内容用于识别，不会修改任何服务。发现结果需要你点选后才会启用，不会自动替换当前直播源。</string>
+    <string name="cinema_lan_notice">扫描当前局域网，自动查找在 NAS 或电脑上运行的直播源服务（如 IPTV-API、iPTV）。\n\n扫描通常几秒完成，最多不超过半分钟，只读取播放列表开头的内容用于识别，不会修改任何服务。发现结果需要你点选后才会启用，不会自动替换当前直播源。</string>
     <string name="cinema_lan_start">开始扫描</string>
     <string name="cinema_lan_last">用上次地址</string>
     <string name="cinema_lan_found">找到直播源</string>
-    <string name="cinema_lan_empty">局域网内没有找到直播源服务，请确认电视与 NAS 在同一网络</string>
+    <string name="cinema_lan_empty_title">没有找到直播源</string>
+    <string name="cinema_lan_empty">%1$s\n\n如果电视和 NAS 不在同一网段，或者路由器开了「AP 隔离」，这里就会扫不到。</string>
     <string name="cinema_lan_failed">扫描失败，请稍后重试</string>
     <string name="cinema_lan_busy">正在扫描，请稍候</string>
 </resources>
