@@ -12,7 +12,7 @@
     "directory": "build/reference/wobuhui-media"
   },
   "applicationId": "com.mjnhmd.tvcinema",
-  "cinemaPatchSha256": "054be81ba2bbfeedb8863395182ea851ae4fc0f73a2482a95cce320feab279fe",
+  "cinemaPatchSha256": "6f3716c766e1f2ce470d189d2df0082fa4970e36c91ff938cdec8f0078a02fb5",
   "nativeArchives": {
     "third_party/mpv/mpv-android-ffmpeg9-native.zip": "d3f22c64ab90a1476b489c2b4f06de8296672497f2998161efb4d906f9a4a66c",
     "third_party/mpv/mpv-android-ffmpeg9-bridge.zip": "29b1ef4c8d0b48475c1b5dba464d46157d7ec2e13ce913a67fcca93e4b2c20d6"
@@ -37,6 +37,10 @@
     {
       "source": "distribution/overlay/CinemaEpisodeOrder.java",
       "target": "app/src/main/java/com/fongmi/android/tv/source/CinemaEpisodeOrder.java"
+    },
+    {
+      "source": "distribution/overlay/CinemaResumeTrace.java",
+      "target": "app/src/main/java/com/fongmi/android/tv/source/CinemaResumeTrace.java"
     },
     {
       "source": "distribution/overlay/CinemaMonitoringAndroidTest.java",

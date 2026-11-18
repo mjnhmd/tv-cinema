@@ -676,10 +676,15 @@ index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..24c48138d261b0f10df5c694fb956a7a
      }
  
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/VideoActivity.java b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/VideoActivity.java
-index b181c843f13ab06b0daed7360f5954b7b594d37f..b4362cc42f9bc9c8b2f97c14ada8197864200222 100644
+index b181c843f13ab06b0daed7360f5954b7b594d37f..0ae1214266e8af39874eb940a253ed4a177caaa2 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/VideoActivity.java
 +++ b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/VideoActivity.java
-@@ -38,7 +38,6 @@ import com.fongmi.android.tv.BuildConfig;
+@@ -34,11 +34,11 @@ import androidx.viewbinding.ViewBinding;
+ import com.bumptech.glide.request.transition.Transition;
+ import com.fongmi.android.tv.App;
+ import com.fongmi.android.tv.player.PlayerManager;
++import com.fongmi.android.tv.source.CinemaResumeTrace;
+ import com.fongmi.android.tv.BuildConfig;
  import com.fongmi.android.tv.Constant;
  import com.fongmi.android.tv.R;
  import com.fongmi.android.tv.ui.custom.PlaybackSpecsController;
@@ -687,7 +692,7 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..b4362cc42f9bc9c8b2f97c14ada81978
  import com.fongmi.android.tv.api.DanmakuApi;
  import com.fongmi.android.tv.api.SiteApi;
  import com.fongmi.android.tv.api.config.VodConfig;
-@@ -64,6 +63,7 @@ import com.fongmi.android.tv.setting.PlayerSetting;
+@@ -64,6 +64,7 @@ import com.fongmi.android.tv.setting.PlayerSetting;
  import com.fongmi.android.tv.syncplay.SyncplaySession;
  import com.fongmi.android.tv.ui.dialog.SyncplayControls;
  import com.fongmi.android.tv.ui.custom.CustomKeyDownVod;
@@ -695,7 +700,7 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..b4362cc42f9bc9c8b2f97c14ada81978
  import com.fongmi.android.tv.ui.custom.JetStreamAnimator;
  import com.fongmi.android.tv.ui.custom.JetStreamChipRow;
  import com.fongmi.android.tv.ui.custom.JetStreamVideoDecor;
-@@ -404,6 +404,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+@@ -404,6 +405,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
                  () -> mContentRating,
                  () -> !isJetStreamControlVisible() && !isJetStreamInfoVisible());
          mFrameParams = mBinding.video.getLayoutParams();
@@ -703,7 +708,7 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..b4362cc42f9bc9c8b2f97c14ada81978
          mClock = Clock.create(mBinding.widget.clock);
          mKeyDown = CustomKeyDownVod.create(this);
          clearDetailState();
-@@ -464,8 +465,6 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+@@ -464,8 +466,6 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
          mBinding.control.action.text.setOnClickListener(this::onTrack);
          mBinding.control.action.audio.setOnClickListener(this::onTrack);
          mBinding.control.action.video.setOnClickListener(this::onTrack);
@@ -712,7 +717,7 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..b4362cc42f9bc9c8b2f97c14ada81978
          mBinding.control.action.speed.setUpListener(this::onSpeedAdd);
          mBinding.control.action.speed.setDownListener(this::onSpeedSub);
          mBinding.control.action.ending.setUpListener(this::onEndingAdd);
-@@ -509,6 +508,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+@@ -509,6 +509,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
                  mVod.selectEpisode(item);
              }
          });
@@ -720,7 +725,7 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..b4362cc42f9bc9c8b2f97c14ada81978
          mBinding.quality.setOnChipClickListener(pos -> {
              if (mQualityResult != null && pos >= 0 && pos < mQualityResult.getUrl().getValues().size()) {
                  mQualityResult.getUrl().set(pos);
-@@ -565,7 +565,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+@@ -565,7 +566,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
      }
  
      private void focusFirstMediaList() {
@@ -729,7 +734,7 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..b4362cc42f9bc9c8b2f97c14ada81978
              View view = findViewById(id);
              if (canRequestFocus(view)) {
                  requestFocus(view, mBinding.video);
-@@ -767,7 +767,8 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+@@ -767,7 +768,8 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
          getIntent().putExtra("id", item.getId());
          getIntent().putExtra("playId", item.getPlayId());
          if (!TextUtils.isEmpty(item.getPlayId())) getIntent().removeExtra("mark");
@@ -739,7 +744,7 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..b4362cc42f9bc9c8b2f97c14ada81978
          mClock.setCallback(null);
          mVod.stopCommunitySkip();
          updateNavigationKey();
-@@ -837,6 +838,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+@@ -837,6 +839,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
          checkKeepImg();
          setText(item);
          updateKeep();
@@ -747,7 +752,7 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..b4362cc42f9bc9c8b2f97c14ada81978
      }
  
      @Override
-@@ -944,6 +946,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+@@ -944,6 +947,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
      public void renderDescription(String desc) {
          mDetailContent = desc;
          updateDetailView();
@@ -755,7 +760,7 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..b4362cc42f9bc9c8b2f97c14ada81978
      }
  
      @Override
-@@ -1047,19 +1050,32 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+@@ -1047,19 +1051,32 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
      private void setEpisodeAdapter(List<Episode> items) {
          mEpisodeItems = items;
          setRowVisibility(mBinding.episode, !items.isEmpty());
@@ -793,7 +798,7 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..b4362cc42f9bc9c8b2f97c14ada81978
      private void setQualityVisible(boolean visible) {
          setRowVisibility(mBinding.quality, visible);
          setR2Callback();
-@@ -1137,7 +1153,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+@@ -1137,7 +1154,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
  
      private void applyWindowVideoStyle() {
          if (isFullscreen()) return;
@@ -802,7 +807,7 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..b4362cc42f9bc9c8b2f97c14ada81978
          mBinding.video.setForeground(JetStreamVideoDecor.windowForeground(mBinding.video));
          mBinding.video.setBackgroundResource(R.drawable.shape_video_window);
          mBinding.video.setClipToOutline(true);
-@@ -1154,6 +1170,11 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+@@ -1154,6 +1171,11 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
          return mpv ? PlayerSetting.RENDER_TEXTURE : super.getPlaybackRender();
      }
  
@@ -814,7 +819,7 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..b4362cc42f9bc9c8b2f97c14ada81978
      private void restoreWindowVideoFocus() {
          mBinding.video.post(() -> {
              if (isFullscreen()) return;
-@@ -1175,7 +1196,8 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+@@ -1175,7 +1197,8 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
      private void updateFullscreenViews() {
          int visibility = isFullscreen() ? View.GONE : View.VISIBLE;
          mBinding.detail.setVisibility(visibility);
@@ -824,7 +829,7 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..b4362cc42f9bc9c8b2f97c14ada81978
          updateFocus();
      }
  
-@@ -1487,9 +1509,20 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+@@ -1487,9 +1510,20 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
          if (row.getParent() instanceof JetStreamPlaybackSectionLayout) {
              ((View) row.getParent()).setVisibility(visible ? View.VISIBLE : View.GONE);
          }
@@ -845,7 +850,7 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..b4362cc42f9bc9c8b2f97c14ada81978
      private boolean hasFocus(View... views) {
          for (View view : views) {
              if (view != null && view.hasFocus()) return true;
-@@ -1650,8 +1683,17 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+@@ -1650,8 +1684,17 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
          setJetStreamCommand("replay", mBinding.control.action.replay, true);
          setJetStreamCommand("reset", mBinding.control.action.reset, true);
          setJetStreamCommand("subtitle", getString(R.string.play_subtitle), true, false);
@@ -865,7 +870,7 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..b4362cc42f9bc9c8b2f97c14ada81978
          setJetStreamCommand("video", mBinding.control.action.video, isVisible(mBinding.control.action.video));
          setJetStreamCommand("danmaku", mBinding.control.action.danmaku, DanmakuSetting.isLoad());
          setJetStreamCommand("speed", mBinding.control.action.speed, true);
-@@ -1736,23 +1778,41 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+@@ -1736,23 +1779,41 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
              mBinding.detail.setNextFocusDownId(R.id.video);
              return;
          }
@@ -920,7 +925,23 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..b4362cc42f9bc9c8b2f97c14ada81978
      }
  
      private void showTitleText(String name) {
-@@ -2291,7 +2351,6 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+@@ -1882,6 +1943,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+         boolean owner = service() != null && isOwner();
+         long position = owner ? player().getPosition() : C.TIME_UNSET;
+         long duration = owner ? player().getDuration() : C.TIME_UNSET;
++        CinemaResumeTrace.log("exitSave exit=" + exit + " owner=" + owner + " position=" + position + " duration=" + duration);
+         if (mVod != null) mVod.saveHistory(exit, System.currentTimeMillis(), position, duration);
+     }
+ 
+@@ -2068,6 +2130,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+         long position = player().getPosition();
+         long duration = player().getDuration();
+         if (position < 0 || duration <= 0) return;
++        CinemaResumeTrace.positionTick(position, duration);
+         mVod.onTimeChanged(time, position, duration);
+     }
+ 
+@@ -2291,7 +2354,6 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
          super.onStart();
          if (mSpecs != null) mSpecs.setStarted(true);
          SyncplaySession.get().observe(mSyncplayObserver);
@@ -3221,11 +3242,66 @@ index 76e56be285a881d6f24571a65120f9e456ba93c5..93d7e62be86787c161a0adb4eaf04b10
      }
  
      private record SearchTask(Site site, String keyword, boolean quick, String page) implements Callable<Result> {
+diff --git a/app/src/main/java/com/fongmi/android/tv/playback/vod/VodHistoryPolicy.java b/app/src/main/java/com/fongmi/android/tv/playback/vod/VodHistoryPolicy.java
+index f4b0097638c61bc18622d5ccf2f5806158520a14..3002c72374680db2b119ba34184b940c6a4dba11 100644
+--- a/app/src/main/java/com/fongmi/android/tv/playback/vod/VodHistoryPolicy.java
++++ b/app/src/main/java/com/fongmi/android/tv/playback/vod/VodHistoryPolicy.java
+@@ -13,6 +13,7 @@ import com.fongmi.android.tv.db.AppDatabase;
+ import com.fongmi.android.tv.event.RefreshEvent;
+ import com.fongmi.android.tv.player.skip.LegacySkipMigration;
+ import com.fongmi.android.tv.setting.Setting;
++import com.fongmi.android.tv.source.CinemaResumeTrace;
+ import com.fongmi.android.tv.utils.Task;
+ 
+ import java.util.concurrent.TimeUnit;
+@@ -69,6 +70,9 @@ public class VodHistoryPolicy {
+     }
+ 
+     public void save(History history, boolean exit) {
++        if (history != null) CinemaResumeTrace.log("save exit=" + exit + " canSave=" + history.canSave()
++                + " incognito=" + Setting.isIncognito() + " pos=" + history.getPosition() + " dur=" + history.getDuration()
++                + " remarks=" + CinemaResumeTrace.brief(history.getVodRemarks()) + " url=" + CinemaResumeTrace.brief(history.getEpisodeUrl()));
+         if (history != null && history.canSave() && !Setting.isIncognito()) Task.execute(() -> {
+             history.merge().save();
+             if (exit) RefreshEvent.history();
+@@ -85,6 +89,8 @@ public class VodHistoryPolicy {
+ 
+     public void updateEpisode(History history, Flag flag, Episode episode, boolean matchId) {
+         if (history == null || flag == null || episode == null) return;
++        long posBefore = history.getPosition();
++        long durBefore = history.getDuration();
+         boolean match = matchId ? episode.getUrl().equals(history.getEpisodeUrl()) : episode.matchesName(history.getEpisode());
+         if (!match) {
+             history.setPosition(C.TIME_UNSET);
+@@ -94,6 +100,13 @@ public class VodHistoryPolicy {
+         history.setVodRemarks(episode.getName());
+         history.setEpisodeUrl(episode.getUrl());
+         history.setEpisodeLabelGenerated(episode.isGeneratedLabel());
++        CinemaResumeTrace.log("updateEpisode matchId=" + matchId + " match=" + match
++                + " posBefore=" + posBefore + " durBefore=" + durBefore + " posAfter=" + history.getPosition()
++                + " savedRemark=" + CinemaResumeTrace.brief(history.getVodRemarks())
++                + " playName=" + CinemaResumeTrace.brief(episode.getName())
++                + " playUrl=" + CinemaResumeTrace.brief(episode.getUrl())
++                + " savedUrl=" + CinemaResumeTrace.brief(history.getEpisodeUrl())
++                + " flag=" + CinemaResumeTrace.brief(flag.getFlag()));
+     }
+ 
+     public void updateTime(History history, long time, long position, long duration) {
+@@ -121,6 +134,9 @@ public class VodHistoryPolicy {
+         if (history == null) return C.TIME_UNSET;
+         LegacySkipMigration.clearBoundaries(history);
+         long position = Math.max(history.getOpening(), history.getPosition());
++        CinemaResumeTrace.log("startPositionMs opening=" + history.getOpening() + " saved=" + history.getPosition()
++                + " dur=" + history.getDuration() + " remarks=" + CinemaResumeTrace.brief(history.getVodRemarks())
++                + " url=" + CinemaResumeTrace.brief(history.getEpisodeUrl()) + " result=" + (position < 0 ? C.TIME_UNSET : position));
+         return position < 0 ? C.TIME_UNSET : position;
+     }
+ }
 diff --git a/app/src/main/java/com/fongmi/android/tv/playback/vod/VodPlaybackController.java b/app/src/main/java/com/fongmi/android/tv/playback/vod/VodPlaybackController.java
-index 2630565a1e845bdde107a260794ab634740f771f..a966c6f3ac8b099939450d6ee21ef7aa6a3836f9 100644
+index 2630565a1e845bdde107a260794ab634740f771f..7654a6f8fa4c740fe371e6d540fb1605a8873c08 100644
 --- a/app/src/main/java/com/fongmi/android/tv/playback/vod/VodPlaybackController.java
 +++ b/app/src/main/java/com/fongmi/android/tv/playback/vod/VodPlaybackController.java
-@@ -10,17 +10,20 @@ import com.fongmi.android.tv.bean.History;
+@@ -10,17 +10,21 @@ import com.fongmi.android.tv.bean.History;
  import com.fongmi.android.tv.bean.Parse;
  import com.fongmi.android.tv.bean.Result;
  import com.fongmi.android.tv.bean.Vod;
@@ -3233,6 +3309,7 @@ index 2630565a1e845bdde107a260794ab634740f771f..a966c6f3ac8b099939450d6ee21ef7aa
  import com.fongmi.android.tv.player.skip.CommunitySkipRuntime;
  import com.fongmi.android.tv.setting.Setting;
  import com.fongmi.android.tv.setting.SourceSelectionSetting;
++import com.fongmi.android.tv.source.CinemaResumeTrace;
  import com.fongmi.android.tv.source.EpisodeNavigator;
  import com.fongmi.android.tv.source.EpisodeTarget;
 +import com.fongmi.android.tv.source.NavigationPlaylistGuard;
@@ -3246,7 +3323,24 @@ index 2630565a1e845bdde107a260794ab634740f771f..a966c6f3ac8b099939450d6ee21ef7aa
  import java.util.Collections;
  import java.util.List;
  
-@@ -202,12 +205,27 @@ public class VodPlaybackController {
+@@ -115,6 +119,8 @@ public class VodPlaybackController {
+         if (result.hasDesc()) host.renderDescription(result.getDesc());
+         if (result.hasArtwork()) host.renderArtwork(result.getArtwork());
+         Long sourcePosition = historyPolicy.acceptedResultPosition(state.getHistory(), result.getPosition());
++        CinemaResumeTrace.log("applyPlayerResult sourcePosition=" + result.getPosition() + " accepted=" + sourcePosition
++                + " historyPosition=" + (state.getHistory() == null ? "null" : state.getHistory().getPosition()));
+         if (sourcePosition != null) state.getHistory().setPosition(sourcePosition);
+         boolean live = result.getTimeshift() != null && result.getTimeshift().isValid(System.currentTimeMillis());
+         startPlayback(result, live ? C.TIME_UNSET : startPositionMs());
+@@ -142,6 +148,7 @@ public class VodPlaybackController {
+         boolean live = result.getTimeshift() != null && result.getTimeshift().isValid(System.currentTimeMillis());
+         if (live) stopCommunitySkip();
+         else communitySkip.start(state.getMedia(), state.getHistory(), state.getEpisode());
++        CinemaResumeTrace.started("controller live=" + live, startPositionMs);
+         host.startPlayback(result, state.isUseParse(), startPositionMs, state.getHistory(), state.getEpisode());
+     }
+ 
+@@ -202,12 +209,27 @@ public class VodPlaybackController {
          if (items.isEmpty()) return;
          if (!state.hasFlags()) {
              state.setFlags(items);
@@ -3274,7 +3368,7 @@ index 2630565a1e845bdde107a260794ab634740f771f..a966c6f3ac8b099939450d6ee21ef7aa
      }
  
      public void selectSource(Vod item) {
-@@ -452,7 +470,11 @@ public class VodPlaybackController {
+@@ -452,17 +474,33 @@ public class VodPlaybackController {
          requestedEpisodeMissing = false;
          item.checkPic(host.getVodPic());
          item.checkName(host.getVodName());
@@ -3286,7 +3380,17 @@ index 2630565a1e845bdde107a260794ab634740f771f..a966c6f3ac8b099939450d6ee21ef7aa
          state.setMedia(item);
          String key = host.getHistoryKey();
          History preferred = VodHistoryPolicy.preferredHistory(key, host.takeCastHistory(), state.getHistory());
-@@ -463,6 +485,11 @@ public class VodPlaybackController {
+         String mark = host.getVodPlayId().isEmpty() ? host.getVodMark() : "";
+         state.setHistory(historyPolicy.findOrCreate(key, mark, item, preferred));
+         lastHistory = state.getHistory();
++        CinemaResumeTrace.log("detailLoaded key=" + CinemaResumeTrace.brief(key) + " mark=" + CinemaResumeTrace.brief(mark)
++                + " pos=" + state.getHistory().getPosition() + " dur=" + state.getHistory().getDuration()
++                + " remarks=" + CinemaResumeTrace.brief(state.getHistory().getVodRemarks())
++                + " episodeUrl=" + CinemaResumeTrace.brief(state.getHistory().getEpisodeUrl())
++                + " vodFlag=" + CinemaResumeTrace.brief(state.getHistory().getVodFlag())
++                + " flags=" + describeFlags(item.getFlags())
++                + " mode=" + com.fongmi.android.tv.setting.SourceSelectionSetting.getMode());
+         host.renderDetail(item, state.getHistory());
          host.renderFlags(item.getFlags());
          host.renderHistory(state.getHistory());
          host.onDetailFallbackCancelled();
@@ -3298,6 +3402,39 @@ index 2630565a1e845bdde107a260794ab634740f771f..a966c6f3ac8b099939450d6ee21ef7aa
          if (!host.getVodPlayId().isEmpty()) {
              SmartSourceSelector.FlagSelection selection = SmartSourceSelector.selectExplicitEpisode(item,
                      host.getVodPlayId(), state.getHistory().getVodFlag());
+@@ -506,6 +544,9 @@ public class VodPlaybackController {
+     }
+ 
+     private void requestPlayer(Flag flag, Episode episode) {
++        CinemaResumeTrace.log("requestPlayer index=" + flag.getEpisodes().indexOf(episode)
++                + " episode=" + CinemaResumeTrace.brief(episode.getName()) + " url=" + CinemaResumeTrace.brief(episode.getUrl())
++                + " flag=" + CinemaResumeTrace.brief(flag.getFlag()) + " savedUrlInFlag=" + hasEpisodeUrl(flag, state.getHistory()));
+         historyPolicy.updateEpisode(state.getHistory(), flag, episode);
+         VodPlayRequest request = VodPlayRequest.create(host.getVodKey(), flag, episode);
+         state.setPendingRequest(request);
+@@ -564,4 +605,22 @@ public class VodPlaybackController {
+         int current = state.getFlag().getPosition();
+         return EpisodeNavigator.relative(episodes, current, offset);
+     }
++    private static String hasEpisodeUrl(Flag flag, History history) {
++        if (flag == null || history == null) return "n/a";
++        String saved = history.getEpisodeUrl();
++        if (saved == null || saved.isEmpty()) return "empty";
++        for (Episode episode : flag.getEpisodes()) if (saved.equals(episode.getUrl())) return "yes";
++        return "no";
++    }
++
++    private static String describeFlags(java.util.List<Flag> flags) {
++        if (flags == null) return "null";
++        StringBuilder builder = new StringBuilder().append(flags.size()).append(':');
++        for (int i = 0; i < flags.size() && i < 3; i++) {
++            Flag flag = flags.get(i);
++            builder.append('[').append(CinemaResumeTrace.brief(flag.getFlag()));
++            builder.append('/').append(flag.getEpisodes() == null ? 0 : flag.getEpisodes().size()).append(']');
++        }
++        return builder.toString();
++    }
+ }
 diff --git a/app/src/main/java/com/fongmi/android/tv/playback/vod/VodPlaybackHost.java b/app/src/main/java/com/fongmi/android/tv/playback/vod/VodPlaybackHost.java
 index 4cc72f8acd71b88ca142a6733458d4093664b043..18fa394e50b38a93bf5f0c409cdb496bbe3fa1c7 100644
 --- a/app/src/main/java/com/fongmi/android/tv/playback/vod/VodPlaybackHost.java
