@@ -44,6 +44,7 @@ public final class CinemaEventLog {
     private static final Map<String, int[]> windows = new HashMap<>();
     private static final AtomicInteger dropped = new AtomicInteger();
     private static final AtomicInteger appended = new AtomicInteger();
+    private static int base;
     private static boolean started;
 
     private CinemaEventLog() {}
@@ -69,7 +70,6 @@ public final class CinemaEventLog {
         line.append('[').append(elapsed()).append("] ").append(area).append(' ').append(action);
         if (detail != null && !detail.isEmpty()) line.append(' ').append(trim(detail));
         append(line.toString());
-        CinemaEventUpload.onEvent(area);
     }
 
     public static String session() {
@@ -99,6 +99,23 @@ public final class CinemaEventLog {
     public static List<String> snapshot() {
         synchronized (entries) {
             return new ArrayList<>(entries);
+        }
+    }
+
+    /** Global index of the oldest line still buffered; anything below it has been evicted. */
+    public static int firstAvailable() {
+        synchronized (entries) {
+            return base;
+        }
+    }
+
+    /** Lines from global index {@code from} to the newest, oldest first. */
+    public static List<String> since(int from) {
+        synchronized (entries) {
+            int start = Math.max(0, from - base);
+            List<String> lines = new ArrayList<>(entries.size() - start);
+            for (int i = start; i < entries.size(); i++) lines.add(entries.get(i));
+            return lines;
         }
     }
 
@@ -142,7 +159,10 @@ public final class CinemaEventLog {
         appended.incrementAndGet();
         synchronized (entries) {
             entries.add(line);
-            if (entries.size() > MAX_ENTRIES) entries.remove(0);
+            if (entries.size() > MAX_ENTRIES) {
+                entries.remove(0);
+                base++;
+            }
         }
         Log.d(TAG, line);
     }

@@ -1,49 +1,47 @@
 package com.fongmi.android.tv.monitoring;
 
+import android.os.Process;
+
 import com.fongmi.android.tv.BuildConfig;
 import com.github.catvod.net.OkHttp;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import okhttp3.Credentials;
 import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
 /**
- * Near-real-time LAN sink for the event log: keeps one file per app session on the user's own
- * NAS over WebDAV, rewriting it every {@link #PERIOD_MS} and again ~{@link #DEBOUNCE_MS} after any
- * key step, so a run can be watched while it happens instead of being exported by hand.
+ * Batched sink for the event log: one POST per {@link #PERIOD_MS} carrying only the lines recorded
+ * since the last success, plus one more when the app leaves the foreground.
  *
- * <p>Off by default. It only runs when {@code CINEMA_LOG_UPLOAD_URL} was baked in at build time
- * from {@code local.properties} or the environment — never from the repository — so no address or
- * credential enters git or this file. All traffic runs on one daemon thread, one request at a
- * time, and only when the buffer actually changed; the outcome is recorded as an event, so a
- * failing sink stays visible in the log itself.
+ * <p>The television is the constraint. Nothing is sent per event, no JSON is built, no request is
+ * made when nothing new happened, and the work runs on a single background-priority daemon thread
+ * through one reused client so the keep-alive connection does the work instead of a fresh handshake
+ * every time. A failed batch keeps its cursor and retries on the next tick; if a backlog outgrows
+ * the ring buffer it is skipped with one explicit gap event instead of growing without bound.
  *
- * <p>The whole buffer is rewritten rather than appended: WebDAV has no cheap append, the buffer is
- * capped at 2000 lines, and a single complete file is what a reader wants afterwards.
+ * <p>Off by default: it only runs when {@code CINEMA_LOG_UPLOAD_URL} was baked in at build time
+ * from {@code local.properties} or the environment, so neither the address nor the token lives in
+ * the repository.
  */
 public final class CinemaEventUpload {
 
-    private static final long PERIOD_MS = 5_000L;
-    private static final long DEBOUNCE_MS = 300L;
-    private static final long TIMEOUT_MS = 15_000L;
+    private static final long PERIOD_MS = 10_000L;
+    private static final long TIMEOUT_MS = 10_000L;
+    private static final int MAX_BATCH = 400;
     private static final MediaType TEXT = MediaType.parse("text/plain; charset=utf-8");
-    private static final Set<String> KEY_AREAS = new HashSet<>(Arrays.asList("app", "play", "ui", "setting"));
-    private static final AtomicInteger lastSent = new AtomicInteger(-1);
-    private static final AtomicBoolean pending = new AtomicBoolean();
+    private static final AtomicInteger cursor = new AtomicInteger();
     private static ScheduledExecutorService worker;
+    private static volatile OkHttpClient client;
 
     private CinemaEventUpload() {}
 
@@ -51,7 +49,7 @@ public final class CinemaEventUpload {
         return !BuildConfig.CINEMA_LOG_UPLOAD_URL.isEmpty();
     }
 
-    /** Starts the periodic flush; no-op unless a sink was configured at build time. */
+    /** Starts the batch timer; no-op unless a sink was configured at build time. */
     public static synchronized void start() {
         if (!configured() || worker != null) return;
         worker = Executors.newSingleThreadScheduledExecutor(runnable -> {
@@ -60,25 +58,10 @@ public final class CinemaEventUpload {
             return thread;
         });
         worker.scheduleWithFixedDelay(() -> flush(false), PERIOD_MS, PERIOD_MS, TimeUnit.MILLISECONDS);
-        CinemaEventLog.event("log", "sink", "period " + PERIOD_MS + "ms url=" + BuildConfig.CINEMA_LOG_UPLOAD_URL);
+        CinemaEventLog.event("log", "sink", "batch " + PERIOD_MS + "ms url=" + BuildConfig.CINEMA_LOG_UPLOAD_URL);
     }
 
-    /** Called after every event; key steps get pushed almost immediately, the rest ride the timer. */
-    public static void onEvent(String area) {
-        ScheduledExecutorService executor = worker;
-        if (executor == null || !KEY_AREAS.contains(area)) return;
-        if (!pending.compareAndSet(false, true)) return;
-        try {
-            executor.schedule(() -> {
-                pending.set(false);
-                flush(false);
-            }, DEBOUNCE_MS, TimeUnit.MILLISECONDS);
-        } catch (RejectedExecutionException e) {
-            pending.set(false);
-        }
-    }
-
-    /** Pushes the current buffer now; {@code force} also re-sends an unchanged buffer. */
+    /** Pushes what is pending now; used when the app leaves the foreground. */
     public static void flushNow(boolean force) {
         ScheduledExecutorService executor = worker;
         if (executor == null) return;
@@ -90,36 +73,54 @@ public final class CinemaEventUpload {
 
     private static void flush(boolean force) {
         if (!configured()) return;
-        int total = CinemaEventLog.total();
-        if (!force && total == lastSent.get()) return;
-        String report = CinemaEventLog.report();
-        if (report == null) return;
+        Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
+        int from = cursor.get();
+        int first = CinemaEventLog.firstAvailable();
+        if (from < first) {
+            int lost = first - from;
+            from = first;
+            cursor.set(from);
+            CinemaEventLog.event("log", "gap", "lost=" + lost);
+        }
+        if (!force && CinemaEventLog.total() <= from) return;
+        List<String> lines = CinemaEventLog.since(from);
+        if (lines.isEmpty()) return;
+        if (lines.size() > MAX_BATCH) lines = lines.subList(0, MAX_BATCH);
         try {
-            int code = send(report);
-            boolean ok = code >= 200 && code < 300;
-            CinemaEventLog.event("log", ok ? "upload" : "upload fail",
-                    "code=" + code + " bytes=" + report.length() + " lines=" + total);
-            // The event above is itself a new line; treat the buffer as sent up to here.
-            lastSent.set(CinemaEventLog.total());
+            int code = send(String.join("\n", lines));
+            if (code >= 200 && code < 300) {
+                cursor.set(from + lines.size());
+            } else if (code == 401 || code == 403) {
+                CinemaEventLog.event("log", "upload fail", "code=" + code + " token");
+            } else {
+                CinemaEventLog.event("log", "upload fail", "code=" + code + " lines=" + lines.size());
+            }
         } catch (IOException | RuntimeException e) {
-            CinemaEventLog.event("log", "upload fail", e.getClass().getSimpleName() + ": " + e.getMessage());
-            lastSent.set(CinemaEventLog.total());
+            CinemaEventLog.event("log", "upload fail", e.getClass().getSimpleName());
         }
     }
 
-    private static int send(String report) throws IOException {
-        String base = BuildConfig.CINEMA_LOG_UPLOAD_URL;
-        if (!base.endsWith("/")) base = base + "/";
-        String name = "cinema_events_" + CinemaEventLog.session() + ".txt";
+    private static int send(String body) throws IOException {
         Request.Builder builder = new Request.Builder()
-                .url(base + name)
+                .url(BuildConfig.CINEMA_LOG_UPLOAD_URL)
                 .header("X-Cinema-Log", "1")
-                .put(RequestBody.create(report, TEXT));
-        if (!BuildConfig.CINEMA_LOG_UPLOAD_USER.isEmpty()) {
-            builder.header("Authorization", Credentials.basic(BuildConfig.CINEMA_LOG_UPLOAD_USER, BuildConfig.CINEMA_LOG_UPLOAD_PASS));
+                .header("X-Cinema-Session", CinemaEventLog.session())
+                .header("X-Cinema-Version", BuildConfig.VERSION_NAME + "/" + BuildConfig.VERSION_CODE)
+                .post(RequestBody.create(body, TEXT));
+        if (!BuildConfig.CINEMA_LOG_TOKEN.isEmpty()) {
+            builder.header("Authorization", "Bearer " + BuildConfig.CINEMA_LOG_TOKEN);
         }
-        try (Response response = OkHttp.client(TIMEOUT_MS).newCall(builder.build()).execute()) {
+        try (Response response = client().newCall(builder.build()).execute()) {
             return response.code();
         }
+    }
+
+    private static OkHttpClient client() {
+        OkHttpClient value = client;
+        if (value == null) {
+            value = OkHttp.client(TIMEOUT_MS);
+            client = value;
+        }
+        return value;
     }
 }

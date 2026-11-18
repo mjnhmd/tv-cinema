@@ -1,20 +1,19 @@
 diff --git a/app/build.gradle b/app/build.gradle
-index 19f91509e0c4753dbed3ba68e8504053fff624d3..34cfbf6cd8db4592ae9cdbfa5885d295ef2ca5d1 100644
+index 19f91509e0c4753dbed3ba68e8504053fff624d3..f6cf8fd096a78179d2e69f18c59e15ec91fb2809 100644
 --- a/app/build.gradle
 +++ b/app/build.gradle
-@@ -50,6 +50,11 @@ android {
+@@ -50,6 +50,10 @@ android {
          buildConfigField "String", "TMDB_API_KEY", buildConfigString(localOrEnv('tmdbApiKey', 'TMDB_API_KEY'))
          buildConfigField "String", "ASSRT_API_TOKEN", buildConfigString(localOrEnv('assrtApiToken', 'ASSRT_API_TOKEN'))
          buildConfigField "String", "TMDB_LOGO_SIZE", buildConfigString(localOrEnv('tmdbLogoSize', 'TMDB_LOGO_SIZE') ?: 'w500')
 +        buildConfigField "String", "CINEMA_BUGLY_APP_ID", buildConfigString(localOrEnv('cinemaBuglyAppId', 'CINEMA_BUGLY_APP_ID') ?: 'c06d8f73d2')
 +        // Optional LAN sink for the diagnostic event log; empty keeps it disabled.
 +        buildConfigField "String", "CINEMA_LOG_UPLOAD_URL", buildConfigString(localOrEnv('cinemaLogUploadUrl', 'CINEMA_LOG_UPLOAD_URL'))
-+        buildConfigField "String", "CINEMA_LOG_UPLOAD_USER", buildConfigString(localOrEnv('cinemaLogUploadUser', 'CINEMA_LOG_UPLOAD_USER'))
-+        buildConfigField "String", "CINEMA_LOG_UPLOAD_PASS", buildConfigString(localOrEnv('cinemaLogUploadPass', 'CINEMA_LOG_UPLOAD_PASS'))
++        buildConfigField "String", "CINEMA_LOG_TOKEN", buildConfigString(localOrEnv('cinemaLogToken', 'CINEMA_LOG_TOKEN'))
          javaCompileOptions {
              annotationProcessorOptions {
                  arguments = ["room.schemaLocation": "$projectDir/schemas".toString(), "eventBusIndex": "com.fongmi.android.tv.event.EventIndex"]
-@@ -132,8 +137,8 @@ android {
+@@ -132,8 +136,8 @@ android {
              matchingFallbacks = ['debug']
          }
          release {
@@ -25,7 +24,7 @@ index 19f91509e0c4753dbed3ba68e8504053fff624d3..34cfbf6cd8db4592ae9cdbfa5885d295
              signingConfig = signingConfigs.release
              proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro', 'proguard-rules-media.pro'
          }
-@@ -180,10 +185,10 @@ androidComponents {
+@@ -180,10 +184,10 @@ androidComponents {
  }
  
  dependencies {
@@ -37,7 +36,7 @@ index 19f91509e0c4753dbed3ba68e8504053fff624d3..34cfbf6cd8db4592ae9cdbfa5885d295
      implementation project(':catvod')
      implementation project(':chaquo')
      implementation project(':quickjs')
-@@ -218,6 +223,7 @@ dependencies {
+@@ -218,6 +222,7 @@ dependencies {
      implementation libs.permissionx
      implementation libs.simple.xml
      implementation libs.textdrawable
