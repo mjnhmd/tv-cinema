@@ -560,7 +560,7 @@ index 762989bc40c1afe56a5c7c61cc99e08abfb2d620..8df313bdb968f43d9d05f03a71acc5f0
          updateStatus(searching);
          mBinding.pager.post(this::flushPending);
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java
-index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..788c7e1281b887880d78076aad7d87d14dcd844a 100644
+index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..d15e131243ec7f1590e373db7780d7c78d765d7c 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java
 +++ b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java
 @@ -3,6 +3,8 @@ package com.fongmi.android.tv.ui.activity;
@@ -629,7 +629,7 @@ index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..788c7e1281b887880d78076aad7d87d1
              case JetStreamSettingView.KEY_COMMUNITY_SKIP -> {
                  Setting.putCommunitySkipEnabled(!Setting.isCommunitySkipEnabled());
                  setRowValue(JetStreamSettingView.KEY_COMMUNITY_SKIP, Setting.getSwitch(Setting.isCommunitySkipEnabled()));
-@@ -526,10 +539,130 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
+@@ -526,10 +539,138 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
          ConfigDialog.create().vod().show(this);
      }
  
@@ -665,6 +665,7 @@ index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..788c7e1281b887880d78076aad7d87d1
 +    }
 +
 +    private void startSourceDiscovery() {
++        CinemaEventLog.event("source", "discover start");
 +        boolean started = CinemaDiscovery.start(new CinemaDiscovery.Listener() {
 +            @Override
 +            public void onFinished(CinemaSourceMerger.Result result) {
@@ -672,6 +673,8 @@ index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..788c7e1281b887880d78076aad7d87d1
 +                Notify.dismiss();
 +                refreshSourceRows();
 +                CinemaSourceMerger.Stats stats = result.stats();
++                CinemaEventLog.event("source", "discover done", "inputs=" + stats.inputs + " valid=" + stats.validInputs
++                        + " added=" + stats.sitesAdded + " dup=" + stats.sitesDuplicate);
 +                new MaterialAlertDialogBuilder(SettingActivity.this)
 +                        .setTitle(R.string.cinema_discover_done)
 +                        .setMessage(getString(R.string.cinema_discover_summary, stats.validInputs,
@@ -683,6 +686,7 @@ index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..788c7e1281b887880d78076aad7d87d1
 +            @Override
 +            public void onError() {
 +                if (isFinishing() || isDestroyed()) return;
++                CinemaEventLog.event("source", "discover failed");
 +                Notify.dismiss();
 +                Notify.show(R.string.cinema_discover_failed);
 +            }
@@ -712,9 +716,12 @@ index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..788c7e1281b887880d78076aad7d87d1
 +    }
 +
 +    private void startLanScan() {
++        CinemaEventLog.event("source", "lan scan start");
 +        boolean started = CinemaLanDiscovery.start(new CinemaLanDiscovery.Listener() {
 +            @Override
 +            public void onFound(List<CinemaLanDiscovery.Result> results) {
++                CinemaEventLog.event("source", "lan found", "hosts=" + results.size()
++                        + " first=" + (results.isEmpty() ? "" : results.get(0).name() + "/" + results.get(0).channels()));
 +                if (isFinishing() || isDestroyed()) {
 +                    CinemaLanDiscovery.remember(results.get(0));
 +                    return;
@@ -737,6 +744,7 @@ index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..788c7e1281b887880d78076aad7d87d1
 +
 +            @Override
 +            public void onEmpty(CinemaLanDiscovery.Diagnostics diagnostics) {
++                CinemaEventLog.event("source", "lan empty", diagnostics.summary());
 +                if (isFinishing() || isDestroyed()) return;
 +                Notify.dismiss();
 +                new MaterialAlertDialogBuilder(SettingActivity.this)
@@ -760,7 +768,7 @@ index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..788c7e1281b887880d78076aad7d87d1
      private void onWall() {
          ConfigDialog.create().wall().show(this);
      }
-@@ -645,8 +778,9 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
+@@ -645,8 +786,9 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
  
      private void setWallRefresh() {
          setWallVisible(true);
@@ -772,7 +780,7 @@ index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..788c7e1281b887880d78076aad7d87d1
      }
  
      private void setWallVisible(boolean visible) {
-@@ -1009,7 +1143,7 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
+@@ -1009,7 +1151,7 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
      }
  
      private void setMpvLogText() {
@@ -781,7 +789,7 @@ index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..788c7e1281b887880d78076aad7d87d1
      }
  
      private void setQuickJsLogText() {
-@@ -1018,6 +1152,7 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
+@@ -1018,6 +1160,7 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
  
      private void setMpvLog() {
          MpvLogCollector.putEnabled(!MpvLogCollector.isEnabled());
@@ -789,7 +797,7 @@ index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..788c7e1281b887880d78076aad7d87d1
          setMpvLogText();
      }
  
-@@ -1029,14 +1164,20 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
+@@ -1029,14 +1172,20 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
      private void onMpvLog() {
          PermissionUtil.requestFile(this, allGranted -> {
              String path = MpvLogCollector.exportToFile(this);
@@ -812,7 +820,7 @@ index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..788c7e1281b887880d78076aad7d87d1
          });
      }
  
-@@ -1085,6 +1226,21 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
+@@ -1085,6 +1234,21 @@ public class SettingActivity extends BaseActivity implements ConfigListener, Sit
      }
  
      private void onVersion() {
@@ -835,10 +843,18 @@ index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..788c7e1281b887880d78076aad7d87d1
      }
  
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/VideoActivity.java b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/VideoActivity.java
-index b181c843f13ab06b0daed7360f5954b7b594d37f..0ae1214266e8af39874eb940a253ed4a177caaa2 100644
+index b181c843f13ab06b0daed7360f5954b7b594d37f..d401a4e58b42be823b4aca23d088aef0ef14c0e8 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/VideoActivity.java
 +++ b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/VideoActivity.java
-@@ -34,11 +34,11 @@ import androidx.viewbinding.ViewBinding;
+@@ -1,5 +1,7 @@
+ package com.fongmi.android.tv.ui.activity;
+ 
++import com.fongmi.android.tv.monitoring.CinemaEventLog;
++
+ import android.annotation.SuppressLint;
+ import android.app.Activity;
+ import android.content.Intent;
+@@ -34,11 +36,11 @@ import androidx.viewbinding.ViewBinding;
  import com.bumptech.glide.request.transition.Transition;
  import com.fongmi.android.tv.App;
  import com.fongmi.android.tv.player.PlayerManager;
@@ -851,7 +867,7 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..0ae1214266e8af39874eb940a253ed4a
  import com.fongmi.android.tv.api.DanmakuApi;
  import com.fongmi.android.tv.api.SiteApi;
  import com.fongmi.android.tv.api.config.VodConfig;
-@@ -64,6 +64,7 @@ import com.fongmi.android.tv.setting.PlayerSetting;
+@@ -64,6 +66,7 @@ import com.fongmi.android.tv.setting.PlayerSetting;
  import com.fongmi.android.tv.syncplay.SyncplaySession;
  import com.fongmi.android.tv.ui.dialog.SyncplayControls;
  import com.fongmi.android.tv.ui.custom.CustomKeyDownVod;
@@ -859,7 +875,7 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..0ae1214266e8af39874eb940a253ed4a
  import com.fongmi.android.tv.ui.custom.JetStreamAnimator;
  import com.fongmi.android.tv.ui.custom.JetStreamChipRow;
  import com.fongmi.android.tv.ui.custom.JetStreamVideoDecor;
-@@ -404,6 +405,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+@@ -404,6 +407,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
                  () -> mContentRating,
                  () -> !isJetStreamControlVisible() && !isJetStreamInfoVisible());
          mFrameParams = mBinding.video.getLayoutParams();
@@ -867,16 +883,61 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..0ae1214266e8af39874eb940a253ed4a
          mClock = Clock.create(mBinding.widget.clock);
          mKeyDown = CustomKeyDownVod.create(this);
          clearDetailState();
-@@ -464,8 +466,6 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
-         mBinding.control.action.text.setOnClickListener(this::onTrack);
-         mBinding.control.action.audio.setOnClickListener(this::onTrack);
-         mBinding.control.action.video.setOnClickListener(this::onTrack);
+@@ -461,11 +465,9 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+                 focusFirstMediaList();
+             }
+         });
+-        mBinding.control.action.text.setOnClickListener(this::onTrack);
+-        mBinding.control.action.audio.setOnClickListener(this::onTrack);
+-        mBinding.control.action.video.setOnClickListener(this::onTrack);
 -        mBinding.control.action.aiSubtitle.setOnClickListener(view -> AiSubtitlePlaybackUi.toggle(this, mBinding.control.action.aiSubtitle, mBinding.control.action.aiLanguage));
 -        mBinding.control.action.aiLanguage.setOnClickListener(view -> AiSubtitlePlaybackUi.chooseLanguage(this, mBinding.control.action.aiSubtitle, mBinding.control.action.aiLanguage));
++        mBinding.control.action.text.setOnClickListener(view -> { tapPlayer("text"); onTrack(view); });
++        mBinding.control.action.audio.setOnClickListener(view -> { tapPlayer("audio"); onTrack(view); });
++        mBinding.control.action.video.setOnClickListener(view -> { tapPlayer("video"); onTrack(view); });
          mBinding.control.action.speed.setUpListener(this::onSpeedAdd);
          mBinding.control.action.speed.setDownListener(this::onSpeedSub);
          mBinding.control.action.ending.setUpListener(this::onEndingAdd);
-@@ -509,6 +509,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+@@ -474,22 +476,22 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+         mBinding.control.action.opening.setDownListener(this::onOpeningSub);
+         mBinding.control.action.text.setUpListener(this::onSubtitleClick);
+         mBinding.control.action.text.setDownListener(this::onSubtitleClick);
+-        mBinding.control.action.next.setOnClickListener(view -> checkNext());
+-        mBinding.control.action.prev.setOnClickListener(view -> checkPrev());
+-        mBinding.control.action.scale.setOnClickListener(view -> onScale());
+-        mBinding.control.action.speed.setOnClickListener(view -> onSpeed());
+-        mBinding.control.action.reset.setOnClickListener(view -> onReset());
+-        mBinding.control.action.replay.setOnClickListener(view -> onReplay());
+-        mBinding.control.action.parse.setOnClickListener(view -> onParse());
+-        mBinding.control.action.player.setOnClickListener(view -> onChoose());
+-        mBinding.control.action.decode.setOnClickListener(view -> onDecode());
+-        mBinding.control.action.ending.setOnClickListener(view -> onEnding());
+-        mBinding.control.action.repeat.setOnClickListener(view -> onRepeat());
+-        mBinding.control.action.change2.setOnClickListener(view -> onChange());
+-        mBinding.control.action.danmaku.setOnClickListener(view -> onDanmaku());
+-        mBinding.control.action.edition.setOnClickListener(view -> onEdition());
+-        mBinding.control.action.chapter.setOnClickListener(view -> onChapter());
+-        mBinding.control.action.opening.setOnClickListener(view -> onOpening());
++        mBinding.control.action.next.setOnClickListener(view -> { tapPlayer("next"); checkNext(); });
++        mBinding.control.action.prev.setOnClickListener(view -> { tapPlayer("prev"); checkPrev(); });
++        mBinding.control.action.scale.setOnClickListener(view -> { tapPlayer("scale"); onScale(); });
++        mBinding.control.action.speed.setOnClickListener(view -> { tapPlayer("speed"); onSpeed(); });
++        mBinding.control.action.reset.setOnClickListener(view -> { tapPlayer("reset"); onReset(); });
++        mBinding.control.action.replay.setOnClickListener(view -> { tapPlayer("replay"); onReplay(); });
++        mBinding.control.action.parse.setOnClickListener(view -> { tapPlayer("parse"); onParse(); });
++        mBinding.control.action.player.setOnClickListener(view -> { tapPlayer("player"); onChoose(); });
++        mBinding.control.action.decode.setOnClickListener(view -> { tapPlayer("decode"); onDecode(); });
++        mBinding.control.action.ending.setOnClickListener(view -> { tapPlayer("ending"); onEnding(); });
++        mBinding.control.action.repeat.setOnClickListener(view -> { tapPlayer("repeat"); onRepeat(); });
++        mBinding.control.action.change2.setOnClickListener(view -> { tapPlayer("change2"); onChange(); });
++        mBinding.control.action.danmaku.setOnClickListener(view -> { tapPlayer("danmaku"); onDanmaku(); });
++        mBinding.control.action.edition.setOnClickListener(view -> { tapPlayer("edition"); onEdition(); });
++        mBinding.control.action.chapter.setOnClickListener(view -> { tapPlayer("chapter"); onChapter(); });
++        mBinding.control.action.opening.setOnClickListener(view -> { tapPlayer("opening"); onOpening(); });
+         mBinding.control.action.ending.setOnLongClickListener(view -> onEndingReset());
+         mBinding.control.action.opening.setOnLongClickListener(view -> onOpeningReset());
+         mBinding.video.setOnTouchListener((view, event) -> {
+@@ -509,6 +511,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
                  mVod.selectEpisode(item);
              }
          });
@@ -884,7 +945,7 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..0ae1214266e8af39874eb940a253ed4a
          mBinding.quality.setOnChipClickListener(pos -> {
              if (mQualityResult != null && pos >= 0 && pos < mQualityResult.getUrl().getValues().size()) {
                  mQualityResult.getUrl().set(pos);
-@@ -565,7 +566,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+@@ -565,7 +568,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
      }
  
      private void focusFirstMediaList() {
@@ -893,7 +954,7 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..0ae1214266e8af39874eb940a253ed4a
              View view = findViewById(id);
              if (canRequestFocus(view)) {
                  requestFocus(view, mBinding.video);
-@@ -767,7 +768,8 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+@@ -767,7 +770,8 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
          getIntent().putExtra("id", item.getId());
          getIntent().putExtra("playId", item.getPlayId());
          if (!TextUtils.isEmpty(item.getPlayId())) getIntent().removeExtra("mark");
@@ -903,7 +964,7 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..0ae1214266e8af39874eb940a253ed4a
          mClock.setCallback(null);
          mVod.stopCommunitySkip();
          updateNavigationKey();
-@@ -837,6 +839,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+@@ -837,6 +841,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
          checkKeepImg();
          setText(item);
          updateKeep();
@@ -911,7 +972,7 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..0ae1214266e8af39874eb940a253ed4a
      }
  
      @Override
-@@ -944,6 +947,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+@@ -944,6 +949,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
      public void renderDescription(String desc) {
          mDetailContent = desc;
          updateDetailView();
@@ -919,7 +980,7 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..0ae1214266e8af39874eb940a253ed4a
      }
  
      @Override
-@@ -1047,19 +1051,32 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+@@ -1047,19 +1053,32 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
      private void setEpisodeAdapter(List<Episode> items) {
          mEpisodeItems = items;
          setRowVisibility(mBinding.episode, !items.isEmpty());
@@ -957,7 +1018,7 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..0ae1214266e8af39874eb940a253ed4a
      private void setQualityVisible(boolean visible) {
          setRowVisibility(mBinding.quality, visible);
          setR2Callback();
-@@ -1137,7 +1154,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+@@ -1137,7 +1156,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
  
      private void applyWindowVideoStyle() {
          if (isFullscreen()) return;
@@ -966,7 +1027,7 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..0ae1214266e8af39874eb940a253ed4a
          mBinding.video.setForeground(JetStreamVideoDecor.windowForeground(mBinding.video));
          mBinding.video.setBackgroundResource(R.drawable.shape_video_window);
          mBinding.video.setClipToOutline(true);
-@@ -1154,6 +1171,11 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+@@ -1154,6 +1173,11 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
          return mpv ? PlayerSetting.RENDER_TEXTURE : super.getPlaybackRender();
      }
  
@@ -978,7 +1039,7 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..0ae1214266e8af39874eb940a253ed4a
      private void restoreWindowVideoFocus() {
          mBinding.video.post(() -> {
              if (isFullscreen()) return;
-@@ -1175,7 +1197,8 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+@@ -1175,7 +1199,8 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
      private void updateFullscreenViews() {
          int visibility = isFullscreen() ? View.GONE : View.VISIBLE;
          mBinding.detail.setVisibility(visibility);
@@ -988,7 +1049,29 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..0ae1214266e8af39874eb940a253ed4a
          updateFocus();
      }
  
-@@ -1487,9 +1510,20 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+@@ -1184,8 +1209,13 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+         ContentDialog.create().content(mDetailContent).show(this);
+     }
+ 
++    private void tapPlayer(String action) {
++        CinemaEventLog.event("player", "tap", "action=" + action + " owner=" + (service() != null && isOwner()));
++    }
++
+     private void onKeep() {
+         Keep keep = Keep.find(getHistoryKey());
++        CinemaEventLog.event("ui", "keep", "remove=" + (keep != null) + " id=" + getId());
+         Notify.show(keep != null ? R.string.keep_del : R.string.keep_add);
+         if (keep != null) keep.delete();
+         else createKeep();
+@@ -1197,6 +1227,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+     }
+ 
+     private void onChange() {
++        CinemaEventLog.event("play", "change source", "name=" + getName());
+         mVod.manualSwitchSource();
+     }
+ 
+@@ -1487,9 +1518,20 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
          if (row.getParent() instanceof JetStreamPlaybackSectionLayout) {
              ((View) row.getParent()).setVisibility(visible ? View.VISIBLE : View.GONE);
          }
@@ -1009,7 +1092,7 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..0ae1214266e8af39874eb940a253ed4a
      private boolean hasFocus(View... views) {
          for (View view : views) {
              if (view != null && view.hasFocus()) return true;
-@@ -1650,8 +1684,17 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+@@ -1650,8 +1692,17 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
          setJetStreamCommand("replay", mBinding.control.action.replay, true);
          setJetStreamCommand("reset", mBinding.control.action.reset, true);
          setJetStreamCommand("subtitle", getString(R.string.play_subtitle), true, false);
@@ -1029,7 +1112,7 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..0ae1214266e8af39874eb940a253ed4a
          setJetStreamCommand("video", mBinding.control.action.video, isVisible(mBinding.control.action.video));
          setJetStreamCommand("danmaku", mBinding.control.action.danmaku, DanmakuSetting.isLoad());
          setJetStreamCommand("speed", mBinding.control.action.speed, true);
-@@ -1736,23 +1779,41 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+@@ -1736,23 +1787,41 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
              mBinding.detail.setNextFocusDownId(R.id.video);
              return;
          }
@@ -1084,7 +1167,7 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..0ae1214266e8af39874eb940a253ed4a
      }
  
      private void showTitleText(String name) {
-@@ -1882,6 +1943,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+@@ -1882,6 +1951,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
          boolean owner = service() != null && isOwner();
          long position = owner ? player().getPosition() : C.TIME_UNSET;
          long duration = owner ? player().getDuration() : C.TIME_UNSET;
@@ -1092,7 +1175,7 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..0ae1214266e8af39874eb940a253ed4a
          if (mVod != null) mVod.saveHistory(exit, System.currentTimeMillis(), position, duration);
      }
  
-@@ -2068,6 +2130,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+@@ -2068,6 +2138,7 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
          long position = player().getPosition();
          long duration = player().getDuration();
          if (position < 0 || duration <= 0) return;
@@ -1100,7 +1183,7 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..0ae1214266e8af39874eb940a253ed4a
          mVod.onTimeChanged(time, position, duration);
      }
  
-@@ -2291,7 +2354,6 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
+@@ -2291,7 +2362,6 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost,
          super.onStart();
          if (mSpecs != null) mSpecs.setStarted(true);
          SyncplaySession.get().observe(mSyncplayObserver);
@@ -1108,6 +1191,33 @@ index b181c843f13ab06b0daed7360f5954b7b594d37f..0ae1214266e8af39874eb940a253ed4a
          mClock.stop().start();
      }
  
+diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/WatchHistoryActivity.java b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/WatchHistoryActivity.java
+index 5b487847ec259936c3be12a0d45243516cce83e2..03db2c255dbe1d81ad7ae18ab157597f1128f65c 100644
+--- a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/WatchHistoryActivity.java
++++ b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/WatchHistoryActivity.java
+@@ -1,5 +1,7 @@
+ package com.fongmi.android.tv.ui.activity;
+ 
++import com.fongmi.android.tv.monitoring.CinemaEventLog;
++
+ import android.app.Activity;
+ import android.content.Intent;
+ import android.os.Bundle;
+@@ -149,11 +151,14 @@ public class WatchHistoryActivity extends BaseActivity implements HistoryPresent
+ 
+     @Override
+     public void onItemClick(History item) {
++        CinemaEventLog.event("ui", "resume history", "name=" + item.getVodName()
++                + " pos=" + item.getPosition() + "/" + item.getDuration() + " remark=" + item.getVodRemarks());
+         if (item.getCid() == VodConfig.getCid()) VideoActivity.start(this, item.getSiteKey(), item.getVodId(), item.getVodName(), item.getVodPic());
+     }
+ 
+     @Override
+     public void onItemDelete(History item) {
++        CinemaEventLog.event("ui", "delete history", "name=" + item.getVodName() + " actions=" + BrowseExperienceSettings.isHistoryActionsEnabled());
+         if (BrowseExperienceSettings.isHistoryActionsEnabled()) {
+             onLongClick(item);
+             return;
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/components/TvFocusComponents.kt b/app/src/leanback/java/com/fongmi/android/tv/ui/components/TvFocusComponents.kt
 index 6826642ffa3792a5b63cb190555d075025e97125..7f3efcd98e4f5af782d0c6ffaf28076152abbc8a 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/components/TvFocusComponents.kt
@@ -1472,10 +1582,26 @@ index b6821c6f60412b611ba97bb5c79f3f561a030bb8..0bb659126c465f27220a31e484dfe890
              }
          }
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamSettingView.kt b/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamSettingView.kt
-index ac39ff77cc54b8eb290ba1652389ad8cb4495129..70a573bedbde1a33dbfd29b026bea6f839227ad3 100644
+index ac39ff77cc54b8eb290ba1652389ad8cb4495129..994ea3fb799160fbc4d1926fb0a337d7ef586430 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamSettingView.kt
 +++ b/app/src/leanback/java/com/fongmi/android/tv/ui/custom/JetStreamSettingView.kt
-@@ -500,6 +500,9 @@ class JetStreamSettingView @JvmOverloads constructor(
+@@ -1,5 +1,7 @@
+ package com.fongmi.android.tv.ui.custom
+ 
++import com.fongmi.android.tv.monitoring.CinemaEventLog;
++
+ import android.content.Context
+ import android.util.AttributeSet
+ import androidx.annotation.DrawableRes
+@@ -177,6 +179,7 @@ class JetStreamSettingView @JvmOverloads constructor(
+ 
+     private fun triggerSettingAction(key: String, longClick: Boolean) {
+         if (!isActionAvailable(key)) return
++        CinemaEventLog.event("setting", if (longClick) "long" else "click", "key=\$key")
+         if (longClick) listener?.onSettingLongAction(key) else listener?.onSettingAction(key)
+     }
+ 
+@@ -500,6 +503,9 @@ class JetStreamSettingView @JvmOverloads constructor(
                              ActionSpec(KEY_VOD_HISTORY, context.getString(R.string.setting_history), R.drawable.msr_history)
                          )
                      ),
@@ -1485,7 +1611,7 @@ index ac39ff77cc54b8eb290ba1652389ad8cb4495129..70a573bedbde1a33dbfd29b026bea6f8
                      RowSpec(
                          key = KEY_LIVE,
                          label = context.getString(R.string.setting_live),
-@@ -513,7 +516,7 @@ class JetStreamSettingView @JvmOverloads constructor(
+@@ -513,7 +519,7 @@ class JetStreamSettingView @JvmOverloads constructor(
                          label = context.getString(R.string.setting_wall),
                          actions = listOf(
                              ActionSpec(KEY_WALL_DEFAULT, context.getString(R.string.setting_default), R.drawable.msr_home),
@@ -1494,7 +1620,7 @@ index ac39ff77cc54b8eb290ba1652389ad8cb4495129..70a573bedbde1a33dbfd29b026bea6f8
                          )
                      ),
                      RowSpec(KEY_WALL_VISIBLE, context.getString(R.string.setting_wall_visible), toggle = true),
-@@ -554,7 +557,6 @@ class JetStreamSettingView @JvmOverloads constructor(
+@@ -554,7 +560,6 @@ class JetStreamSettingView @JvmOverloads constructor(
                      RowSpec(KEY_CAPTION, context.getString(R.string.player_caption)),
                      RowSpec(KEY_BACKGROUND, context.getString(R.string.player_background), toggle = true),
                      RowSpec(KEY_UA, context.getString(R.string.player_ua)),
@@ -1502,7 +1628,7 @@ index ac39ff77cc54b8eb290ba1652389ad8cb4495129..70a573bedbde1a33dbfd29b026bea6f8
                      RowSpec(KEY_COMMUNITY_SKIP, context.getString(R.string.player_community_skip), toggle = true),
                      RowSpec(KEY_MPV_CONF, context.getString(R.string.player_mpv_conf)),
                      RowSpec(KEY_MPV_ANIME4K, context.getString(R.string.player_mpv_anime4k)),
-@@ -659,6 +661,9 @@ class JetStreamSettingView @JvmOverloads constructor(
+@@ -659,6 +664,9 @@ class JetStreamSettingView @JvmOverloads constructor(
  
          const val KEY_VOD = "vod"
          const val KEY_LIVE = "live"
@@ -1512,7 +1638,7 @@ index ac39ff77cc54b8eb290ba1652389ad8cb4495129..70a573bedbde1a33dbfd29b026bea6f8
          const val KEY_WALL = "wall"
          const val KEY_WALL_VISIBLE = "wall_visible"
          const val KEY_TMDB_CONNECTION = "tmdb_connection"
-@@ -679,7 +684,6 @@ class JetStreamSettingView @JvmOverloads constructor(
+@@ -679,7 +687,6 @@ class JetStreamSettingView @JvmOverloads constructor(
          const val KEY_CAPTION = "caption"
          const val KEY_BACKGROUND = "background"
          const val KEY_UA = "ua"
@@ -3091,7 +3217,7 @@ index 86665409aff456027f1a751bc482e79a2d09b9f4..b5df922b9985a9662d2d8aabf1275bf7
              android:name=".receiver.ActionReceiver"
              android:exported="false">
 diff --git a/app/src/main/java/com/fongmi/android/tv/App.java b/app/src/main/java/com/fongmi/android/tv/App.java
-index 8e5e1447c9755675ac905401dfedcc4cd1779e8e..38840f158f1d23e162a2900f3574daa3e7d3ebbf 100644
+index 8e5e1447c9755675ac905401dfedcc4cd1779e8e..4c94fe0676a1128a1611a2d12e1667daefcdfb07 100644
 --- a/app/src/main/java/com/fongmi/android/tv/App.java
 +++ b/app/src/main/java/com/fongmi/android/tv/App.java
 @@ -3,6 +3,7 @@ package com.fongmi.android.tv;
@@ -3118,18 +3244,20 @@ index 8e5e1447c9755675ac905401dfedcc4cd1779e8e..38840f158f1d23e162a2900f3574daa3
  import com.github.catvod.Init;
  import com.google.gson.Gson;
  
-@@ -96,6 +102,10 @@ public class App extends Application implements Application.ActivityLifecycleCal
+@@ -96,6 +102,12 @@ public class App extends Application implements Application.ActivityLifecycleCal
      @Override
      public void onCreate() {
          super.onCreate();
 +        CinemaMonitoring.start(this);
 +        CinemaEventLog.app(this);
++        CinemaEventLog.event("app", "cold", "sinceProcess=" + (android.os.SystemClock.elapsedRealtime()
++                - android.os.Process.getStartElapsedRealtime()) + "ms");
 +        CinemaEventUpload.start();
 +        OkHttp.setListenerFactory(CinemaNetworkTrace.factory());
          com.fongmi.android.tv.player.skip.LegacySkipMigration.clearPreferences();
          // Only schedules Pine when toast filter is already enabled in settings.
          ToastFilter.install();
-@@ -119,11 +129,15 @@ public class App extends Application implements Application.ActivityLifecycleCal
+@@ -119,11 +131,15 @@ public class App extends Application implements Application.ActivityLifecycleCal
      @Override
      public void onActivityResumed(@NonNull Activity activity) {
          if (activity != activity()) this.activity = activity;
@@ -3145,7 +3273,7 @@ index 8e5e1447c9755675ac905401dfedcc4cd1779e8e..38840f158f1d23e162a2900f3574daa3
      }
  
      @Override
-@@ -142,15 +156,24 @@ public class App extends Application implements Application.ActivityLifecycleCal
+@@ -142,15 +158,24 @@ public class App extends Application implements Application.ActivityLifecycleCal
      public void onActivityStarted(@NonNull Activity activity) {
          handler.removeCallbacks(backgroundSync);
          if (startedActivities++ == 0) {
@@ -3171,10 +3299,43 @@ index 8e5e1447c9755675ac905401dfedcc4cd1779e8e..38840f158f1d23e162a2900f3574daa3
              // Activity changes and rotations may briefly have no started Activity.
              handler.postDelayed(backgroundSync, 2_000L);
 diff --git a/app/src/main/java/com/fongmi/android/tv/Updater.java b/app/src/main/java/com/fongmi/android/tv/Updater.java
-index 84f4027e40034ca59cb7844fe9e73354c7e6bfa2..0c447d4a6e9e8da745e0cc0c5399cb8eaeb98720 100644
+index 84f4027e40034ca59cb7844fe9e73354c7e6bfa2..88abc53563235a1e850b7cd3655caeb59dd7a96e 100644
 --- a/app/src/main/java/com/fongmi/android/tv/Updater.java
 +++ b/app/src/main/java/com/fongmi/android/tv/Updater.java
-@@ -144,7 +144,7 @@ public class Updater implements UpdateListener, DefaultLifecycleObserver {
+@@ -1,5 +1,7 @@
+ package com.fongmi.android.tv;
+ 
++import com.fongmi.android.tv.monitoring.CinemaEventLog;
++
+ import android.view.View;
+ 
+ import androidx.annotation.NonNull;
+@@ -84,6 +86,7 @@ public class Updater implements UpdateListener, DefaultLifecycleObserver {
+         activity.getLifecycle().addObserver(this);
+         repository = new UpdateRepository(client());
+         if (manual) Notify.show(R.string.update_check);
++        CinemaEventLog.event("update", "check", "manual=" + manual + " current=" + BuildConfig.VERSION_CODE);
+         task = Task.submit(this::check);
+     }
+ 
+@@ -105,6 +108,8 @@ public class Updater implements UpdateListener, DefaultLifecycleObserver {
+     }
+ 
+     private void checked(UpdateManifest result, UpdatePolicy policy) {
++        CinemaEventLog.event("update", "result", "code=" + (result == null ? -1 : result.code)
++                + " current=" + BuildConfig.VERSION_CODE + " manual=" + manual);
+         if (!canShow()) {
+             finish();
+             return;
+@@ -132,6 +137,7 @@ public class Updater implements UpdateListener, DefaultLifecycleObserver {
+     @Override
+     public void onConfirm(View view) {
+         if (closed || downloading || manifest == null || !canShow()) return;
++        CinemaEventLog.event("update", "download", "code=" + manifest.code + " vn=" + manifest.name);
+         downloading = true;
+         view.setEnabled(false);
+         final UpdateDownloader download = new UpdateDownloader(client());
+@@ -144,7 +150,7 @@ public class Updater implements UpdateListener, DefaultLifecycleObserver {
              try {
                  CacheManager.clearOldUpdates(System.currentTimeMillis() - CHECK_INTERVAL);
                  DiagnosticLog.record("ota", "download code=" + release.code);
@@ -3183,7 +3344,7 @@ index 84f4027e40034ca59cb7844fe9e73354c7e6bfa2..0c447d4a6e9e8da745e0cc0c5399cb8e
                          destination, release.asset.size, release.asset.sha256,
                          validator, new UpdateDownloader.Progress() {
                              @Override
-@@ -169,6 +169,23 @@ public class Updater implements UpdateListener, DefaultLifecycleObserver {
+@@ -169,6 +175,23 @@ public class Updater implements UpdateListener, DefaultLifecycleObserver {
                                      if (!closed && dialog != null) dialog.setVerifying();
                                  });
                              }
@@ -3207,6 +3368,14 @@ index 84f4027e40034ca59cb7844fe9e73354c7e6bfa2..0c447d4a6e9e8da745e0cc0c5399cb8e
                          });
                  App.post(() -> install(file));
              } catch (Exception e) {
+@@ -183,6 +206,7 @@ public class Updater implements UpdateListener, DefaultLifecycleObserver {
+             return;
+         }
+         finish();
++        CinemaEventLog.event("update", "install", "bytes=" + (file == null ? -1 : file.length()));
+         try {
+             CacheLease.protectFor(file, 10 * 60_000L);
+             FileUtil.openFile(file);
 diff --git a/app/src/main/java/com/fongmi/android/tv/api/config/VodConfig.java b/app/src/main/java/com/fongmi/android/tv/api/config/VodConfig.java
 index 37a35b448ffd8700faf0f086812cf7049bd41e9b..bb05bf30d7bbdba79b38fb3e5a1c94da94347ef2 100644
 --- a/app/src/main/java/com/fongmi/android/tv/api/config/VodConfig.java
