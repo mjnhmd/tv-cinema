@@ -152,6 +152,10 @@ jobs:
         env:
           TV_VERSION_CODE: ${{ steps.version.outputs.code }}
           TV_VERSION_NAME: ${{ steps.version.outputs.name }}
+          # Diagnostic event upload (batch POST to a LAN sink). Left unset the
+          # feature stays compiled out; only the TV build carries it.
+          CINEMA_LOG_UPLOAD_URL: ${{ vars.CINEMA_LOG_UPLOAD_URL }}
+          CINEMA_LOG_TOKEN: ${{ secrets.CINEMA_LOG_TOKEN }}
         run: |
           bash scripts/cinema-build.sh --abi armeabi-v7a
 
