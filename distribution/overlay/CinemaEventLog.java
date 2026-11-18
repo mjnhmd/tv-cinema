@@ -69,6 +69,7 @@ public final class CinemaEventLog {
         line.append('[').append(elapsed()).append("] ").append(area).append(' ').append(action);
         if (detail != null && !detail.isEmpty()) line.append(' ').append(trim(detail));
         append(line.toString());
+        CinemaEventUpload.onEvent(area);
     }
 
     public static String session() {

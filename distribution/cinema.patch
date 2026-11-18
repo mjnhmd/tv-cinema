@@ -487,7 +487,7 @@ index ad651bdc80c512a182286e9f8c8a253c8d374d62..68aaa16f2f57d1f428b2ff13a0e7d7de
      }
  }
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java
-index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..5fe21b101ad1a31c78248b6206015e5cb11c57e2 100644
+index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..788c7e1281b887880d78076aad7d87d14dcd844a 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java
 +++ b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SettingActivity.java
 @@ -3,6 +3,8 @@ package com.fongmi.android.tv.ui.activity;
@@ -733,7 +733,7 @@ index 21e1d40bbbe94c59983435d257cabbbfb0acaaac..5fe21b101ad1a31c78248b6206015e5c
              }
 +            if (events != null) Notify.show("事件日志已导出到: " + events);
 +            if (CinemaEventUpload.configured()) {
-+                CinemaEventUpload.uploadAsync(true);
++                CinemaEventUpload.flushNow(true);
 +                Notify.show("正在上传事件日志到 NAS");
 +            }
          });
@@ -3001,7 +3001,7 @@ index 86665409aff456027f1a751bc482e79a2d09b9f4..b5df922b9985a9662d2d8aabf1275bf7
              android:name=".receiver.ActionReceiver"
              android:exported="false">
 diff --git a/app/src/main/java/com/fongmi/android/tv/App.java b/app/src/main/java/com/fongmi/android/tv/App.java
-index 8e5e1447c9755675ac905401dfedcc4cd1779e8e..7b477e63f1df396896d0e9b657e22b5451863440 100644
+index 8e5e1447c9755675ac905401dfedcc4cd1779e8e..38840f158f1d23e162a2900f3574daa3e7d3ebbf 100644
 --- a/app/src/main/java/com/fongmi/android/tv/App.java
 +++ b/app/src/main/java/com/fongmi/android/tv/App.java
 @@ -3,6 +3,7 @@ package com.fongmi.android.tv;
@@ -3028,17 +3028,18 @@ index 8e5e1447c9755675ac905401dfedcc4cd1779e8e..7b477e63f1df396896d0e9b657e22b54
  import com.github.catvod.Init;
  import com.google.gson.Gson;
  
-@@ -96,6 +102,9 @@ public class App extends Application implements Application.ActivityLifecycleCal
+@@ -96,6 +102,10 @@ public class App extends Application implements Application.ActivityLifecycleCal
      @Override
      public void onCreate() {
          super.onCreate();
 +        CinemaMonitoring.start(this);
 +        CinemaEventLog.app(this);
++        CinemaEventUpload.start();
 +        OkHttp.setListenerFactory(CinemaNetworkTrace.factory());
          com.fongmi.android.tv.player.skip.LegacySkipMigration.clearPreferences();
          // Only schedules Pine when toast filter is already enabled in settings.
          ToastFilter.install();
-@@ -119,11 +128,15 @@ public class App extends Application implements Application.ActivityLifecycleCal
+@@ -119,11 +129,15 @@ public class App extends Application implements Application.ActivityLifecycleCal
      @Override
      public void onActivityResumed(@NonNull Activity activity) {
          if (activity != activity()) this.activity = activity;
@@ -3054,7 +3055,7 @@ index 8e5e1447c9755675ac905401dfedcc4cd1779e8e..7b477e63f1df396896d0e9b657e22b54
      }
  
      @Override
-@@ -142,15 +155,24 @@ public class App extends Application implements Application.ActivityLifecycleCal
+@@ -142,15 +156,24 @@ public class App extends Application implements Application.ActivityLifecycleCal
      public void onActivityStarted(@NonNull Activity activity) {
          handler.removeCallbacks(backgroundSync);
          if (startedActivities++ == 0) {
@@ -3075,7 +3076,7 @@ index 8e5e1447c9755675ac905401dfedcc4cd1779e8e..7b477e63f1df396896d0e9b657e22b54
          startedActivities = Math.max(0, startedActivities - 1);
          if (startedActivities == 0) {
 +            CinemaEventLog.event("app", "background");
-+            CinemaEventUpload.uploadAsync(false);
++            CinemaEventUpload.flushNow(true);
              handler.removeCallbacks(automaticSync);
              // Activity changes and rotations may briefly have no started Activity.
              handler.postDelayed(backgroundSync, 2_000L);

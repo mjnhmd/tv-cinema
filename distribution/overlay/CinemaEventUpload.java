@@ -1,17 +1,18 @@
 package com.fongmi.android.tv.monitoring;
 
-import android.os.SystemClock;
-
 import com.fongmi.android.tv.BuildConfig;
 import com.github.catvod.net.OkHttp;
 
 import java.io.IOException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 import okhttp3.Credentials;
 import okhttp3.MediaType;
@@ -20,23 +21,29 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 
 /**
- * Optional LAN sink for the event log: PUTs the buffered report into a WebDAV folder on the
- * user's own NAS, so a run can be inspected without copying files off the TV by hand.
+ * Near-real-time LAN sink for the event log: keeps one file per app session on the user's own
+ * NAS over WebDAV, rewriting it every {@link #PERIOD_MS} and again ~{@link #DEBOUNCE_MS} after any
+ * key step, so a run can be watched while it happens instead of being exported by hand.
  *
  * <p>Off by default. It only runs when {@code CINEMA_LOG_UPLOAD_URL} was baked in at build time
- * from {@code local.properties} or the environment — never from the repository — so no address
- * or credential enters git or this file. Every upload runs on one daemon thread, at most once per
- * {@link #MIN_GAP_MS}, and only when new events exist; the outcome is recorded as an event so a
- * silent failure stays visible in the log itself.
+ * from {@code local.properties} or the environment — never from the repository — so no address or
+ * credential enters git or this file. All traffic runs on one daemon thread, one request at a
+ * time, and only when the buffer actually changed; the outcome is recorded as an event, so a
+ * failing sink stays visible in the log itself.
+ *
+ * <p>The whole buffer is rewritten rather than appended: WebDAV has no cheap append, the buffer is
+ * capped at 2000 lines, and a single complete file is what a reader wants afterwards.
  */
 public final class CinemaEventUpload {
 
-    private static final long MIN_GAP_MS = 30_000L;
+    private static final long PERIOD_MS = 5_000L;
+    private static final long DEBOUNCE_MS = 300L;
     private static final long TIMEOUT_MS = 15_000L;
     private static final MediaType TEXT = MediaType.parse("text/plain; charset=utf-8");
-    private static final AtomicBoolean running = new AtomicBoolean();
-    private static final AtomicLong lastAt = new AtomicLong();
+    private static final Set<String> KEY_AREAS = new HashSet<>(Arrays.asList("app", "play", "ui", "setting"));
     private static final AtomicInteger lastSent = new AtomicInteger(-1);
+    private static final AtomicBoolean pending = new AtomicBoolean();
+    private static ScheduledExecutorService worker;
 
     private CinemaEventUpload() {}
 
@@ -44,48 +51,75 @@ public final class CinemaEventUpload {
         return !BuildConfig.CINEMA_LOG_UPLOAD_URL.isEmpty();
     }
 
-    /** Fire-and-forget; safe from the UI thread and from lifecycle callbacks. */
-    public static void uploadAsync(boolean force) {
+    /** Starts the periodic flush; no-op unless a sink was configured at build time. */
+    public static synchronized void start() {
+        if (!configured() || worker != null) return;
+        worker = Executors.newSingleThreadScheduledExecutor(runnable -> {
+            Thread thread = new Thread(runnable, "cinema-upload");
+            thread.setDaemon(true);
+            return thread;
+        });
+        worker.scheduleWithFixedDelay(() -> flush(false), PERIOD_MS, PERIOD_MS, TimeUnit.MILLISECONDS);
+        CinemaEventLog.event("log", "sink", "period " + PERIOD_MS + "ms url=" + BuildConfig.CINEMA_LOG_UPLOAD_URL);
+    }
+
+    /** Called after every event; key steps get pushed almost immediately, the rest ride the timer. */
+    public static void onEvent(String area) {
+        ScheduledExecutorService executor = worker;
+        if (executor == null || !KEY_AREAS.contains(area)) return;
+        if (!pending.compareAndSet(false, true)) return;
+        try {
+            executor.schedule(() -> {
+                pending.set(false);
+                flush(false);
+            }, DEBOUNCE_MS, TimeUnit.MILLISECONDS);
+        } catch (RejectedExecutionException e) {
+            pending.set(false);
+        }
+    }
+
+    /** Pushes the current buffer now; {@code force} also re-sends an unchanged buffer. */
+    public static void flushNow(boolean force) {
+        ScheduledExecutorService executor = worker;
+        if (executor == null) return;
+        try {
+            executor.execute(() -> flush(force));
+        } catch (RejectedExecutionException ignored) {
+        }
+    }
+
+    private static void flush(boolean force) {
         if (!configured()) return;
         int total = CinemaEventLog.total();
         if (!force && total == lastSent.get()) return;
-        long now = SystemClock.elapsedRealtime();
-        if (!force && now - lastAt.get() < MIN_GAP_MS) return;
-        if (!running.compareAndSet(false, true)) return;
-        lastAt.set(now);
         String report = CinemaEventLog.report();
-        if (report == null) {
-            running.set(false);
-            return;
+        if (report == null) return;
+        try {
+            int code = send(report);
+            boolean ok = code >= 200 && code < 300;
+            CinemaEventLog.event("log", ok ? "upload" : "upload fail",
+                    "code=" + code + " bytes=" + report.length() + " lines=" + total);
+            // The event above is itself a new line; treat the buffer as sent up to here.
+            lastSent.set(CinemaEventLog.total());
+        } catch (IOException | RuntimeException e) {
+            CinemaEventLog.event("log", "upload fail", e.getClass().getSimpleName() + ": " + e.getMessage());
+            lastSent.set(CinemaEventLog.total());
         }
-        Thread worker = new Thread(() -> {
-            try {
-                send(report, total);
-            } finally {
-                running.set(false);
-            }
-        }, "cinema-upload");
-        worker.setDaemon(true);
-        worker.start();
     }
 
-    private static void send(String report, int total) {
-        String url = BuildConfig.CINEMA_LOG_UPLOAD_URL;
-        if (!url.endsWith("/")) url = url + "/";
-        String name = "cinema_events_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date())
-                + "_" + CinemaEventLog.session() + ".txt";
+    private static int send(String report) throws IOException {
+        String base = BuildConfig.CINEMA_LOG_UPLOAD_URL;
+        if (!base.endsWith("/")) base = base + "/";
+        String name = "cinema_events_" + CinemaEventLog.session() + ".txt";
         Request.Builder builder = new Request.Builder()
-                .url(url + name)
+                .url(base + name)
                 .header("X-Cinema-Log", "1")
                 .put(RequestBody.create(report, TEXT));
         if (!BuildConfig.CINEMA_LOG_UPLOAD_USER.isEmpty()) {
             builder.header("Authorization", Credentials.basic(BuildConfig.CINEMA_LOG_UPLOAD_USER, BuildConfig.CINEMA_LOG_UPLOAD_PASS));
         }
         try (Response response = OkHttp.client(TIMEOUT_MS).newCall(builder.build()).execute()) {
-            if (response.isSuccessful()) lastSent.set(total);
-            CinemaEventLog.event("log", "upload", "code=" + response.code() + " bytes=" + report.length() + " name=" + name);
-        } catch (IOException | RuntimeException e) {
-            CinemaEventLog.event("log", "upload fail", e.getClass().getSimpleName() + ": " + e.getMessage());
+            return response.code();
         }
     }
 }
