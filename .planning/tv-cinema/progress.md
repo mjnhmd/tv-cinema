@@ -294,3 +294,12 @@
 - Verified: `CinemaLiveListTest` 12/12; `CinemaLanDiscoveryAndroidTest` OK in 1.2s on emulator-5590 (API28 ARM64); `scripts/cinema-build.sh --mode leanback --abi armv7` PASS with signed `build/outputs/tv-cinema-armv7.apk` (sha256 `fff1c198…`), `lan_scan_empty` present in `classes3.dex`.
 - Next: user television acceptance; confirm whether the NAS IPTV service on 1905 is running.
 - Blocked/unknown: no access to the user's home network; emulator NAT timing is not WiFi timing.
+
+## Cleartext check and 0.1.11 release — 2026-11-19
+- User reported "添加链接时就提示不支持 http" on the TV, then self-corrected: "哦 没事了 是我填错了". No cleartext defect: the APK carries `android:usesCleartextTraffic=true` (from upstream `AndroidManifest.xml:55`) and no `network_security_config.xml`; the app has no "不支持 http" string, only MPV's playback-time "MPV 不允许明文传输".
+- Added `distribution/overlay/CinemaLiveConfigAndroidTest.java` (copies now 117 in `baseline.json`) driving the real path `Config.find(..., 1)` + `LiveConfig.load` against a device-local 1905 server → `OK (1 test), Time: 0.128` on `emulator-5590`. Commit `241f13845`.
+- Set-page rows device evidence (debug arm64): focus passes 内置片源 / 手动抓取片源 / 局域网直播源 / Live; both new rows open their confirm dialogs; running the LAN scan produced the new diagnostics dialog "没有找到直播源 / 本机 192.168.232.2/192.168.200.2，扫描 254 个地址 / 9 个端口，0 个端口有响应，用时 8.8 秒" in 8.8s. Screenshots under `build/logs/cleartext-probe/`.
+- Release path: `.omc/RELEASE_RULE.md` example synced to 0.1.11 (`b6791ec65`), `python3 -m unittest discover -s scripts/tests -p "test_cinema_*.py"` 32 tests OK, pushed `fongmi` to `b6791ec65`, then `gh workflow run cinema-armv7.yml -R mjnhmd/tv-cinema --ref fongmi -f publish=true` (run 44347386243, queued behind the push run).
+- Note: `gh` resolves this checkout's repo to the `FongMi/TV` upstream remote; every `gh` call needs `-R mjnhmd/tv-cinema`.
+- Next: confirm run 44347386243 publishes `TV Cinema 0.1.11+…` with both APKs; then user acceptance on the TV (scan time, whether the NAS is found, diagnostics numbers).
+- Blocked/unknown: no ARMv7 device or emulator here, so the release package itself cannot be exercised locally; R8 build behaviour of the two settings rows is unverified.

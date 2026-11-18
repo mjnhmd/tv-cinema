@@ -235,3 +235,12 @@ Ship a native TV redesign and a verified signed ARMv7 APK for an Android 9 telev
 - [completed] Verify: 12 JVM cases, device-side `CinemaLanDiscoveryAndroidTest` on emulator-5590 (1.2s, finds a local 1905 playlist), ARMv7 signed build and DEX/APK checks.
 - Not verified: the user's Android 9 / ARMv7 television, and whether the NAS IPTV service on port 1905 is currently running (a one-off subnet scan reported ports 554 and 5000 open on 192.168.31.236, no 1905 listener, no m3u service anywhere in that subnet).
 - Scope and evidence: `docs/features/tv-cinema/lan-live.md`. Local commit authorized; push/release/device install need fresh explicit consent.
+
+## Cleartext check and 0.1.11 release — 2026-11-19
+- [completed] Rule out the cleartext hypothesis with static and device evidence: manifest keeps `usesCleartextTraffic=true` (upstream `AndroidManifest.xml:55`), no `network_security_config.xml`, no "不支持 http" string in-app; `CinemaLiveConfigAndroidTest` loads a plain-http playlist through `Config.find` + `LiveConfig.load` on device (`OK (1 test), 0.128s`).
+- [completed] Record that the "不支持" prompt was a user-side typo ("哦 没事了 是我填错了", m00655).
+- [completed] Prove both contested settings rows are reachable on the debug build: focus passes all four Source rows, 「手动抓取片源」 and 「局域网直播源」 open their confirm dialogs, and a full scan now ends in 8.8s with the new diagnostics dialog.
+- [completed] Bump the shipping base to 0.1.11, sync the release-rule example, run the 32-test CI suite, push `fongmi` (HEAD `b6791ec65`) and dispatch a publishing workflow run.
+- Not verified: behaviour of these rows under the R8 release build, and everything on the user's actual television (no ARMv7 device or emulator available here).
+- Scope: `docs/features/tv-cinema/lan-live.md`; screenshots in `build/logs/cleartext-probe/`.
+- Release run: 44347386243 (`gh workflow run cinema-armv7.yml -R mjnhmd/tv-cinema --ref fongmi -f publish=true`).
