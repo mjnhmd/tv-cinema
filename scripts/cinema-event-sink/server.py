@@ -19,6 +19,12 @@ Environment
     CINEMA_SINK_DIR    output directory, default ./events
     CINEMA_SINK_PORT   listen port, default 13000
     CINEMA_SINK_HOST   listen address, default 0.0.0.0
+    CINEMA_SINK_KEEP_DAYS   delete day files older than this, default 14 (0 keeps all)
+    CINEMA_SINK_MAX_BYTES   per-day size cap, default 32 MiB (0 = no cap)
+
+Growth is bounded on purpose: each day writes its own file, files older than
+CINEMA_SINK_KEEP_DAYS are pruned at the first write of a new day, and a day file
+stops growing at CINEMA_SINK_MAX_BYTES (one notice line records the cut).
 
 Run: python3 server.py   (no third-party dependency, Python 3.8+)
 """
@@ -37,10 +43,14 @@ PORT = int(os.environ.get("CINEMA_SINK_PORT", "13000"))
 HOST = os.environ.get("CINEMA_SINK_HOST", "0.0.0.0")
 MAX_BODY = 1 << 20
 MAX_TAIL = 5000
+KEEP_DAYS = int(os.environ.get("CINEMA_SINK_KEEP_DAYS", "14"))
+MAX_BYTES = int(os.environ.get("CINEMA_SINK_MAX_BYTES", str(32 << 20)))
 
 _lock = threading.Lock()
 _started = time.time()
 _sessions = set()
+_pruned = None
+_capped = set()
 
 
 def today():
@@ -59,13 +69,53 @@ def count_lines(date):
         return sum(1 for _ in handle)
 
 
+def prune(current):
+    """Drop day files older than KEEP_DAYS; run once per day, not per request."""
+    global _pruned
+    if _pruned == current or KEEP_DAYS <= 0:
+        return
+    _pruned = current
+    limit = datetime.datetime.now() - datetime.timedelta(days=KEEP_DAYS)
+    cutoff = limit.strftime("%Y%m%d")
+    try:
+        names = os.listdir(DIR)
+    except OSError:
+        return
+    for name in names:
+        if not name.endswith(".log") or len(name) != 12:
+            continue
+        if name[:-4] >= cutoff:
+            continue
+        try:
+            os.remove(os.path.join(DIR, name))
+            sys.stderr.write("pruned %s\n" % name)
+        except OSError:
+            pass
+
+
 def append(date, lines, session, address):
+    """Append one batch; returns the number of lines actually stored."""
     stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
     payload = "".join("%s %s [%s] %s\n" % (stamp, session or "-", address, line) for line in lines)
+    size = len(payload.encode("utf-8", "replace"))
     with _lock:
         os.makedirs(DIR, exist_ok=True)
-        with open(path_for(date), "ab") as handle:
+        prune(date)
+        path = path_for(date)
+        if date in _capped:
+            return 0
+        current = os.path.getsize(path) if os.path.exists(path) else 0
+        if MAX_BYTES > 0 and current + size > MAX_BYTES:
+            _capped.add(date)
+            note = "%s %s [sink] day file hit its %d byte cap, dropping the rest of today\n" % (
+                stamp, session or "-", MAX_BYTES)
+            with open(path, "ab") as handle:
+                handle.write(note.encode("utf-8", "replace"))
+            sys.stderr.write("capped %s at %d bytes\n" % (date, MAX_BYTES))
+            return 0
+        with open(path, "ab") as handle:
             handle.write(payload.encode("utf-8", "replace"))
+        return len(lines)
 
 
 def tail(date, count):
@@ -121,8 +171,8 @@ class Handler(BaseHTTPRequestHandler):
         session = (self.headers.get("X-Cinema-Session") or "-").strip()
         address = self.headers.get("X-Cinema-Version") or self.client_address[0]
         _sessions.add(session)
-        append(today(), lines, session, address)
-        self.send(200, '{"ok":true,"lines":%d}' % len(lines))
+        stored = append(today(), lines, session, address)
+        self.send(200, '{"ok":true,"lines":%d,"stored":%d}' % (len(lines), stored))
 
     def do_GET(self):
         parsed = urlparse(self.path)
@@ -131,8 +181,10 @@ class Handler(BaseHTTPRequestHandler):
             if not self.authorized():
                 return
             date = today()
-            self.send(200, '{"ok":true,"uptime_s":%d,"date":"%s","lines_today":%d,"sessions":%d}'
-                      % (int(time.time() - _started), date, count_lines(date), len(_sessions)))
+            self.send(200, '{"ok":true,"uptime_s":%d,"date":"%s","lines_today":%d,"sessions":%d'
+                      ',"keep_days":%d,"max_bytes":%d}'
+                      % (int(time.time() - _started), date, count_lines(date), len(_sessions),
+                         KEEP_DAYS, MAX_BYTES))
             return
         if not self.authorized():
             return

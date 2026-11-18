@@ -57,6 +57,16 @@ CINEMA_SINK_TOKEN=你的token CINEMA_SINK_DIR=./events CINEMA_SINK_PORT=13000 py
 | GET | `/files` | 各天文件与大小 |
 | GET | `/file?date=20261119` | 某天完整文件 |
 
+配置项（环境变量）：
+
+| 变量 | 默认 | 说明 |
+|---|---|---|
+| `CINEMA_SINK_TOKEN` | 必填 | 唯一凭据，所有路由都要 `Authorization: Bearer <token>` |
+| `CINEMA_SINK_DIR` | `./events` | 落盘目录 |
+| `CINEMA_SINK_PORT` / `CINEMA_SINK_HOST` | `13000` / `0.0.0.0` | 监听端口与地址 |
+| `CINEMA_SINK_KEEP_DAYS` | `14` | 保留天数，新的一天第一次写入时删掉更早的 `YYYYMMDD.log`；`0` 表示全保留 |
+| `CINEMA_SINK_MAX_BYTES` | `33554432`（32 MiB） | 单日文件上限，超过后不再追加，只写一条 `[sink] day file would exceed ...` 提示；`0` 表示不限制 |
+
 落盘格式：
 
 ```
@@ -94,4 +104,5 @@ curl -H "Authorization: Bearer 你的token" "http://192.168.31.x:13000/tail?n=5"
 
 - 只监听局域网，不要把这个端口映射到公网；数据里有设备型号、IP、片名。
 - token 是唯一凭据，泄露了就换一个并重新打包。
-- 文件只增不减，按天分文件；不需要时直接删对应日期文件。
+- 增长是有界的：按天分文件，`CINEMA_SINK_KEEP_DAYS` 到期自动删旧文件，单日文件到 `CINEMA_SINK_MAX_BYTES` 停止追加。正常使用一天几百 KB 到几 MB，32 MiB 的单日上限约等于 30 倍余量。
+- 设备端也有界：内存环形缓冲 2000 行、每个 area 10 秒最多 60 条，写不进缓冲的事件直接丢并计数，不会把电视拖慢。
