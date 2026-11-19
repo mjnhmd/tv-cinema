@@ -7,6 +7,7 @@ request is a single write and the data survives a restart of either side.
 
 Routes
     POST /events        text/plain body, one event per line -> append, 200
+    POST /restart       exit so the container runtime reloads this file, 200
     GET  /health        uptime, line counts, known sessions
     GET  /tail?n=200    the newest n lines of today (or ?date=YYYYMMDD)
     GET  /files         per-day files with sizes
@@ -151,6 +152,14 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         route = urlparse(self.path).path
+        if route == "/restart":
+            if not self.authorized():
+                return
+            self.send(200, '{"ok":true,"restarting":true}')
+            # Exit after the response is flushed; restart:always brings us back
+            # with whatever server.py now holds.
+            threading.Timer(0.3, lambda: os._exit(0)).start()
+            return
         if route != "/events":
             self.send(404, '{"ok":false,"error":"not found"}')
             return

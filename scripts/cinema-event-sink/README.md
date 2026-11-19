@@ -56,6 +56,7 @@ CINEMA_SINK_TOKEN=你的token CINEMA_SINK_DIR=./events CINEMA_SINK_PORT=13000 py
 | GET | `/tail?n=200` | 当天最后 n 行（最多 5000） |
 | GET | `/files` | 各天文件与大小 |
 | GET | `/file?date=20261119` | 某天完整文件 |
+| POST | `/restart` | 让进程退出，靠 compose 的 `restart: always` 用磁盘上的新 `server.py` 重新起来（改了代码又不想进 NAS UI 时用） |
 
 配置项（环境变量）：
 
