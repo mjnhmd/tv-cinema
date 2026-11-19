@@ -224,3 +224,11 @@
 - TV image memory cache/pool capped; logo no longer decodes original dimensions.
 - First-run subscription consent; six independent subscriptions, URL dedupe and no blind spider merge.
 - Fork version action no longer offers upstream APKs.
+
+## 2026-11-19 上游 5.8.9 借鉴面结论
+- FongMi/Release 只是发版壳，源码在 `FongMi/TV`；5.8.7→5.8.9 共 28 commits / 100 files。补帧拿不到：`FfmpegMotionInterpolationController` 只存在于上游私有的 `lib-*.aar`（`.gitignore` 掉的 fileTree 依赖），公开的 `FongMi/media`、`wobuhui666/media` 各分支 MotionInterpolation 0 命中。
+- 基线已领先上游：`ExoUtil.java:145` 已有 `setEnableDecoderFallback(true)`，`:148` 有 Dolby Vision policy；ASS 是自研 `AssOverlayView`/`AssTextRenderer`，不能换成上游的 libass 常开。
+- 服务绑定不必借：`PlaybackActivity` 已有 `isBindingOwner()`/`replaceBinding`/`releaseService`/`isChangingConfigurations()`，`leanback VideoActivity.onThemeChanged()` 明确不 recreate。
+- 预载缺陷根因：`setOpening` 里 `clearPreload()` + `prepare()` 的 15s 同请求节流，导致片尾 45s 内改片头后 15s 内不会再预载；另外 `prepare` 在提交任务前就把 `opening` 算好，请求在飞时改片头用的是旧值。
+- 编译环境坑：不带 `MEDIA3_SOURCE_DIR` 跑 Gradle 会在 `:media3-av3a` 报 `找不到符号 MimeTypes.AUDIO_AV3A`（离线 Maven 的 Media3 版本缺这个常量）。必须 `JAVA_HOME=…/Android Studio…/jbr/Contents/Home` + `MEDIA3_SOURCE_DIR=build/reference/wobuhui-media` + `--init-script distribution/sdk-compat.init.gradle`。
+- `distribution/cinema.patch` 不能用 `git diff` 整体重生成（prepared tree diff 595,539B vs 评审版 285,499B）；正确做法是按文件块拼接 `git diff --full-index` 输出，并在 pristine worktree 上用 blob 哈希核对。

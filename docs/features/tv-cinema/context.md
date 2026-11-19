@@ -305,6 +305,13 @@
 - `verification.md` records exact commands, results, artifacts and remaining scopes.
 - No current evidence establishes all feature equivalence with unpublished FongMi custom APIs. The reference has its own mpv, ASS, dual-subtitle, danmaku and decoding implementation; ISO/BD-J and latest source/auth/runtime differences remain explicit integration boundaries.
 
+## Upstream borrow, step one — 2026-11-19
+- User decision (m00099): no module system; implement step one and re-check the second borrowed project. Upstream `FongMi/TV` 5.8.9 (28 commits over 5.8.7) was reviewed commit by commit; the borrow list narrowed to two playback items, and only the preload one was implemented.
+- Implemented: next-episode preload survives an 片头 change. `NextEpisodePreloader.startPosition(History, long)` merges the opening with the source's own start hint (later wins), the result callback reads the live `History.getOpening()`, and `onOpeningChanged(History)` re-prepares the cached `Result` at the new position. `VodPlaybackController.setOpening` no longer discards the preload, which also removed the 15 s `lastAttempt` throttle window that kept the next episode cold after a change near the episode end.
+- Decision not to port `PlaybackServiceConnection` (`4cf3a25b`): `PlaybackActivity` already owns a stronger binding-ownership model and `onThemeChanged()` avoids recreation, so the upstream class would duplicate it without measured benefit.
+- Deferred on evidence: frame interpolation / decoder prewarming (playback AAR is not produced by public sources; MPV interpolation needs Vulkan), module catalog (`python`/`nodejs`/`mpv`/`quickjs`/`thunder`/`bdj`), libass subtitle path (conflicts with our ASS renderer), and the whole `gugaart` v1.3.0 UI delta (private `gugagagaemby/native` modules).
+- Evidence and toolchain caveats: `verification.md` "Upstream 5.8.9 preload/opening borrow".
+
 ## Not yet verified
 - Android 9 installation and hardware decoding on the user's ARMv7 television.
 - Real-device frame pacing, heap pressure, remote behavior and long-session playback.

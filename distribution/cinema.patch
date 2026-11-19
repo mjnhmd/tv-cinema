@@ -3686,6 +3686,100 @@ index 76e56be285a881d6f24571a65120f9e456ba93c5..93d7e62be86787c161a0adb4eaf04b10
      }
  
      private record SearchTask(Site site, String keyword, boolean quick, String page) implements Callable<Result> {
+diff --git a/app/src/main/java/com/fongmi/android/tv/playback/vod/NextEpisodePreloader.java b/app/src/main/java/com/fongmi/android/tv/playback/vod/NextEpisodePreloader.java
+index 7d962935b58c24adac71b2fc9e3d5adab85e0439..eb82ded467f638a33cb9d77202f9c91fbe6b2d21 100644
+--- a/app/src/main/java/com/fongmi/android/tv/playback/vod/NextEpisodePreloader.java
++++ b/app/src/main/java/com/fongmi/android/tv/playback/vod/NextEpisodePreloader.java
+@@ -27,6 +27,8 @@ final class NextEpisodePreloader {
+     private int generation;
+     private VodPlayRequest lastAttempt;
+     private long attemptedAt;
++    private long preparedStart = Long.MIN_VALUE;
++    private Episode preparedEpisode;
+ 
+     NextEpisodePreloader(VodPlaybackHost host) {
+         this.host = host;
+@@ -43,7 +45,6 @@ final class NextEpisodePreloader {
+         attemptedAt = now;
+         request = next;
+         int ticket = generation;
+-        long opening = history == null ? 0 : Math.max(0, history.getOpening());
+         // Speculative work must not interrupt playback with a source login form.
+         future = Task.submit(() -> SiteApi.preloadContent(next.getKey(), next.getFlag(), next.getId()),
+                 Constant.TIMEOUT_VOD, false);
+@@ -54,11 +55,14 @@ final class NextEpisodePreloader {
+                 return;
+             }
+             value.getUrl().set(quality);
+-            long start = Math.max(opening, value.hasPosition() ? value.getPosition() : 0);
++            // Read the opening from the live History so a change made while the source request is in flight still applies.
++            long start = startPosition(history, value.hasPosition() ? value.getPosition() : 0);
+             if (!host.preloadPlayback(value, start, history, episode)) {
+                 clear();
+                 return;
+             }
++            preparedStart = start;
++            preparedEpisode = episode;
+             result = value;
+             completedAt = SystemClock.elapsedRealtime();
+         }), error -> App.post(() -> {
+@@ -74,6 +78,8 @@ final class NextEpisodePreloader {
+             request = null;
+             result = null;
+             future = null;
++            preparedStart = Long.MIN_VALUE;
++            preparedEpisode = null;
+             // The engine transfers the prepared MediaSource to the current player on start.
+             return value;
+         }
+@@ -81,6 +87,12 @@ final class NextEpisodePreloader {
+         return null;
+     }
+ 
++    /** The opening skip and the source's own start hint both apply; the later position wins. */
++    static long startPosition(History history, long resultPosition) {
++        long opening = history == null ? 0 : Math.max(0, history.getOpening());
++        return Math.max(opening, Math.max(0, resultPosition));
++    }
++
+     static boolean shouldPrepare(long position, long duration, long ending) {
+         if (position < 0 || duration <= 0) return false;
+         long remaining = duration - position - Math.max(0, ending);
+@@ -91,12 +103,34 @@ final class NextEpisodePreloader {
+         if (result != null && SystemClock.elapsedRealtime() - completedAt > MAX_AGE_MS) clear();
+     }
+ 
++    /**
++     * Keeps a prepared next episode when the opening skip changes: the same source result is
++     * re-prepared at the new start position instead of being discarded and requested again.
++     */
++    void onOpeningChanged(History history) {
++        if (!PreloadSetting.isNextEpisode() || !host.canPreloadNext()) {
++            clear();
++            return;
++        }
++        // An in-flight request reads the live opening when it lands, so there is nothing to redo here.
++        if (request == null || result == null || preparedEpisode == null) return;
++        long start = startPosition(history, result.hasPosition() ? result.getPosition() : 0);
++        if (start == preparedStart) return;
++        if (!host.preloadPlayback(result, start, history, preparedEpisode)) {
++            clear();
++            return;
++        }
++        preparedStart = start;
++    }
++
+     void clear() {
+         generation++;
+         if (future != null) future.cancel(true);
+         future = null;
+         request = null;
+         result = null;
++        preparedStart = Long.MIN_VALUE;
++        preparedEpisode = null;
+         host.clearPreload();
+     }
+ 
 diff --git a/app/src/main/java/com/fongmi/android/tv/playback/vod/VodHistoryPolicy.java b/app/src/main/java/com/fongmi/android/tv/playback/vod/VodHistoryPolicy.java
 index f4b0097638c61bc18622d5ccf2f5806158520a14..3002c72374680db2b119ba34184b940c6a4dba11 100644
 --- a/app/src/main/java/com/fongmi/android/tv/playback/vod/VodHistoryPolicy.java
@@ -3742,7 +3836,7 @@ index f4b0097638c61bc18622d5ccf2f5806158520a14..3002c72374680db2b119ba34184b940c
      }
  }
 diff --git a/app/src/main/java/com/fongmi/android/tv/playback/vod/VodPlaybackController.java b/app/src/main/java/com/fongmi/android/tv/playback/vod/VodPlaybackController.java
-index 2630565a1e845bdde107a260794ab634740f771f..d3b7e836266c380d4337dbc6629a98c8c72e7b3d 100644
+index 2630565a1e845bdde107a260794ab634740f771f..082bce38efd65b26f333454e6d80fefe09577dd4 100644
 --- a/app/src/main/java/com/fongmi/android/tv/playback/vod/VodPlaybackController.java
 +++ b/app/src/main/java/com/fongmi/android/tv/playback/vod/VodPlaybackController.java
 @@ -10,17 +10,22 @@ import com.fongmi.android.tv.bean.History;
@@ -3829,6 +3923,19 @@ index 2630565a1e845bdde107a260794ab634740f771f..d3b7e836266c380d4337dbc6629a98c8
      }
  
      public void selectSource(Vod item) {
+@@ -396,11 +421,11 @@ public class VodPlaybackController {
+     }
+ 
+     public void setOpening(long opening) {
+-        clearPreload();
+         if (state.getHistory() != null) {
+             state.getHistory().setOpening(opening);
+             state.getHistory().setOpeningSource("manual");
+         }
++        preloader.onOpeningChanged(state.getHistory());
+     }
+ 
+     public void setEnding(long ending) {
 @@ -452,17 +477,33 @@ public class VodPlaybackController {
          requestedEpisodeMissing = false;
          item.checkPic(host.getVodPic());
@@ -5149,6 +5256,34 @@ index 5cdb898a03b6c63cb7752a11d33b34c07b2b6811..a7a056a18d573f39e38efc3e8f62d232
          <com.google.android.material.textview.MaterialTextView
              android:id="@+id/opening"
              style="@style/Control"
+diff --git a/app/src/test/java/com/fongmi/android/tv/playback/vod/NextEpisodePreloaderTest.java b/app/src/test/java/com/fongmi/android/tv/playback/vod/NextEpisodePreloaderTest.java
+index 292ef8e6da74200c26f996d73c264a6b958d9198..e95ca2458e82bd753aa27c3749c2cd72399c7dc8 100644
+--- a/app/src/test/java/com/fongmi/android/tv/playback/vod/NextEpisodePreloaderTest.java
++++ b/app/src/test/java/com/fongmi/android/tv/playback/vod/NextEpisodePreloaderTest.java
+@@ -2,6 +2,7 @@ package com.fongmi.android.tv.playback.vod;
+ 
+ import com.fongmi.android.tv.bean.Episode;
+ import com.fongmi.android.tv.bean.Flag;
++import com.fongmi.android.tv.bean.History;
+ import org.junit.Test;
+ import static org.junit.Assert.*;
+ 
+@@ -13,6 +14,15 @@ public class NextEpisodePreloaderTest {
+         assertFalse(NextEpisodePreloader.shouldPrepare(100_000, 100_000, 0));
+         assertFalse(NextEpisodePreloader.shouldPrepare(1_000, -1, 0));
+     }
++    @Test public void startPositionHonoursTheLaterOfOpeningAndSourceHint() {
++        History history = new History();
++        history.setOpening(90_000);
++        assertEquals(90_000, NextEpisodePreloader.startPosition(history, 0));
++        assertEquals(120_000, NextEpisodePreloader.startPosition(history, 120_000));
++        history.setOpening(-5_000);
++        assertEquals(0, NextEpisodePreloader.startPosition(history, 0));
++        assertEquals(0, NextEpisodePreloader.startPosition(null, 0));
++    }
+     @Test public void keysRejectOtherSourceFlagAndEpisodeButAllowTitleChanges() {
+         VodPlayRequest request = VodPlayRequest.create("site", new Flag("line"), Episode.create("one", "id"));
+         assertTrue(request.matches(VodPlayRequest.create("site", new Flag("line"), Episode.create("renamed", "id"))));
 diff --git a/app/src/test/java/com/fongmi/android/tv/ui/home/PosterHomeCatalogTest.java b/app/src/test/java/com/fongmi/android/tv/ui/home/PosterHomeCatalogTest.java
 index 7382a5ba5eec7e9d04b2d8bfd64a53cf20335124..e4fcddbc4b69979dd48e870729ee19cf66de917a 100644
 --- a/app/src/test/java/com/fongmi/android/tv/ui/home/PosterHomeCatalogTest.java

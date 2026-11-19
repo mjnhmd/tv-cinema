@@ -303,3 +303,11 @@
 - Note: `gh` resolves this checkout's repo to the `FongMi/TV` upstream remote; every `gh` call needs `-R mjnhmd/tv-cinema`.
 - Next: confirm run 44347386243 publishes `TV Cinema 0.1.11+…` with both APKs; then user acceptance on the TV (scan time, whether the NAS is found, diagnostics numbers).
 - Blocked/unknown: no ARMv7 device or emulator here, so the release package itself cannot be exercised locally; R8 build behaviour of the two settings rows is unverified.
+
+## 借鉴 FongMi 5.8.9 第一步（预载/片头）— 2026-11-19
+- 已完成：放弃模块化（用户决定）；`NextEpisodePreloader` 增加 `startPosition(History,long)`、`preparedStart`/`preparedEpisode` 与 `onOpeningChanged(History)`，`VodPlaybackController.setOpening` 不再 `clearPreload()` 而是用缓存 `Result` 在新片头位置重新 preload；结果回调改为读实时 `History.getOpening()`，修掉请求在飞时改片头的旧值问题。
+- 已完成：`distribution/cinema.patch` 用 `git diff --full-index` 三个文件块重新拼接，`cinemaPatchSha256` → `4b4c68fe…ecd0f`；pristine worktree 应用后三个文件 blob 完全一致；`scripts/cinema-verify-inputs.py` PASS。
+- 已验证：`:app:compileLeanbackArmeabi_v7aDebugJavaWithJavac` BUILD SUCCESSFUL 43s/230 tasks；`:app:testLeanbackArmeabi_v7aDebugUnitTest --tests NextEpisodePreloaderTest` 3 tests / 0 failures（新增 `startPositionHonoursTheLaterOfOpeningAndSourceHint`）。
+- 决定不做：`PlaybackServiceConnection`（上游 `4cf3a25b`）。我们的 `PlaybackActivity` 已有 `isBindingOwner`/`replaceBinding`/`releaseService`/`beginLocalPlaybackRequest` 与 `isChangingConfigurations()` 守卫，`onThemeChanged()` 也不 recreate，移植只会重复并替换这套模型，没有实测收益。
+- 待完成：真机（Android9 ARMv7 TV）验证——片尾 45s 内改片头后下一集是否仍走预载、MPV 内核不适用（preload 仅 EXO）。
+- 阻塞/未知：本地无 ARMv7 设备；gugaart v1.3.0 的 UI 变化只做了变更面盘点，未逐项评估是否值得跟进。
