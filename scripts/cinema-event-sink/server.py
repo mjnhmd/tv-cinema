@@ -13,7 +13,7 @@ Routes
     GET  /files         per-day files with sizes
     GET  /file?date=..  one day's whole file
 
-Auth: Authorization: Bearer $CINEMA_SINK_TOKEN on every route.
+Auth: Authorization: Bearer $CINEMA_SINK_TOKEN, or ?token=... when a proxy cannot set headers.
 
 Environment
     CINEMA_SINK_TOKEN  shared secret, required (refuse to start without it)
@@ -31,6 +31,7 @@ Run: python3 server.py   (no third-party dependency, Python 3.8+)
 """
 
 import datetime
+import hmac
 import os
 import sys
 import threading
@@ -145,7 +146,12 @@ class Handler(BaseHTTPRequestHandler):
 
     def authorized(self):
         header = self.headers.get("Authorization", "")
-        if header.startswith("Bearer ") and header[7:].strip() == TOKEN:
+        if header.startswith("Bearer ") and hmac.compare_digest(header[7:].strip(), TOKEN):
+            return True
+        # A cloud tunnel in front of the sink cannot set headers, so allow the
+        # same secret as ?token=; treat such URLs as sensitive.
+        token = (parse_qs(urlparse(self.path).query).get("token") or [""])[0]
+        if token and hmac.compare_digest(token, TOKEN):
             return True
         self.send(401, '{"ok":false,"error":"unauthorized"}')
         return False

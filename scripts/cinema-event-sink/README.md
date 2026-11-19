@@ -47,7 +47,7 @@ CINEMA_SINK_TOKEN=你的token CINEMA_SINK_DIR=./events CINEMA_SINK_PORT=13000 py
 
 ## 接口
 
-全部要求 `Authorization: Bearer <token>`。
+全部要求 `Authorization: Bearer <token>`；如果中间隔了一条设不了 header 的隧道（比如极空间云中转 `proxy_fetch`），可以改成 URL 参数 `?token=<token>`，代价是 token 会出现在隧道访问日志里。
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
