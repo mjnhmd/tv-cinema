@@ -19,7 +19,7 @@ Environment
     CINEMA_SINK_DIR    output directory, default ./events
     CINEMA_SINK_PORT   listen port, default 13000
     CINEMA_SINK_HOST   listen address, default 0.0.0.0
-    CINEMA_SINK_KEEP_DAYS   delete day files older than this, default 14 (0 keeps all)
+    CINEMA_SINK_KEEP_DAYS   delete day files older than this, default 90 (0 keeps all)
     CINEMA_SINK_MAX_BYTES   per-day size cap, default 32 MiB (0 = no cap)
 
 Growth is bounded on purpose: each day writes its own file, files older than
@@ -43,7 +43,7 @@ PORT = int(os.environ.get("CINEMA_SINK_PORT", "13000"))
 HOST = os.environ.get("CINEMA_SINK_HOST", "0.0.0.0")
 MAX_BODY = 1 << 20
 MAX_TAIL = 5000
-KEEP_DAYS = int(os.environ.get("CINEMA_SINK_KEEP_DAYS", "14"))
+KEEP_DAYS = int(os.environ.get("CINEMA_SINK_KEEP_DAYS", "90"))
 MAX_BYTES = int(os.environ.get("CINEMA_SINK_MAX_BYTES", str(32 << 20)))
 
 _lock = threading.Lock()
@@ -230,6 +230,7 @@ def main():
         sys.stderr.write("CINEMA_SINK_TOKEN is required\n")
         return 2
     os.makedirs(DIR, exist_ok=True)
+    prune(today())
     server = ThreadingHTTPServer((HOST, PORT), Handler)
     sys.stderr.write("cinema sink on http://%s:%d -> %s\n" % (HOST, PORT, DIR))
     server.serve_forever()

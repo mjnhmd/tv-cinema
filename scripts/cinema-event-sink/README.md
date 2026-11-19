@@ -64,7 +64,7 @@ CINEMA_SINK_TOKEN=你的token CINEMA_SINK_DIR=./events CINEMA_SINK_PORT=13000 py
 | `CINEMA_SINK_TOKEN` | 必填 | 唯一凭据，所有路由都要 `Authorization: Bearer <token>` |
 | `CINEMA_SINK_DIR` | `./events` | 落盘目录 |
 | `CINEMA_SINK_PORT` / `CINEMA_SINK_HOST` | `13000` / `0.0.0.0` | 监听端口与地址 |
-| `CINEMA_SINK_KEEP_DAYS` | `14` | 保留天数，新的一天第一次写入时删掉更早的 `YYYYMMDD.log`；`0` 表示全保留 |
+| `CINEMA_SINK_KEEP_DAYS` | `90` | 保留天数（约三个月），新的一天第一次写入时删掉更早的 `YYYYMMDD.log`；`0` 表示全保留 |
 | `CINEMA_SINK_MAX_BYTES` | `33554432`（32 MiB） | 单日文件上限，超过后不再追加，只写一条 `[sink] day file would exceed ...` 提示；`0` 表示不限制 |
 
 落盘格式：
