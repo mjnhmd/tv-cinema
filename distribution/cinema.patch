@@ -1,5 +1,5 @@
 diff --git a/app/build.gradle b/app/build.gradle
-index 19f91509e0c4753dbed3ba68e8504053fff624d3..f6cf8fd096a78179d2e69f18c59e15ec91fb2809 100644
+index 19f91509e0c4753dbed3ba68e8504053fff624d3..b394e5d76cb4c0e658d1f5765c4530992b7ef854 100644
 --- a/app/build.gradle
 +++ b/app/build.gradle
 @@ -50,6 +50,10 @@ android {
@@ -24,9 +24,30 @@ index 19f91509e0c4753dbed3ba68e8504053fff624d3..f6cf8fd096a78179d2e69f18c59e15ec
              signingConfig = signingConfigs.release
              proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro', 'proguard-rules-media.pro'
          }
-@@ -180,10 +184,10 @@ androidComponents {
+@@ -179,11 +183,31 @@ androidComponents {
+     }
  }
  
++// These tests exercise Leanback-only classes, so they belong to the television edition. Upstream
++// keeps them in the shared test source set, which the phone edition cannot compile.
++def leanbackOnlyUnitTests = [
++        'com/fongmi/android/tv/ui/activity/DiscoverActivityTest.java',
++        'com/fongmi/android/tv/ui/custom/CinemaEpisodeLabelsTest.java',
++        'com/fongmi/android/tv/ui/custom/JetStreamEpisodeGridPolicyTest.java',
++        'com/fongmi/android/tv/ui/home/CinemaHeroSnapshotTest.java',
++        'com/fongmi/android/tv/ui/home/CinemaHomeFeedPlanTest.java',
++        'com/fongmi/android/tv/ui/home/HomeSourceStateTest.java',
++        'com/fongmi/android/tv/ui/home/PosterHomeCatalogTest.java',
++        'com/fongmi/android/tv/ui/rex/RexCaptionsTest.java',
++        'com/fongmi/android/tv/ui/rex/RexHomeCatalogTest.java',
++        'com/fongmi/android/tv/utils/FeaturedPosterCacheTest.java',
++]
++tasks.withType(JavaCompile).configureEach { task ->
++    if (task.name.startsWith('compileMobile') && task.name.endsWith('UnitTestJavaWithJavac')) {
++        leanbackOnlyUnitTests.each { name -> task.exclude("**/${name}") }
++    }
++}
++
  dependencies {
 +    implementation 'org.lsposed.hiddenapibypass:hiddenapibypass:6.2'
      implementation fileTree(dir: "libs", include: ["*.aar"], exclude: ["mpv-android-lib-*.aar"])
@@ -36,7 +57,7 @@ index 19f91509e0c4753dbed3ba68e8504053fff624d3..f6cf8fd096a78179d2e69f18c59e15ec
      implementation project(':catvod')
      implementation project(':chaquo')
      implementation project(':quickjs')
-@@ -218,6 +222,7 @@ dependencies {
+@@ -218,6 +242,7 @@ dependencies {
      implementation libs.permissionx
      implementation libs.simple.xml
      implementation libs.textdrawable
