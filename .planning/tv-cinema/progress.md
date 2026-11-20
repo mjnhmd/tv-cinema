@@ -311,3 +311,11 @@
 - 决定不做：`PlaybackServiceConnection`（上游 `4cf3a25b`）。我们的 `PlaybackActivity` 已有 `isBindingOwner`/`replaceBinding`/`releaseService`/`beginLocalPlaybackRequest` 与 `isChangingConfigurations()` 守卫，`onThemeChanged()` 也不 recreate，移植只会重复并替换这套模型，没有实测收益。
 - 待完成：真机（Android9 ARMv7 TV）验证——片尾 45s 内改片头后下一集是否仍走预载、MPV 内核不适用（preload 仅 EXO）。
 - 阻塞/未知：本地无 ARMv7 设备；gugaart v1.3.0 的 UI 变化只做了变更面盘点，未逐项评估是否值得跟进。
+
+## 更新包类型/ABI 加固 — 2026-11-20
+- 用户问题（m00001）：检查更新有没有问题，更新包要和当前包签名一致、类型一致。
+- 已完成：`UpdateApkValidator` 增加「APK 内 leanback launcher 标记」与「禁止外来 ABI 目录」两项校验，类型不符按 `Reason.PACKAGE` 上报；新增 `distribution/overlay/UpdateApkValidatorTest.java`（8 用例）。因该文件是上游 tracked 文件，改动进 `distribution/cinema.patch`（93 条 entry），`cinemaPatchSha256` → `55fd45bb…9db30`，`copies` 122→123。
+- 已验证：`cinema-prepare.py` / `cinema-verify-inputs.py` PASS；`scripts/tests` 32 tests OK；`:app:testLeanbackArmeabi_v7aDebugUnitTest --tests 'com.fongmi.android.tv.update.*'` 87 tests / 0 failures；`bash scripts/cinema-build.sh --mode leanback --abi armeabi-v7a` PASS，`build/outputs/tv-cinema-armv7.apk` 78,949,388 B，签名与单 ABI 校验通过。
+- 真包对照：`tv.apk`（0.1.16-events）通过全部新校验；`mobile.apk` 被 ABI + edition 双重拒绝。
+- 待完成：电视上真机走一次更新流程（本次发布没有新版本，需等下一个 versionCode）。
+- 阻塞/未知：`:app:testMobileArm64_v8aDebugUnitTest` 预存在编译失败（共享测试引用 leanback-only 类），非本次引入，CI 不跑 Java 单测。

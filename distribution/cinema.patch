@@ -5408,3 +5408,145 @@ index b646583c1318023c47b3b71a360516f6d11ec7d3..9bcd6cdfe39ba940928d77fbae125bd0
 +        }
 +    }
 +}
+diff --git a/app/src/main/java/com/fongmi/android/tv/update/UpdateApkValidator.java b/app/src/main/java/com/fongmi/android/tv/update/UpdateApkValidator.java
+index 5467f9816c4949ded06e273225b105f313800bb1..3dcba6ce27251602f7ad80303af218f66b50c414 100644
+--- a/app/src/main/java/com/fongmi/android/tv/update/UpdateApkValidator.java
++++ b/app/src/main/java/com/fongmi/android/tv/update/UpdateApkValidator.java
+@@ -8,15 +8,33 @@ import android.os.Build;
+ 
+ import com.fongmi.android.tv.BuildConfig;
+ 
++import java.io.ByteArrayOutputStream;
+ import java.io.File;
+ import java.io.IOException;
++import java.io.InputStream;
++import java.nio.charset.StandardCharsets;
+ import java.util.Arrays;
++import java.util.Enumeration;
+ import java.util.HashSet;
++import java.util.LinkedHashSet;
+ import java.util.Set;
++import java.util.zip.ZipEntry;
+ import java.util.zip.ZipFile;
+ 
+-/** Mirrors may return an unrelated APK; only our package, version, ABI and signer are accepted. */
++/**
++ * Mirrors may return an unrelated APK; only our package, edition, version, ABI and signer are accepted.
++ *
++ * <p>The television and phone editions share one application id, so the packaged manifest's launcher
++ * category is the only evidence of the edition inside the archive.</p>
++ */
+ public final class UpdateApkValidator implements UpdateDownloader.Validator {
++    private static final String LEANBACK_MODE = "leanback";
++    private static final String LIBRARY_PREFIX = "lib/";
++    private static final int MANIFEST_LIMIT = 8 * 1024 * 1024;
++
++    /** Launcher category declared by the television edition only. */
++    static final String LEANBACK_LAUNCHER = "android.intent.category.LEANBACK_LAUNCHER";
++
+     private final Context context;
+     private final int expectedCode;
+ 
+@@ -44,11 +62,14 @@ public final class UpdateApkValidator implements UpdateDownloader.Validator {
+             if (expected.isEmpty() || !expected.equals(signers(archive))) throw new ValidationException(Reason.SIGNATURE, "Wrong update signature");
+             String abi = BuildConfig.FLAVOR_abi.replace('_', '-');
+             try (ZipFile zip = new ZipFile(file)) {
+-                if (zip.getEntry("AndroidManifest.xml") == null || zip.getEntry("classes.dex") == null) {
++                Layout layout = readLayout(zip);
++                if (layout.manifest() == null || !layout.hasDex()) {
+                     throw new ValidationException(Reason.PARSE, "Invalid update APK structure");
+                 }
+-                if (!zip.stream().anyMatch(entry -> entry.getName().startsWith("lib/" + abi + "/") && entry.getName().endsWith(".so"))) {
+-                    throw new ValidationException(Reason.ABI, "Wrong update ABI");
++                if (!layout.hasNativeAbi(abi)) throw new ValidationException(Reason.ABI, "Wrong update ABI");
++                if (layout.hasForeignAbi(abi)) throw new ValidationException(Reason.ABI, "Update APK bundles another ABI");
++                if (LEANBACK_MODE.equals(BuildConfig.FLAVOR_mode) != declaresLeanbackLauncher(layout.manifest())) {
++                    throw new ValidationException(Reason.PACKAGE, "Wrong update edition");
+                 }
+             }
+         } catch (ValidationException e) {
+@@ -80,6 +101,84 @@ public final class UpdateApkValidator implements UpdateDownloader.Validator {
+         }
+     }
+ 
++    /** Zip-level facts that decide whether the archive belongs to this edition. */
++    static final class Layout {
++        private final Set<String> nativeAbis = new LinkedHashSet<>();
++        private final Set<String> libraryAbis = new LinkedHashSet<>();
++        private byte[] manifest;
++        private boolean dex;
++
++        /** True when the archive carries native code for the requested ABI. */
++        boolean hasNativeAbi(String abi) {
++            return nativeAbis.contains(abi);
++        }
++
++        /** True when the archive carries native paths for any other ABI. */
++        boolean hasForeignAbi(String abi) {
++            for (String directory : libraryAbis) if (!abi.equals(directory)) return true;
++            return false;
++        }
++
++        boolean hasDex() {
++            return dex;
++        }
++
++        byte[] manifest() {
++            return manifest;
++        }
++    }
++
++    static Layout readLayout(ZipFile archive) throws IOException {
++        Layout layout = new Layout();
++        Enumeration<? extends ZipEntry> entries = archive.entries();
++        while (entries.hasMoreElements()) {
++            ZipEntry entry = entries.nextElement();
++            String name = entry.getName();
++            if ("classes.dex".equals(name)) {
++                layout.dex = true;
++            } else if ("AndroidManifest.xml".equals(name)) {
++                layout.manifest = readEntry(archive, entry);
++            } else if (name.startsWith(LIBRARY_PREFIX)) {
++                int slash = name.indexOf('/', LIBRARY_PREFIX.length());
++                if (slash <= LIBRARY_PREFIX.length()) continue;
++                String directory = name.substring(LIBRARY_PREFIX.length(), slash);
++                layout.libraryAbis.add(directory);
++                if (name.endsWith(".so")) layout.nativeAbis.add(directory);
++            }
++        }
++        return layout;
++    }
++
++    /** The packaged manifest keeps its strings in a UTF-16 or UTF-8 pool; accept either encoding. */
++    static boolean declaresLeanbackLauncher(byte[] manifest) {
++        return contains(manifest, LEANBACK_LAUNCHER.getBytes(StandardCharsets.UTF_16LE))
++                || contains(manifest, LEANBACK_LAUNCHER.getBytes(StandardCharsets.UTF_8));
++    }
++
++    static boolean contains(byte[] haystack, byte[] needle) {
++        outer:
++        for (int i = 0; i + needle.length <= haystack.length; i++) {
++            for (int j = 0; j < needle.length; j++) {
++                if (haystack[i + j] != needle[j]) continue outer;
++            }
++            return true;
++        }
++        return false;
++    }
++
++    private static byte[] readEntry(ZipFile archive, ZipEntry entry) throws IOException {
++        ByteArrayOutputStream output = new ByteArrayOutputStream();
++        try (InputStream input = archive.getInputStream(entry)) {
++            byte[] buffer = new byte[8192];
++            int read;
++            while ((read = input.read(buffer)) != -1) {
++                output.write(buffer, 0, read);
++                if (output.size() > MANIFEST_LIMIT) throw new IOException("Update manifest is too large");
++            }
++        }
++        return output.toByteArray();
++    }
++
+     @SuppressWarnings("deprecation")
+     private static Set<Signature> signers(PackageInfo info) {
+         Signature[] signatures = Build.VERSION.SDK_INT >= 28 && info.signingInfo != null
