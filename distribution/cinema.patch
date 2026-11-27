@@ -1,5 +1,5 @@
 diff --git a/app/build.gradle b/app/build.gradle
-index 19f91509e0c4753dbed3ba68e8504053fff624d3..b394e5d76cb4c0e658d1f5765c4530992b7ef854 100644
+index 19f91509e0c4753dbed3ba68e8504053fff624d3..8cb0d6b57e6c11b7c37840ca65497f5937c9f6b7 100644
 --- a/app/build.gradle
 +++ b/app/build.gradle
 @@ -50,6 +50,10 @@ android {
@@ -24,7 +24,7 @@ index 19f91509e0c4753dbed3ba68e8504053fff624d3..b394e5d76cb4c0e658d1f5765c453099
              signingConfig = signingConfigs.release
              proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro', 'proguard-rules-media.pro'
          }
-@@ -179,11 +183,31 @@ androidComponents {
+@@ -179,11 +183,32 @@ androidComponents {
      }
  }
  
@@ -38,6 +38,7 @@ index 19f91509e0c4753dbed3ba68e8504053fff624d3..b394e5d76cb4c0e658d1f5765c453099
 +        'com/fongmi/android/tv/ui/home/CinemaHomeFeedPlanTest.java',
 +        'com/fongmi/android/tv/ui/home/HomeSourceStateTest.java',
 +        'com/fongmi/android/tv/ui/home/PosterHomeCatalogTest.java',
++        'com/fongmi/android/tv/ui/rex/CinemaRexFeedFallbackTest.java',
 +        'com/fongmi/android/tv/ui/rex/RexCaptionsTest.java',
 +        'com/fongmi/android/tv/ui/rex/RexHomeCatalogTest.java',
 +        'com/fongmi/android/tv/utils/FeaturedPosterCacheTest.java',
@@ -57,7 +58,7 @@ index 19f91509e0c4753dbed3ba68e8504053fff624d3..b394e5d76cb4c0e658d1f5765c453099
      implementation project(':catvod')
      implementation project(':chaquo')
      implementation project(':quickjs')
-@@ -218,6 +242,7 @@ dependencies {
+@@ -218,6 +243,7 @@ dependencies {
      implementation libs.permissionx
      implementation libs.simple.xml
      implementation libs.textdrawable
@@ -407,6 +408,71 @@ index e2706e7aee0a13c3f1e90e884f2c7cf40f28b838..70825d9a7efa6b89e894f2ff352bb33d
          if (savedInstanceState == null) binding.keep.requestFocus();
      }
  
+diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/RexSectionActivity.java b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/RexSectionActivity.java
+index ed23bb8021e72f4f0c708d8afbd714140368e10d..4fb88c56c8b48a041ab3870ac2c9f5c3527ddf84 100644
+--- a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/RexSectionActivity.java
++++ b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/RexSectionActivity.java
+@@ -164,7 +164,7 @@ public class RexSectionActivity extends BaseActivity implements VodPresenter.OnC
+         };
+     }
+ 
+-    /** 云桥优先；无 sk / 401 / 失败回退 rexnow 豆瓣 feed（与首页加载器同策略）。 */
++    /** 云桥优先；无 sk / 401 / 失败优先直连实时豆瓣，失败或空结果再回退 rexnow 豆瓣 feed。 */
+     private void loadBridge() {
+         String sk = Setting.getBridgeSk();
+         if (sk == null || sk.trim().isEmpty()) {
+@@ -175,7 +175,7 @@ public class RexSectionActivity extends BaseActivity implements VodPresenter.OnC
+             @Override
+             public void onSuccess(List<Vod> items) {
+                 if (isInactive()) return;
+-                if (items.isEmpty() && BrowseExperienceSettings.isCompactHomeEnabled()) loadBridgeFallback();
++                if (items.isEmpty()) loadBridgeFallback();
+                 else completeLocal(items);
+             }
+ 
+@@ -195,20 +195,20 @@ public class RexSectionActivity extends BaseActivity implements VodPresenter.OnC
+ 
+     private void loadBridgeFallback() {
+         if (isInactive()) return;
+-        if (!BrowseExperienceSettings.isCompactHomeEnabled()) {
+-            RexNowClient.fetchDouban(feedCategory(), tag, feedListener());
+-            return;
+-        }
++        loadDirectDouban();
++    }
++
++    private void loadRexNowDouban() {
++        if (isInactive()) return;
+         String type = section.getCollectionId().startsWith("movie") ? DiscoverMediaKey.MOVIE : DiscoverMediaKey.TV;
+         RexNowClient.fetchDouban(feedCategory(), tag, new RexNowClient.ItemsListener() {
+             @Override public void onSuccess(List<Vod> items) {
+                 if (isInactive()) return;
+                 List<Vod> selected = items.stream().filter(item -> type.equals(item.getTypeName())).toList();
+-                if (selected.isEmpty()) loadDirectDouban();
+-                else completeLocal(selected);
++                completeLocal(selected);
+             }
+             @Override public void onError(Exception error) {
+-                if (!isInactive()) loadDirectDouban();
++                if (!isInactive()) completeLocal(List.of());
+             }
+         });
+     }
+@@ -219,10 +219,12 @@ public class RexSectionActivity extends BaseActivity implements VodPresenter.OnC
+         int ticket = generation;
+         DiscoverApi.fetch(row, BuildConfig.TMDB_API_KEY, tag, new DiscoverApi.Listener() {
+             @Override public void onSuccess(DiscoverApi.Row row, List<Vod> items) {
+-                if (!isInactive() && ticket == generation) completeLocal(items);
++                if (isInactive() || ticket != generation) return;
++                if (!items.isEmpty()) completeLocal(items);
++                else loadRexNowDouban();
+             }
+             @Override public void onError(DiscoverApi.Row row, Exception error) {
+-                if (!isInactive() && ticket == generation) completeLocal(List.of());
++                if (!isInactive() && ticket == generation) loadRexNowDouban();
+             }
+         });
+     }
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SearchActivity.java b/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SearchActivity.java
 index ad651bdc80c512a182286e9f8c8a253c8d374d62..1755a5e412286859020a9318f9a68a4bd040a03e 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/activity/SearchActivity.java
@@ -2530,7 +2596,7 @@ index c16e0d0d85841626d91ea0e2ef18b426ca16aa0b..0824c0b0904730831e6289be2c32339b
  
          private void attach() {
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/rex/RexFeedLoader.java b/app/src/leanback/java/com/fongmi/android/tv/ui/rex/RexFeedLoader.java
-index c93025056db1de657369505d5bd68e8ccb41fe43..0de9b72f82629bf273b1b209d6ae423905148d4f 100644
+index c93025056db1de657369505d5bd68e8ccb41fe43..ce2a2947b76407c1a524552e8b60987efd64de66 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/rex/RexFeedLoader.java
 +++ b/app/src/leanback/java/com/fongmi/android/tv/ui/rex/RexFeedLoader.java
 @@ -16,9 +16,12 @@ import com.fongmi.android.tv.bean.Vod;
@@ -2565,26 +2631,27 @@ index c93025056db1de657369505d5bd68e8ccb41fe43..0de9b72f82629bf273b1b209d6ae4239
      private List<RexSection> sections = List.of();
      private Listener listener;
      private Runnable deadline;
-@@ -50,7 +58,10 @@ public final class RexFeedLoader {
+@@ -50,14 +58,16 @@ public final class RexFeedLoader {
      private int generation;
      private boolean done;
      private boolean closed;
+-    private final boolean directDoubanFallback;
 +    private boolean draining;
 +    private boolean delivered;
-     private final boolean directDoubanFallback;
 +    private final int maxConcurrent;
  
      public RexFeedLoader() {
          this(false);
-@@ -58,6 +69,7 @@ public final class RexFeedLoader {
+     }
  
-     public RexFeedLoader(boolean directDoubanFallback) {
-         this.directDoubanFallback = directDoubanFallback;
-+        maxConcurrent = directDoubanFallback ? 3 : 12;
+-    public RexFeedLoader(boolean directDoubanFallback) {
+-        this.directDoubanFallback = directDoubanFallback;
++    public RexFeedLoader(boolean compactHome) {
++        maxConcurrent = compactHome ? 3 : 12;
      }
  
      public boolean isLoading() { return !closed && !done && pending > 0; }
-@@ -67,6 +79,9 @@ public final class RexFeedLoader {
+@@ -67,6 +77,9 @@ public final class RexFeedLoader {
          int request = ++generation;
          cancelCalls();
          cancelDelivery();
@@ -2594,7 +2661,7 @@ index c93025056db1de657369505d5bd68e8ccb41fe43..0de9b72f82629bf273b1b209d6ae4239
          this.sections = sections;
          this.listener = listener;
          done = false;
-@@ -97,10 +112,36 @@ public final class RexFeedLoader {
+@@ -97,10 +110,36 @@ public final class RexFeedLoader {
              done = true;
              cancelCalls();
              cancelDelivery();
@@ -2633,7 +2700,7 @@ index c93025056db1de657369505d5bd68e8ccb41fe43..0de9b72f82629bf273b1b209d6ae4239
      }
  
      public void close() {
-@@ -109,6 +150,8 @@ public final class RexFeedLoader {
+@@ -109,6 +148,8 @@ public final class RexFeedLoader {
          cancelDeadline();
          cancelDelivery();
          cancelCalls();
@@ -2642,7 +2709,7 @@ index c93025056db1de657369505d5bd68e8ccb41fe43..0de9b72f82629bf273b1b209d6ae4239
      }
  
      public static void clearCache() {
-@@ -116,6 +159,7 @@ public final class RexFeedLoader {
+@@ -116,6 +157,7 @@ public final class RexFeedLoader {
      }
  
      private void fetch(RexSection section, int request) {
@@ -2650,25 +2717,60 @@ index c93025056db1de657369505d5bd68e8ccb41fe43..0de9b72f82629bf273b1b209d6ae4239
          RexNowClient.ItemsListener feedListener = new RexNowClient.ItemsListener() {
              @Override
              public void onSuccess(List<Vod> items) {
-@@ -164,6 +208,8 @@ public final class RexFeedLoader {
+@@ -162,8 +204,10 @@ public final class RexFeedLoader {
+         }
+     }
  
-     /** 云桥：sk 为空或 401/失败时回退 rexnow 豆瓣 feed（按栏目媒体类型过滤）。 */
+-    /** 云桥：sk 为空或 401/失败时回退 rexnow 豆瓣 feed（按栏目媒体类型过滤）。 */
++    /** 云桥：sk 为空或 401/失败时优先直连实时豆瓣，失败或空结果再回退 rexnow 豆瓣 feed。 */
      private void fetchBridge(RexSection section, int request) {
 +        if (!isCurrent(request) || !inFlight.contains(section.getKey())) return;
 +        Object tag = requestTags.get(section.getKey());
          String sk = Setting.getBridgeSk();
          if (sk == null || sk.trim().isEmpty()) {
              fetchDoubanFallback(section, request);
-@@ -189,6 +235,8 @@ public final class RexFeedLoader {
+@@ -172,7 +216,7 @@ public final class RexFeedLoader {
+         DoubanBridgeClient.fetchCatalog(Setting.getBridgeBase(), sk, null, section.getCollectionId(), 0, tag, new DoubanBridgeClient.Listener() {
+             @Override
+             public void onSuccess(List<Vod> items) {
+-                if (items.isEmpty() && directDoubanFallback) fetchDoubanFallback(section, request);
++                if (items.isEmpty()) fetchDoubanFallback(section, request);
+                 else accept(section, items, request);
+             }
+ 
+@@ -189,7 +233,13 @@ public final class RexFeedLoader {
      }
  
      private void fetchDoubanFallback(RexSection section, int request) {
+-        if (!isCurrent(request)) return;
++        if (!isCurrent(request) || !inFlight.contains(section.getKey())) return;
++        fetchDirectDouban(section, request);
++    }
++
++    private void fetchRexNowDouban(RexSection section, int request) {
 +        if (!isCurrent(request) || !inFlight.contains(section.getKey())) return;
 +        Object tag = requestTags.get(section.getKey());
-         if (!isCurrent(request)) return;
          String category = section.getFeedCategory().isEmpty() ? "trending" : section.getFeedCategory();
          String mediaType = section.getCollectionId().startsWith("movie") ? DiscoverMediaKey.MOVIE : DiscoverMediaKey.TV;
-@@ -214,7 +262,8 @@ public final class RexFeedLoader {
+         RexNowClient.fetchDouban(category, tag, new RexNowClient.ItemsListener() {
+@@ -197,14 +247,12 @@ public final class RexFeedLoader {
+             public void onSuccess(List<Vod> items) {
+                 List<Vod> filtered = new ArrayList<>();
+                 for (Vod item : items) if (mediaType.equals(item.getTypeName())) filtered.add(item);
+-                if (filtered.isEmpty() && directDoubanFallback) fetchDirectDouban(section, request);
+-                else accept(section, filtered, request);
++                accept(section, filtered, request);
+             }
+ 
+             @Override
+             public void onError(Exception e) {
+-                if (directDoubanFallback) fetchDirectDouban(section, request);
+-                else accept(section, List.of(), request);
++                accept(section, List.of(), request);
+             }
+         });
+     }
+@@ -214,15 +262,17 @@ public final class RexFeedLoader {
      }
  
      private void fetchDirectDouban(RexSection section, int request) {
@@ -2678,7 +2780,18 @@ index c93025056db1de657369505d5bd68e8ccb41fe43..0de9b72f82629bf273b1b209d6ae4239
          DiscoverApi.Row row = section.getCollectionId().startsWith("movie")
                  ? DiscoverApi.Row.DOUBAN_HOT_MOVIE : DiscoverApi.Row.DOUBAN_HOT_TV;
          DiscoverApi.fetch(row, BuildConfig.TMDB_API_KEY, tag, new DiscoverApi.Listener() {
-@@ -233,6 +282,10 @@ public final class RexFeedLoader {
+             @Override public void onSuccess(DiscoverApi.Row row, List<Vod> items) {
+-                accept(section, items, request);
++                if (!items.isEmpty()) accept(section, items, request);
++                else if (isCurrent(request)) fetchRexNowDouban(section, request);
+             }
+             @Override public void onError(DiscoverApi.Row row, Exception error) {
+-                accept(section, List.of(), request);
++                if (isCurrent(request)) fetchRexNowDouban(section, request);
+             }
+         });
+     }
+@@ -233,6 +283,10 @@ public final class RexFeedLoader {
              return;
          }
          if (closed || done || request != generation) return;
@@ -2689,7 +2802,7 @@ index c93025056db1de657369505d5bd68e8ccb41fe43..0de9b72f82629bf273b1b209d6ae4239
          List<Vod> capped = items.isEmpty()
                  ? List.of()
                  : new ArrayList<>(items.subList(0, Math.min(items.size(), section.getLimit())));
-@@ -250,12 +303,14 @@ public final class RexFeedLoader {
+@@ -250,12 +304,14 @@ public final class RexFeedLoader {
                  delivery = null;
                  if (!done) deliver(request);
              };
@@ -2705,7 +2818,7 @@ index c93025056db1de657369505d5bd68e8ccb41fe43..0de9b72f82629bf273b1b209d6ae4239
          List<RexFeedResult> results = new ArrayList<>();
          for (RexSection section : sections) {
              List<Vod> items = merged.get(section.getKey());
-@@ -275,6 +330,14 @@ public final class RexFeedLoader {
+@@ -275,10 +331,18 @@ public final class RexFeedLoader {
      }
  
      private void cancelCalls() {
@@ -2720,6 +2833,11 @@ index c93025056db1de657369505d5bd68e8ccb41fe43..0de9b72f82629bf273b1b209d6ae4239
          RexTmdbClient.cancel(tag);
          RexNowClient.cancel(tag);
          DoubanBridgeClient.cancel(tag);
+-        if (directDoubanFallback) DiscoverApi.cancel(tag);
++        DiscoverApi.cancel(tag);
+     }
+ 
+     @Nullable
 diff --git a/app/src/leanback/java/com/fongmi/android/tv/ui/theme/JetStreamAmbient.kt b/app/src/leanback/java/com/fongmi/android/tv/ui/theme/JetStreamAmbient.kt
 index 04178ae9235de571ac7c81d18441021b65e24d77..78cadc4deccfc5aceedb377a8786e94549fe0469 100644
 --- a/app/src/leanback/java/com/fongmi/android/tv/ui/theme/JetStreamAmbient.kt
@@ -3857,7 +3975,7 @@ index f4b0097638c61bc18622d5ccf2f5806158520a14..3002c72374680db2b119ba34184b940c
      }
  }
 diff --git a/app/src/main/java/com/fongmi/android/tv/playback/vod/VodPlaybackController.java b/app/src/main/java/com/fongmi/android/tv/playback/vod/VodPlaybackController.java
-index 2630565a1e845bdde107a260794ab634740f771f..082bce38efd65b26f333454e6d80fefe09577dd4 100644
+index 2630565a1e845bdde107a260794ab634740f771f..82f43c4f8c904f0a51b9e5ab3ef73d2298a368e2 100644
 --- a/app/src/main/java/com/fongmi/android/tv/playback/vod/VodPlaybackController.java
 +++ b/app/src/main/java/com/fongmi/android/tv/playback/vod/VodPlaybackController.java
 @@ -10,17 +10,22 @@ import com.fongmi.android.tv.bean.History;
@@ -4001,7 +4119,35 @@ index 2630565a1e845bdde107a260794ab634740f771f..082bce38efd65b26f333454e6d80fefe
          historyPolicy.updateEpisode(state.getHistory(), flag, episode);
          VodPlayRequest request = VodPlayRequest.create(host.getVodKey(), flag, episode);
          state.setPendingRequest(request);
-@@ -564,4 +608,22 @@ public class VodPlaybackController {
+@@ -524,12 +568,27 @@ public class VodPlaybackController {
+                 : EpisodeTarget.of(history.getEpisode(), state.getMediaSeason());
+         Episode episode = target == null ? null : SmartSourceSelector.findEpisode(flag, target, state.getMediaSeason());
+         if (episode == null && target != null && target.isUnnumbered()) episode = flag.find(history.getVodRemarks(), host.getVodMark().isEmpty());
++        if (episode == null && history != null && !state.hasEpisodeTarget() && !history.isEpisodeLabelGenerated()) {
++            episode = findUniqueExactName(flag, history.getVodRemarks());
++        }
+         host.renderQualityVisible(episode != null && episode.isSelected() && state.getQuality().getUrl().isMulti());
+         if (episode == null || episode.isSelected()) return;
+         history.setVodRemarks(episode.getName());
+         selectEpisode(episode);
+     }
+ 
++    /** Fallback for same-source resume when dynamic cloud URLs change on an ambiguous release name. */
++    static Episode findUniqueExactName(Flag flag, String name) {
++        if (flag == null || name == null || name.isEmpty()) return null;
++        Episode match = null;
++        for (Episode episode : flag.getEpisodes()) {
++            if (episode == null || !name.equalsIgnoreCase(episode.getName())) continue;
++            if (match != null && !match.getUrl().equals(episode.getUrl())) return null;
++            match = episode;
++        }
++        return match;
++    }
++
+     private void mergeFlag(Flag activated, Flag item) {
+         Flag target = findFlag(item);
+         if (target == null) {
+@@ -564,4 +623,22 @@ public class VodPlaybackController {
          int current = state.getFlag().getPosition();
          return EpisodeNavigator.relative(episodes, current, offset);
      }
@@ -4158,6 +4304,19 @@ index 0d12eed636e1b628b78a16eee0d4cea48b98e42f..92ed8e8858d67e475950c2da09d43acc
          MpvLogCollector.log("MpvPlayer", "通知首帧已渲染");
          invalidateState();
      }
+diff --git a/app/src/main/java/com/fongmi/android/tv/source/EpisodeLabelParser.java b/app/src/main/java/com/fongmi/android/tv/source/EpisodeLabelParser.java
+index 5a52af69ab218891bca4bea5ed59201ffcc0ac6d..034b1854745fcb79487db2ddb03004c281f8dedd 100644
+--- a/app/src/main/java/com/fongmi/android/tv/source/EpisodeLabelParser.java
++++ b/app/src/main/java/com/fongmi/android/tv/source/EpisodeLabelParser.java
+@@ -30,7 +30,7 @@ public final class EpisodeLabelParser {
+     private static final Pattern FILE_NUMBER = Pattern.compile("(?:^|[ ._-])([0-9]{1,4})(?![0-9])[ ._-]*$");
+     private static final Pattern RANGE = Pattern.compile("(?i)(?:e(?:p|pisode)?\\s*|第\\s*)(" + NUMBER + ")\\s*[集话期]?\\s*[-–—~_至到+、,/&]\\s*(?:第|e(?:p|pisode)?)?\\s*" + NUMBER
+             + "|e[0-9]{1,4}(?:[ ._-]*e[0-9]{1,4})+|^\\s*(" + NUMBER + ")\\s*[-–—~_至到+、,/&]\\s*" + NUMBER + "[集话期]?[ ._-]*$|[-–—]\\s*(" + NUMBER + ")\\s*[-–—~_至到+、,/&]\\s*" + NUMBER + "[集话期]?[ ._-]*$");
+-    private static final Pattern DECIMAL = Pattern.compile("(?i)(?:e(?:p|pisode)?\\s*|第\\s*|[-–—]\\s*|^)[0-9]{1,4}\\.[0-9]+(?:[集话期]|[ ._-]*$)");
++    private static final Pattern DECIMAL = Pattern.compile("(?i)(?:e(?:p|pisode)?\\s*|第\\s*|[-–—]\\s*|^)[0-9]{1,4}\\.(?!(?:19|20)[0-9]{2}(?![0-9]))[0-9]+(?:[集话期]|[ ._-]*$)");
+     private static final Pattern COLLECTION = Pattern.compile("(?i)合集|全集|合并|合輯|\\b(?:complete|batch)\\b");
+     private static final Pattern PREVIEW = Pattern.compile("(?i)预告(?:片)?|花絮|先导|\\b(?:trailer|preview|teaser)\\b");
+     private static final Pattern SPECIAL = Pattern.compile("(?i)特别篇|特别集|特辑|特典|番外|(?<![a-z])(?:special|ova|oad|sp|ncop|nced|op|ed)(?![a-z])");
 diff --git a/app/src/main/java/com/fongmi/android/tv/source/SearchRelevance.java b/app/src/main/java/com/fongmi/android/tv/source/SearchRelevance.java
 index 61bef92339552c316cc783acbe9690c698c28db9..32276817fb67ccf2c0469dd7ee4f626b238c0133 100644
 --- a/app/src/main/java/com/fongmi/android/tv/source/SearchRelevance.java
@@ -4331,6 +4490,148 @@ index 580be454caa2350f32b82756135226f53cf35789..a0f3536e87300f4693122f8e92c8da93
          return items;
      }
  
+diff --git a/app/src/main/java/com/fongmi/android/tv/update/UpdateApkValidator.java b/app/src/main/java/com/fongmi/android/tv/update/UpdateApkValidator.java
+index 5467f9816c4949ded06e273225b105f313800bb1..3dcba6ce27251602f7ad80303af218f66b50c414 100644
+--- a/app/src/main/java/com/fongmi/android/tv/update/UpdateApkValidator.java
++++ b/app/src/main/java/com/fongmi/android/tv/update/UpdateApkValidator.java
+@@ -8,15 +8,33 @@ import android.os.Build;
+ 
+ import com.fongmi.android.tv.BuildConfig;
+ 
++import java.io.ByteArrayOutputStream;
+ import java.io.File;
+ import java.io.IOException;
++import java.io.InputStream;
++import java.nio.charset.StandardCharsets;
+ import java.util.Arrays;
++import java.util.Enumeration;
+ import java.util.HashSet;
++import java.util.LinkedHashSet;
+ import java.util.Set;
++import java.util.zip.ZipEntry;
+ import java.util.zip.ZipFile;
+ 
+-/** Mirrors may return an unrelated APK; only our package, version, ABI and signer are accepted. */
++/**
++ * Mirrors may return an unrelated APK; only our package, edition, version, ABI and signer are accepted.
++ *
++ * <p>The television and phone editions share one application id, so the packaged manifest's launcher
++ * category is the only evidence of the edition inside the archive.</p>
++ */
+ public final class UpdateApkValidator implements UpdateDownloader.Validator {
++    private static final String LEANBACK_MODE = "leanback";
++    private static final String LIBRARY_PREFIX = "lib/";
++    private static final int MANIFEST_LIMIT = 8 * 1024 * 1024;
++
++    /** Launcher category declared by the television edition only. */
++    static final String LEANBACK_LAUNCHER = "android.intent.category.LEANBACK_LAUNCHER";
++
+     private final Context context;
+     private final int expectedCode;
+ 
+@@ -44,11 +62,14 @@ public final class UpdateApkValidator implements UpdateDownloader.Validator {
+             if (expected.isEmpty() || !expected.equals(signers(archive))) throw new ValidationException(Reason.SIGNATURE, "Wrong update signature");
+             String abi = BuildConfig.FLAVOR_abi.replace('_', '-');
+             try (ZipFile zip = new ZipFile(file)) {
+-                if (zip.getEntry("AndroidManifest.xml") == null || zip.getEntry("classes.dex") == null) {
++                Layout layout = readLayout(zip);
++                if (layout.manifest() == null || !layout.hasDex()) {
+                     throw new ValidationException(Reason.PARSE, "Invalid update APK structure");
+                 }
+-                if (!zip.stream().anyMatch(entry -> entry.getName().startsWith("lib/" + abi + "/") && entry.getName().endsWith(".so"))) {
+-                    throw new ValidationException(Reason.ABI, "Wrong update ABI");
++                if (!layout.hasNativeAbi(abi)) throw new ValidationException(Reason.ABI, "Wrong update ABI");
++                if (layout.hasForeignAbi(abi)) throw new ValidationException(Reason.ABI, "Update APK bundles another ABI");
++                if (LEANBACK_MODE.equals(BuildConfig.FLAVOR_mode) != declaresLeanbackLauncher(layout.manifest())) {
++                    throw new ValidationException(Reason.PACKAGE, "Wrong update edition");
+                 }
+             }
+         } catch (ValidationException e) {
+@@ -80,6 +101,84 @@ public final class UpdateApkValidator implements UpdateDownloader.Validator {
+         }
+     }
+ 
++    /** Zip-level facts that decide whether the archive belongs to this edition. */
++    static final class Layout {
++        private final Set<String> nativeAbis = new LinkedHashSet<>();
++        private final Set<String> libraryAbis = new LinkedHashSet<>();
++        private byte[] manifest;
++        private boolean dex;
++
++        /** True when the archive carries native code for the requested ABI. */
++        boolean hasNativeAbi(String abi) {
++            return nativeAbis.contains(abi);
++        }
++
++        /** True when the archive carries native paths for any other ABI. */
++        boolean hasForeignAbi(String abi) {
++            for (String directory : libraryAbis) if (!abi.equals(directory)) return true;
++            return false;
++        }
++
++        boolean hasDex() {
++            return dex;
++        }
++
++        byte[] manifest() {
++            return manifest;
++        }
++    }
++
++    static Layout readLayout(ZipFile archive) throws IOException {
++        Layout layout = new Layout();
++        Enumeration<? extends ZipEntry> entries = archive.entries();
++        while (entries.hasMoreElements()) {
++            ZipEntry entry = entries.nextElement();
++            String name = entry.getName();
++            if ("classes.dex".equals(name)) {
++                layout.dex = true;
++            } else if ("AndroidManifest.xml".equals(name)) {
++                layout.manifest = readEntry(archive, entry);
++            } else if (name.startsWith(LIBRARY_PREFIX)) {
++                int slash = name.indexOf('/', LIBRARY_PREFIX.length());
++                if (slash <= LIBRARY_PREFIX.length()) continue;
++                String directory = name.substring(LIBRARY_PREFIX.length(), slash);
++                layout.libraryAbis.add(directory);
++                if (name.endsWith(".so")) layout.nativeAbis.add(directory);
++            }
++        }
++        return layout;
++    }
++
++    /** The packaged manifest keeps its strings in a UTF-16 or UTF-8 pool; accept either encoding. */
++    static boolean declaresLeanbackLauncher(byte[] manifest) {
++        return contains(manifest, LEANBACK_LAUNCHER.getBytes(StandardCharsets.UTF_16LE))
++                || contains(manifest, LEANBACK_LAUNCHER.getBytes(StandardCharsets.UTF_8));
++    }
++
++    static boolean contains(byte[] haystack, byte[] needle) {
++        outer:
++        for (int i = 0; i + needle.length <= haystack.length; i++) {
++            for (int j = 0; j < needle.length; j++) {
++                if (haystack[i + j] != needle[j]) continue outer;
++            }
++            return true;
++        }
++        return false;
++    }
++
++    private static byte[] readEntry(ZipFile archive, ZipEntry entry) throws IOException {
++        ByteArrayOutputStream output = new ByteArrayOutputStream();
++        try (InputStream input = archive.getInputStream(entry)) {
++            byte[] buffer = new byte[8192];
++            int read;
++            while ((read = input.read(buffer)) != -1) {
++                output.write(buffer, 0, read);
++                if (output.size() > MANIFEST_LIMIT) throw new IOException("Update manifest is too large");
++            }
++        }
++        return output.toByteArray();
++    }
++
+     @SuppressWarnings("deprecation")
+     private static Set<Signature> signers(PackageInfo info) {
+         Signature[] signatures = Build.VERSION.SDK_INT >= 28 && info.signingInfo != null
 diff --git a/app/src/main/java/com/fongmi/android/tv/update/UpdateDownloader.java b/app/src/main/java/com/fongmi/android/tv/update/UpdateDownloader.java
 index 71b6f8982a0caa5dc949bbddf62bc2599f93ba42..9b526c88780499a0a6c8693a480d1e9bdd271aba 100644
 --- a/app/src/main/java/com/fongmi/android/tv/update/UpdateDownloader.java
@@ -5305,6 +5606,107 @@ index 292ef8e6da74200c26f996d73c264a6b958d9198..e95ca2458e82bd753aa27c3749c2cd72
      @Test public void keysRejectOtherSourceFlagAndEpisodeButAllowTitleChanges() {
          VodPlayRequest request = VodPlayRequest.create("site", new Flag("line"), Episode.create("one", "id"));
          assertTrue(request.matches(VodPlayRequest.create("site", new Flag("line"), Episode.create("renamed", "id"))));
+diff --git a/app/src/test/java/com/fongmi/android/tv/playback/vod/VodPlaybackStateTest.java b/app/src/test/java/com/fongmi/android/tv/playback/vod/VodPlaybackStateTest.java
+index 654630a8351df850d0c0abaf856dc1bb2b56775f..47ddc8f0228f9e58a1933ec48e700b48539f0d1b 100644
+--- a/app/src/test/java/com/fongmi/android/tv/playback/vod/VodPlaybackStateTest.java
++++ b/app/src/test/java/com/fongmi/android/tv/playback/vod/VodPlaybackStateTest.java
+@@ -58,6 +58,23 @@ public class VodPlaybackStateTest {
+         assertFalse(flag.getEpisodes().get(0).isSelected());
+     }
+ 
++    @Test
++    public void shouldFallbackToUniqueExactNameForAmbiguousResumeAndRejectDuplicates() {
++        Flag unique = new Flag("cloud");
++        Episode merged = Episode.create("第01-02集.mkv", "quark://new-token");
++        unique.getEpisodes().add(Episode.create("第03-04集.mkv", "quark://other"));
++        unique.getEpisodes().add(merged);
++
++        assertSame(merged, VodPlaybackController.findUniqueExactName(unique, "第01-02集.mkv"));
++        assertEquals(null, VodPlaybackController.findUniqueExactName(unique, "不存在"));
++        assertEquals(null, VodPlaybackController.findUniqueExactName(unique, ""));
++
++        Flag duplicate = new Flag("cloud");
++        duplicate.getEpisodes().add(Episode.create("第01-02集.mkv", "quark://first"));
++        duplicate.getEpisodes().add(Episode.create("第01-02集.mkv", "quark://second"));
++        assertEquals(null, VodPlaybackController.findUniqueExactName(duplicate, "第01-02集.mkv"));
++    }
++
+     private Flag createFlagWithTwoEpisodes() {
+         Flag flag = new Flag("main");
+         flag.getEpisodes().add(Episode.create("01", "url1"));
+diff --git a/app/src/test/java/com/fongmi/android/tv/source/EpisodeLabelParserTest.java b/app/src/test/java/com/fongmi/android/tv/source/EpisodeLabelParserTest.java
+index 262da8081a68db40af250ae74677f5d8b012ebb8..3ec3fd6f6de5a4f5776511e35373ae6e973450c0 100644
+--- a/app/src/test/java/com/fongmi/android/tv/source/EpisodeLabelParserTest.java
++++ b/app/src/test/java/com/fongmi/android/tv/source/EpisodeLabelParserTest.java
+@@ -385,6 +385,37 @@ public class EpisodeLabelParserTest {
+         assertTrue(legacy.withSeason(0).isApiSafe());
+     }
+ 
++    @Test
++    public void shouldNotTreatReleaseYearAfterEpisodeMarkerAsDecimalEpisode() {
++        EpisodeLabel e08 = EpisodeLabelParser.parse("[5.57GB] J-今天 S01E08.2026.2160p.WEB-DL.H.264.AAC.mkv");
++        assertEquals(Integer.valueOf(1), e08.season());
++        assertEquals(Integer.valueOf(8), e08.number());
++        assertFalse(e08.isAmbiguous());
++        assertTrue(e08.isSingleEpisode());
++        assertTrue(e08.isApiSafe());
++
++        EpisodeLabel e05 = EpisodeLabelParser.parse("[4.48GB] J-今天 S01E05.2026.2160p.WEB-DL.H.264.AAC.mkv");
++        assertEquals(Integer.valueOf(1), e05.season());
++        assertEquals(Integer.valueOf(5), e05.number());
++        assertEquals(e08.edition(), e05.edition());
++
++        EpisodeLabel plainYear = EpisodeLabelParser.parse("Show.S01E08.2026.mkv");
++        assertEquals(Integer.valueOf(1), plainYear.season());
++        assertEquals(Integer.valueOf(8), plainYear.number());
++        assertFalse(plainYear.isAmbiguous());
++
++        EpisodeLabel vintage = EpisodeLabelParser.parse("Show.E08.1999.1080p.mkv");
++        assertEquals(Integer.valueOf(8), vintage.number());
++        assertFalse(vintage.isAmbiguous());
++
++        // Real fractional episodes must stay rejected as ambiguous.
++        for (String name : new String[]{"Episode 12.5", "Show - 12.5.mkv", "S01E12.5.1080p.mkv", "第12.5集"}) {
++            EpisodeLabel decimal = EpisodeLabelParser.parse(name);
++            assertTrue(name, decimal.isAmbiguous());
++            assertNull(name, decimal.number());
++        }
++    }
++
+     @Test
+     public void shouldReturnAnUnknownLabelForEmptyOrExcessivelyLongInputs() {
+         assertNull(EpisodeLabelParser.parse(null).number());
+diff --git a/app/src/test/java/com/fongmi/android/tv/source/EpisodeTargetTest.java b/app/src/test/java/com/fongmi/android/tv/source/EpisodeTargetTest.java
+index 735a0f8e2cc03445a75693777a215315a3d34ceb..07bb981bff875223eceb2f51080abe31cb2bf491 100644
+--- a/app/src/test/java/com/fongmi/android/tv/source/EpisodeTargetTest.java
++++ b/app/src/test/java/com/fongmi/android/tv/source/EpisodeTargetTest.java
+@@ -169,6 +169,26 @@ public class EpisodeTargetTest {
+         assertFalse(target.matches(episode("S01E03"), 2));
+     }
+ 
++    @Test
++    public void shouldResumeYearTaggedCloudEpisodeWhenDynamicUrlChanges() {
++        Episode saved = Episode.create("[5.57GB] J-今天 S01E08.2026.2160p.WEB-DL.H.264.AAC.mkv", "quark://old-stoken-e08");
++        Episode refreshedE06 = Episode.create("[4.57GB] J-今天 S01E06.2026.2160p.WEB-DL.H.264.AAC.mkv", "quark://new-stoken-e06");
++        Episode refreshedE08 = Episode.create("[5.57GB] J-今天 S01E08.2026.2160p.WEB-DL.H.264.AAC.mkv", "quark://new-stoken-e08");
++        Episode refreshedE09 = Episode.create("[4.99GB] J-今天 S01E09.2026.2160p.WEB-DL.H.264.AAC.mkv", "quark://new-stoken-e09");
++        Flag flag = new Flag("夸父原2");
++        flag.getEpisodes().add(refreshedE06);
++        flag.getEpisodes().add(refreshedE08);
++        flag.getEpisodes().add(refreshedE09);
++
++        assertSame(refreshedE08, SmartSourceSelector.findEpisode(flag, EpisodeTarget.of(saved)));
++
++        // Legacy release naming on the same episode number also matches the year-tagged release.
++        Episode legacyE05 = Episode.create("[4.46GB] J-今天 05-4K.AVC.AAC.8bit.mkv", "quark://old-e05");
++        Episode refreshedE05 = Episode.create("[4.48GB] J-今天 S01E05.2026.2160p.WEB-DL.H.264.AAC.mkv", "quark://new-e05");
++        flag.getEpisodes().add(refreshedE05);
++        assertSame(refreshedE05, SmartSourceSelector.findEpisode(flag, EpisodeTarget.of(legacyE05)));
++    }
++
+     private Episode episode(String name) {
+         Episode episode = new Episode();
+         episode.setName(name);
 diff --git a/app/src/test/java/com/fongmi/android/tv/ui/home/PosterHomeCatalogTest.java b/app/src/test/java/com/fongmi/android/tv/ui/home/PosterHomeCatalogTest.java
 index 7382a5ba5eec7e9d04b2d8bfd64a53cf20335124..e4fcddbc4b69979dd48e870729ee19cf66de917a 100644
 --- a/app/src/test/java/com/fongmi/android/tv/ui/home/PosterHomeCatalogTest.java
@@ -5344,6 +5746,37 @@ index 7382a5ba5eec7e9d04b2d8bfd64a53cf20335124..e4fcddbc4b69979dd48e870729ee19cf
      @Test
      public void shouldPreserveActionsAfterThePreviewCapWithoutArtwork() throws Exception {
          List<Vod> items = new ArrayList<>();
+diff --git a/app/src/tvPreviewTest/java/com/fongmi/android/tv/ui/CompactDiscoveryIntegrationTest.java b/app/src/tvPreviewTest/java/com/fongmi/android/tv/ui/CompactDiscoveryIntegrationTest.java
+index b091aa32f2f6b151ef8141be44178cfdb88d95d2..0867ec2c764a1b48336882dc079ebad006ba8669 100644
+--- a/app/src/tvPreviewTest/java/com/fongmi/android/tv/ui/CompactDiscoveryIntegrationTest.java
++++ b/app/src/tvPreviewTest/java/com/fongmi/android/tv/ui/CompactDiscoveryIntegrationTest.java
+@@ -244,21 +244,21 @@ public final class CompactDiscoveryIntegrationTest {
+         NativeUiEvidence.capture("compact-douban-section");
+     }
+ 
+-    @Test public void closingLoaderCancelsTheFeedAndDoesNotStartFallback() {
+-        holdFeed = true;
++    @Test public void closingLoaderCancelsTheDirectDoubanAndDoesNotStartRexNowFallback() {
++        holdDirect = true;
+         AtomicReference<List<RexFeedResult>> results = new AtomicReference<>();
+         main(() -> {
+             loader = new RexFeedLoader(true);
+             loader.load(List.of(RexSections.byKey("douban_movie")), results::set);
+         });
+-        await("Feed body begins", () -> heldCall.get() != null);
++        await("Direct Douban request begins", () -> heldCall.get() != null);
+         main(loader::close);
+         assertTrue(heldCall.get().isCanceled());
+         release.countDown();
+-        await("Feed cancellation settles", () -> fixtureClient.dispatcher().runningCallsCount() == 0);
++        await("Direct cancellation settles", () -> fixtureClient.dispatcher().runningCallsCount() == 0);
+         instrumentation.waitForIdleSync();
+         assertNull(results.get());
+-        assertEquals("No dated feed or direct fallback after closure", 1, requests.size());
++        assertEquals("No rexnow fallback after direct closure", 1, requests.size());
+     }
+ 
+     @Test public void closingLoaderCancelsTheIndependentDoubanFallback() {
 diff --git a/app/src/tvPreviewTest/java/com/fongmi/android/tv/ui/custom/PlaybackSpecsControllerTest.java b/app/src/tvPreviewTest/java/com/fongmi/android/tv/ui/custom/PlaybackSpecsControllerTest.java
 index 9577870dc46d395d2e1c08716de581c76169e798..c06d88f96ab15d186249c0dd88fc00f5eaeccb79 100644
 --- a/app/src/tvPreviewTest/java/com/fongmi/android/tv/ui/custom/PlaybackSpecsControllerTest.java
@@ -5429,145 +5862,3 @@ index b646583c1318023c47b3b71a360516f6d11ec7d3..9bcd6cdfe39ba940928d77fbae125bd0
 +        }
 +    }
 +}
-diff --git a/app/src/main/java/com/fongmi/android/tv/update/UpdateApkValidator.java b/app/src/main/java/com/fongmi/android/tv/update/UpdateApkValidator.java
-index 5467f9816c4949ded06e273225b105f313800bb1..3dcba6ce27251602f7ad80303af218f66b50c414 100644
---- a/app/src/main/java/com/fongmi/android/tv/update/UpdateApkValidator.java
-+++ b/app/src/main/java/com/fongmi/android/tv/update/UpdateApkValidator.java
-@@ -8,15 +8,33 @@ import android.os.Build;
- 
- import com.fongmi.android.tv.BuildConfig;
- 
-+import java.io.ByteArrayOutputStream;
- import java.io.File;
- import java.io.IOException;
-+import java.io.InputStream;
-+import java.nio.charset.StandardCharsets;
- import java.util.Arrays;
-+import java.util.Enumeration;
- import java.util.HashSet;
-+import java.util.LinkedHashSet;
- import java.util.Set;
-+import java.util.zip.ZipEntry;
- import java.util.zip.ZipFile;
- 
--/** Mirrors may return an unrelated APK; only our package, version, ABI and signer are accepted. */
-+/**
-+ * Mirrors may return an unrelated APK; only our package, edition, version, ABI and signer are accepted.
-+ *
-+ * <p>The television and phone editions share one application id, so the packaged manifest's launcher
-+ * category is the only evidence of the edition inside the archive.</p>
-+ */
- public final class UpdateApkValidator implements UpdateDownloader.Validator {
-+    private static final String LEANBACK_MODE = "leanback";
-+    private static final String LIBRARY_PREFIX = "lib/";
-+    private static final int MANIFEST_LIMIT = 8 * 1024 * 1024;
-+
-+    /** Launcher category declared by the television edition only. */
-+    static final String LEANBACK_LAUNCHER = "android.intent.category.LEANBACK_LAUNCHER";
-+
-     private final Context context;
-     private final int expectedCode;
- 
-@@ -44,11 +62,14 @@ public final class UpdateApkValidator implements UpdateDownloader.Validator {
-             if (expected.isEmpty() || !expected.equals(signers(archive))) throw new ValidationException(Reason.SIGNATURE, "Wrong update signature");
-             String abi = BuildConfig.FLAVOR_abi.replace('_', '-');
-             try (ZipFile zip = new ZipFile(file)) {
--                if (zip.getEntry("AndroidManifest.xml") == null || zip.getEntry("classes.dex") == null) {
-+                Layout layout = readLayout(zip);
-+                if (layout.manifest() == null || !layout.hasDex()) {
-                     throw new ValidationException(Reason.PARSE, "Invalid update APK structure");
-                 }
--                if (!zip.stream().anyMatch(entry -> entry.getName().startsWith("lib/" + abi + "/") && entry.getName().endsWith(".so"))) {
--                    throw new ValidationException(Reason.ABI, "Wrong update ABI");
-+                if (!layout.hasNativeAbi(abi)) throw new ValidationException(Reason.ABI, "Wrong update ABI");
-+                if (layout.hasForeignAbi(abi)) throw new ValidationException(Reason.ABI, "Update APK bundles another ABI");
-+                if (LEANBACK_MODE.equals(BuildConfig.FLAVOR_mode) != declaresLeanbackLauncher(layout.manifest())) {
-+                    throw new ValidationException(Reason.PACKAGE, "Wrong update edition");
-                 }
-             }
-         } catch (ValidationException e) {
-@@ -80,6 +101,84 @@ public final class UpdateApkValidator implements UpdateDownloader.Validator {
-         }
-     }
- 
-+    /** Zip-level facts that decide whether the archive belongs to this edition. */
-+    static final class Layout {
-+        private final Set<String> nativeAbis = new LinkedHashSet<>();
-+        private final Set<String> libraryAbis = new LinkedHashSet<>();
-+        private byte[] manifest;
-+        private boolean dex;
-+
-+        /** True when the archive carries native code for the requested ABI. */
-+        boolean hasNativeAbi(String abi) {
-+            return nativeAbis.contains(abi);
-+        }
-+
-+        /** True when the archive carries native paths for any other ABI. */
-+        boolean hasForeignAbi(String abi) {
-+            for (String directory : libraryAbis) if (!abi.equals(directory)) return true;
-+            return false;
-+        }
-+
-+        boolean hasDex() {
-+            return dex;
-+        }
-+
-+        byte[] manifest() {
-+            return manifest;
-+        }
-+    }
-+
-+    static Layout readLayout(ZipFile archive) throws IOException {
-+        Layout layout = new Layout();
-+        Enumeration<? extends ZipEntry> entries = archive.entries();
-+        while (entries.hasMoreElements()) {
-+            ZipEntry entry = entries.nextElement();
-+            String name = entry.getName();
-+            if ("classes.dex".equals(name)) {
-+                layout.dex = true;
-+            } else if ("AndroidManifest.xml".equals(name)) {
-+                layout.manifest = readEntry(archive, entry);
-+            } else if (name.startsWith(LIBRARY_PREFIX)) {
-+                int slash = name.indexOf('/', LIBRARY_PREFIX.length());
-+                if (slash <= LIBRARY_PREFIX.length()) continue;
-+                String directory = name.substring(LIBRARY_PREFIX.length(), slash);
-+                layout.libraryAbis.add(directory);
-+                if (name.endsWith(".so")) layout.nativeAbis.add(directory);
-+            }
-+        }
-+        return layout;
-+    }
-+
-+    /** The packaged manifest keeps its strings in a UTF-16 or UTF-8 pool; accept either encoding. */
-+    static boolean declaresLeanbackLauncher(byte[] manifest) {
-+        return contains(manifest, LEANBACK_LAUNCHER.getBytes(StandardCharsets.UTF_16LE))
-+                || contains(manifest, LEANBACK_LAUNCHER.getBytes(StandardCharsets.UTF_8));
-+    }
-+
-+    static boolean contains(byte[] haystack, byte[] needle) {
-+        outer:
-+        for (int i = 0; i + needle.length <= haystack.length; i++) {
-+            for (int j = 0; j < needle.length; j++) {
-+                if (haystack[i + j] != needle[j]) continue outer;
-+            }
-+            return true;
-+        }
-+        return false;
-+    }
-+
-+    private static byte[] readEntry(ZipFile archive, ZipEntry entry) throws IOException {
-+        ByteArrayOutputStream output = new ByteArrayOutputStream();
-+        try (InputStream input = archive.getInputStream(entry)) {
-+            byte[] buffer = new byte[8192];
-+            int read;
-+            while ((read = input.read(buffer)) != -1) {
-+                output.write(buffer, 0, read);
-+                if (output.size() > MANIFEST_LIMIT) throw new IOException("Update manifest is too large");
-+            }
-+        }
-+        return output.toByteArray();
-+    }
-+
-     @SuppressWarnings("deprecation")
-     private static Set<Signature> signers(PackageInfo info) {
-         Signature[] signatures = Build.VERSION.SDK_INT >= 28 && info.signingInfo != null

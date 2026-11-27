@@ -159,6 +159,21 @@ public final class CinemaEpisodeOrderTest {
                 flag.getEpisodes().get(flag.getPosition()));
     }
 
+    @Test
+    public void yearTaggedReleasesSortInNaturalEpisodeOrder() {
+        Episode e11 = Episode.create("[5.74GB] J-今天 S01E11.2026.2160p.WEB-DL.H.264.AAC.mkv", "u11");
+        Episode e08 = Episode.create("[5.57GB] J-今天 S01E08.2026.2160p.WEB-DL.H.264.AAC.mkv", "u8");
+        Episode e06 = Episode.create("[4.57GB] J-今天 S01E06.2026.2160p.WEB-DL.H.264.AAC.mkv", "u6");
+        Episode e09 = Episode.create("[4.99GB] J-今天 S01E09.2026.2160p.WEB-DL.H.264.AAC.mkv", "u9");
+        Flag flag = flag(e11, e08, e06, e09);
+        flag.setPosition(1);
+
+        assertTrue(CinemaEpisodeOrder.apply(flag, false));
+
+        assertEquals(List.of("u6", "u8", "u9", "u11"), urls(flag));
+        assertSame(e08, flag.getEpisodes().get(flag.getPosition()));
+    }
+
     private static List<String> urls(Flag flag) {
         List<String> urls = new ArrayList<>();
         for (Episode episode : flag.getEpisodes()) urls.add(episode.getUrl());
