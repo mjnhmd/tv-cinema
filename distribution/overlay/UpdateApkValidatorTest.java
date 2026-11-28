@@ -1,5 +1,9 @@
 package com.fongmi.android.tv.update;
 
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.Signature;
+
 import org.junit.Test;
 
 import java.io.IOException;
@@ -9,18 +13,45 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 public class UpdateApkValidatorTest {
 
     private static final String TV_ABI = "armeabi-v7a";
     private static final String PHONE_ABI = "arm64-v8a";
+
+    @Test
+    @SuppressWarnings("deprecation")
+    public void signatureFlagsIncludeLegacyFlagOnApi28AndAbove() {
+        assertEquals(PackageManager.GET_SIGNATURES, UpdateApkValidator.signatureFlags(24));
+        assertEquals(PackageManager.GET_SIGNATURES, UpdateApkValidator.signatureFlags(27));
+        int api28 = UpdateApkValidator.signatureFlags(28);
+        assertEquals(PackageManager.GET_SIGNING_CERTIFICATES | PackageManager.GET_SIGNATURES, api28);
+        assertEquals(api28, UpdateApkValidator.signatureFlags(36));
+    }
+
+    @Test
+    @SuppressWarnings("deprecation")
+    public void signersFallsBackToLegacySignaturesWhenSigningInfoMissing() {
+        assertTrue(UpdateApkValidator.signers(null, 28).isEmpty());
+        PackageInfo empty = new PackageInfo();
+        assertTrue(UpdateApkValidator.signers(empty, 28).isEmpty());
+        PackageInfo legacyOnly = new PackageInfo();
+        Signature cert = new Signature(new byte[]{1, 2, 3, 4});
+        legacyOnly.signatures = new Signature[]{cert};
+        Set<Signature> result = UpdateApkValidator.signers(legacyOnly, 28);
+        assertEquals(1, result.size());
+        assertSame(cert, result.iterator().next());
+    }
 
     @Test
     public void acceptsLeanbackMarkerInEitherStringPoolEncoding() {

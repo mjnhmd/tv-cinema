@@ -330,6 +330,19 @@
 - Evidence: `scripts/cinema-prepare.py` PASS, `scripts/cinema-verify-inputs.py` PASS, `scripts/tests` 32 tests OK; `:app:testMobileArm64_v8aDebugUnitTest` now compiles and runs 1035 tests, `:app:testLeanbackArmeabi_v7aDebugUnitTest` runs 1099 tests.
 - Remaining, pre-existing and unrelated to the editions: three `LocalSubtitleScannerTest` cases fail on case-insensitive macOS filesystems in *both* variants (`expected …/Episode.srt but was …/Episode.SRT`; `My Movie.vtt` shows up beside `My Movie.VTT`). The scanner returns candidate paths that only "exist" because APFS ignores case, so a case-sensitive Linux filesystem passes. Left untouched — upstream test and code, not on the phone or television runtime path.
 
+## Implemented — Android 9 (API 28) OTA signature validator false-positive fix — 2026-11-28
+- User report: Xiaomi TV (`MiTV-MFTP0`, Android 9 / API 28) running `0.1.17-updates/218348716` checked for updates, downloaded `0.1.18/218958600`, and failed with `安装包签名与当前应用不同，无法覆盖安装`.
+- Root cause verified on NAS sink logs (`20261128.log`, `20261123.log`), official release APK certificates (`0.1.16`, `0.1.17-updates`, `0.1.18` all share SHA-256 `d405dcabe3e9507a7e33eb3fdf2d61de03e27b6e4bc80099b5b1d054f0d8bdc5`), and the local API 28 ARM64 emulator (`cinema-api28-arm64`):
+  - `UpdateApkValidator` passed only `PackageManager.GET_SIGNING_CERTIFICATES` on `SDK_INT >= 28`. On Android 9 (API 28), `PackageManager#getPackageArchiveInfo` skips certificate collection unless `GET_SIGNATURES` is also set, returning `signingInfo=null` and `signatures=null` regardless of V1/V2/V3 signing schemes, while `getPackageInfo()` returns the installed cert. The empty archive signer set never matched, raising `Reason.SIGNATURE`.
+  - Passing `GET_SIGNING_CERTIFICATES | GET_SIGNATURES` on API 28 populates both `signingInfo` and `signatures` with `d405dcabe3e9...` for official `tv-0.1.18.apk`.
+- Fix:
+  - `app/src/main/java/com/fongmi/android/tv/update/UpdateApkValidator.java`: added `signatureFlags(int)` returning `GET_SIGNING_CERTIFICATES | GET_SIGNATURES` for `sdkInt >= 28` (`GET_SIGNATURES` below 28) and `signers(PackageInfo, int)` falling back from empty/null `signingInfo` to `info.signatures`.
+  - `app/src/main/java/com/fongmi/android/tv/Updater.java`: emitted `CinemaEventLog.event("update", "fail", ...)` in `failed()` and `install()` catch block so OTA validation/install failures appear in NAS event logs.
+  - `distribution/overlay/UpdateApkValidatorTest.java`: added regression tests for `signatureFlags` (API 24/27/28/36) and `signers` legacy fallback.
+  - Synced `distribution/cinema.patch` (99 sections, `cinemaPatchSha256` → `1ecaf6fd43399977b01b80fc43c21821fe2f75df72de9108dfe7c7e873a60a78`).
+- Evidence: pristine `git apply --check` against `17abcd7453a0ecbdbc9ed40a22f3fd3632158495` PASS; `cinema-prepare.py` & `cinema-verify-inputs.py` PASS; `scripts/tests/test_cinema_*.py` 32/32 PASS; `:app:testLeanbackArmeabi_v7aDebugUnitTest --tests "com.fongmi.android.tv.update.*"` 11 suites / 89 tests / 0 fail; `:app:testMobileArm64_v8aDebugUnitTest --tests "com.fongmi.android.tv.update.*"` 11 suites / 89 tests / 0 fail; API 28 ARM64 emulator probe reproduced the bug and confirmed `GET_SIGNING_CERTIFICATES | GET_SIGNATURES` returns the exact cert.
+- Upgrade boundary: already-installed `0.1.17-updates` on Android 9 TVs carries the old validator and cannot self-update via OTA; a one-time external overwrite install to `0.1.19` (same cert, data preserved) enables future in-app OTA on Android 9. Real ARMv7 TV OTA upgrade remains to be confirmed after installing `0.1.19`.
+
 ## Not yet verified
 - Android 9 installation and hardware decoding on the user's ARMv7 television.
 - Real-device frame pacing, heap pressure, remote behavior and long-session playback.

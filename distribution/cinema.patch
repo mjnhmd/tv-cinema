@@ -3438,7 +3438,7 @@ index 8e5e1447c9755675ac905401dfedcc4cd1779e8e..4c94fe0676a1128a1611a2d12e1667da
              // Activity changes and rotations may briefly have no started Activity.
              handler.postDelayed(backgroundSync, 2_000L);
 diff --git a/app/src/main/java/com/fongmi/android/tv/Updater.java b/app/src/main/java/com/fongmi/android/tv/Updater.java
-index 84f4027e40034ca59cb7844fe9e73354c7e6bfa2..88abc53563235a1e850b7cd3655caeb59dd7a96e 100644
+index 84f4027e40034ca59cb7844fe9e73354c7e6bfa2..6e2a38eee85ff683492bf79f22ce46c75c90f7b5 100644
 --- a/app/src/main/java/com/fongmi/android/tv/Updater.java
 +++ b/app/src/main/java/com/fongmi/android/tv/Updater.java
 @@ -1,5 +1,7 @@
@@ -3507,7 +3507,7 @@ index 84f4027e40034ca59cb7844fe9e73354c7e6bfa2..88abc53563235a1e850b7cd3655caeb5
                          });
                  App.post(() -> install(file));
              } catch (Exception e) {
-@@ -183,6 +206,7 @@ public class Updater implements UpdateListener, DefaultLifecycleObserver {
+@@ -183,10 +206,12 @@ public class Updater implements UpdateListener, DefaultLifecycleObserver {
              return;
          }
          finish();
@@ -3515,6 +3515,26 @@ index 84f4027e40034ca59cb7844fe9e73354c7e6bfa2..88abc53563235a1e850b7cd3655caeb5
          try {
              CacheLease.protectFor(file, 10 * 60_000L);
              FileUtil.openFile(file);
+         } catch (Exception e) {
++            CinemaEventLog.event("update", "fail", "stage=install type=" + e.getClass().getSimpleName());
+             DiagnosticLog.record("ota", "failed stage=install type=" + e.getClass().getSimpleName());
+             Notify.show(R.string.update_install_failed);
+         }
+@@ -208,8 +233,12 @@ public class Updater implements UpdateListener, DefaultLifecycleObserver {
+ 
+     private void failed(int message, Exception error) {
+         if (!closed) {
+-            DiagnosticLog.record("ota", "failed stage=" + (downloading ? "download" : "check")
+-                    + " type=" + error.getClass().getSimpleName() + " reason=" + failureReason(error));
++            String stage = downloading ? "download" : "check";
++            String reason = failureReason(error);
++            CinemaEventLog.event("update", "fail", "stage=" + stage
++                    + " type=" + error.getClass().getSimpleName() + " reason=" + reason);
++            DiagnosticLog.record("ota", "failed stage=" + stage
++                    + " type=" + error.getClass().getSimpleName() + " reason=" + reason);
+             for (Throwable failure : error.getSuppressed()) {
+                 DiagnosticLog.record("ota", "source failed type=" + failure.getClass().getSimpleName()
+                         + " reason=" + failureReason(failure));
 diff --git a/app/src/main/java/com/fongmi/android/tv/api/config/VodConfig.java b/app/src/main/java/com/fongmi/android/tv/api/config/VodConfig.java
 index 37a35b448ffd8700faf0f086812cf7049bd41e9b..bb05bf30d7bbdba79b38fb3e5a1c94da94347ef2 100644
 --- a/app/src/main/java/com/fongmi/android/tv/api/config/VodConfig.java
@@ -4491,7 +4511,7 @@ index 580be454caa2350f32b82756135226f53cf35789..a0f3536e87300f4693122f8e92c8da93
      }
  
 diff --git a/app/src/main/java/com/fongmi/android/tv/update/UpdateApkValidator.java b/app/src/main/java/com/fongmi/android/tv/update/UpdateApkValidator.java
-index 5467f9816c4949ded06e273225b105f313800bb1..3dcba6ce27251602f7ad80303af218f66b50c414 100644
+index 5467f9816c4949ded06e273225b105f313800bb1..6240e7e83b376e78834fe2df5c7399d1183b3500 100644
 --- a/app/src/main/java/com/fongmi/android/tv/update/UpdateApkValidator.java
 +++ b/app/src/main/java/com/fongmi/android/tv/update/UpdateApkValidator.java
 @@ -8,15 +8,33 @@ import android.os.Build;
@@ -4529,8 +4549,22 @@ index 5467f9816c4949ded06e273225b105f313800bb1..3dcba6ce27251602f7ad80303af218f6
      private final Context context;
      private final int expectedCode;
  
-@@ -44,11 +62,14 @@ public final class UpdateApkValidator implements UpdateDownloader.Validator {
-             if (expected.isEmpty() || !expected.equals(signers(archive))) throw new ValidationException(Reason.SIGNATURE, "Wrong update signature");
+@@ -33,22 +51,25 @@ public final class UpdateApkValidator implements UpdateDownloader.Validator {
+             PackageManager manager = context.getApplicationContext() instanceof android.app.Application
+                     ? ((android.app.Application) context.getApplicationContext()).getBaseContext().getPackageManager()
+                     : context.getPackageManager();
+-            int flags = Build.VERSION.SDK_INT >= 28 ? PackageManager.GET_SIGNING_CERTIFICATES : PackageManager.GET_SIGNATURES;
++            int flags = signatureFlags(Build.VERSION.SDK_INT);
+             PackageInfo archive = manager.getPackageArchiveInfo(file.getAbsolutePath(), flags);
+             PackageInfo installed = manager.getPackageInfo(BuildConfig.APPLICATION_ID, flags);
+             if (archive == null) throw new ValidationException(Reason.PARSE, "Cannot parse update APK");
+             if (!BuildConfig.APPLICATION_ID.equals(archive.packageName)) throw new ValidationException(Reason.PACKAGE, "Wrong update package");
+             long code = Build.VERSION.SDK_INT >= 28 ? archive.getLongVersionCode() : archive.versionCode;
+             if (code != expectedCode || code <= BuildConfig.VERSION_CODE) throw new ValidationException(Reason.VERSION, "Wrong update version");
+-            Set<Signature> expected = signers(installed);
+-            if (expected.isEmpty() || !expected.equals(signers(archive))) throw new ValidationException(Reason.SIGNATURE, "Wrong update signature");
++            Set<Signature> expected = signers(installed, Build.VERSION.SDK_INT);
++            if (expected.isEmpty() || !expected.equals(signers(archive, Build.VERSION.SDK_INT))) throw new ValidationException(Reason.SIGNATURE, "Wrong update signature");
              String abi = BuildConfig.FLAVOR_abi.replace('_', '-');
              try (ZipFile zip = new ZipFile(file)) {
 -                if (zip.getEntry("AndroidManifest.xml") == null || zip.getEntry("classes.dex") == null) {
@@ -4547,7 +4581,7 @@ index 5467f9816c4949ded06e273225b105f313800bb1..3dcba6ce27251602f7ad80303af218f6
                  }
              }
          } catch (ValidationException e) {
-@@ -80,6 +101,84 @@ public final class UpdateApkValidator implements UpdateDownloader.Validator {
+@@ -80,10 +101,101 @@ public final class UpdateApkValidator implements UpdateDownloader.Validator {
          }
      }
  
@@ -4629,9 +4663,29 @@ index 5467f9816c4949ded06e273225b105f313800bb1..3dcba6ce27251602f7ad80303af218f6
 +        return output.toByteArray();
 +    }
 +
++    /**
++     * Android 9 (API 28) {@link PackageManager#getPackageArchiveInfo} skips certificate collection
++     * unless {@link PackageManager#GET_SIGNATURES} is also present, leaving {@code signingInfo} null.
++     */
++    @SuppressWarnings("deprecation")
++    static int signatureFlags(int sdkInt) {
++        return sdkInt >= 28
++                ? PackageManager.GET_SIGNING_CERTIFICATES | PackageManager.GET_SIGNATURES
++                : PackageManager.GET_SIGNATURES;
++    }
++
      @SuppressWarnings("deprecation")
-     private static Set<Signature> signers(PackageInfo info) {
-         Signature[] signatures = Build.VERSION.SDK_INT >= 28 && info.signingInfo != null
+-    private static Set<Signature> signers(PackageInfo info) {
+-        Signature[] signatures = Build.VERSION.SDK_INT >= 28 && info.signingInfo != null
+-                ? info.signingInfo.getApkContentsSigners() : info.signatures;
++    static Set<Signature> signers(PackageInfo info, int sdkInt) {
++        if (info == null) return new HashSet<>();
++        Signature[] signatures = sdkInt >= 28 && info.signingInfo != null
++                ? info.signingInfo.getApkContentsSigners() : null;
++        if (signatures == null || signatures.length == 0) signatures = info.signatures;
+         return signatures == null ? new HashSet<>() : new HashSet<>(Arrays.asList(signatures));
+     }
+ }
 diff --git a/app/src/main/java/com/fongmi/android/tv/update/UpdateDownloader.java b/app/src/main/java/com/fongmi/android/tv/update/UpdateDownloader.java
 index 71b6f8982a0caa5dc949bbddf62bc2599f93ba42..9b526c88780499a0a6c8693a480d1e9bdd271aba 100644
 --- a/app/src/main/java/com/fongmi/android/tv/update/UpdateDownloader.java
